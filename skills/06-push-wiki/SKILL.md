@@ -14,11 +14,12 @@ description: 调用 scripts/wiki_sync.py 将「左图右文」对照 PRD、纯�
 - `<project_dir>/project-context.md`（读取 `wiki_adapter` 与 `wiki_config`）
 - 根目录 `.env.local`（读取 `WECOM_BOT_ID`+`WECOM_BOT_SECRET` / `CONFLUENCE_PAT` / `FEISHU_APP_ID`+`FEISHU_APP_SECRET`，严禁进 Git）
 
-## 标准执行步骤（严守「本地留工程资产、远端只交单篇可读文档」铁律！）
+## 标准执行步骤（强制产出「左原型右说明」+ 严禁向微盘倾倒工程垃圾！）
 
-> **最高红线（尤其针对企业微信 `wecom` 与飞书 `feishu`）**：
-> - `project-context.md`、`spec.json`、`confluence-storage.xml`、裸 `prd.md`、`wiki-page.html`、`pages/*.html` 是**仅供本地 AI Agent 反复利用的工程源文件，绝对严禁把它们当成网盘附件上传到企业微信知识库/微盘或飞书目录里**！
-> - 推往企业微信时，远端目标必须是**创建或更新唯一一篇原生的「企业微信在线文档（文档 `doc_type=3` 或智能文档 `doc_type=11`）」**，让同事点开即读（详见 `adapters/wecom.md`）。
+> **核心交付标准（Confluence / 企业微信 / 飞书通用）**：
+> 1. **必须是「左原型截图 + 右需求说明」三列对照表（`序号 | 页面 | 需求说明`，含嵌套 `原型 | 说明` 局部控件子表）**，严禁只推一篇干巴巴的纯文字 `prd.md`！
+> 2. **`project-context.md`、`spec.json`、裸 `prd.md`、`pages/*.html` 仅供本地 Agent 反复复用，绝对严禁把它们上传到企微微盘或知识库目录！**
+> 3. **当企微机器人无法直接通过 API 创建带图表格的企微在线文档时**：直接交付/上传 `wiki-export/` 下自动生成的单篇 **`<项目名>-产品方案.docx`**（内嵌全部原型截图与嵌套子表，上传企微或导入后直接就是左原型右说明的企业微信文档！）或引导 PM 用 `wiki-page.html` 顶部的「一键复制左图右文全表」直接粘贴进企微文档，以及按需使用 `confluence-storage.xml`。
 
 1. **调用统一同步脚本执行打包与推送**：
    ```bash

@@ -13,3 +13,4 @@ __pycache__/
 .openpm/
 *_manifest.secret.json
 **/wiki-export/
+**/screenshots/

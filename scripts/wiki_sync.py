@@ -27,6 +27,14 @@ from html.parser import HTMLParser
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
+from wiki_doc_builder import (
+    auto_capture_screenshots,
+    build_fig2_rows,
+    render_fig2_confluence_xml,
+    render_fig2_html,
+    write_fig2_docx,
+)
+
 
 SUPPORTED_ADAPTERS = {"local-obsidian", "confluence", "wecom", "feishu"}
 SECRET_KEY_PATTERN = re.compile(
@@ -1214,15 +1222,6 @@ def cmd_export(project_dir: Path) -> int:
     with zipfile.ZipFile(zip_path, mode="w", compression=zipfile.ZIP_DEFLATED) as zf:
         zf.write(wt_path, arcname="walkthrough.html")
 
-    # Copy screenshots if present so relative references in wiki-page.html resolve cleanly
-    screenshots_src = project_dir / "screenshots"
-    if screenshots_src.is_dir():
-        screenshots_dst = export_dir / "screenshots"
-        screenshots_dst.mkdir(parents=True, exist_ok=True)
-        for img in screenshots_src.iterdir():
-            if img.is_file() and img.suffix.lower() in (".png", ".jpg", ".jpeg", ".webp", ".svg"):
-                shutil.copy2(img, screenshots_dst / img.name)
-
     # 2. Parse prd.md and optional spec.json
     prd_text = prd_path.read_text(encoding="utf-8")
     prd_title, prd_sections = _parse_prd_sections(prd_text)
@@ -1238,54 +1237,65 @@ def cmd_export(project_dir: Path) -> int:
             print(f"ERROR: Invalid spec.json in {project_dir}: {exc}", file=sys.stderr)
             return 1
 
+    # 3. Auto-render real grayscale prototype page & anchored component PNGs from walkthrough.html!
+    screenshots_src = project_dir / "screenshots"
+    auto_capture_screenshots(project_dir, wt_path, spec_data, screenshots_src)
+
+    screenshots_dst = export_dir / "screenshots"
+    screenshots_dst.mkdir(parents=True, exist_ok=True)
+    if screenshots_src.is_dir():
+        for img in screenshots_src.iterdir():
+            if img.is_file() and img.suffix.lower() in (".png", ".jpg", ".jpeg", ".webp", ".svg"):
+                shutil.copy2(img, screenshots_dst / img.name)
+
     ctx = parse_project_context(project_dir)
     meta = (spec_data or {}).get("meta") if isinstance((spec_data or {}).get("meta"), dict) else {}
     doc_title = str(meta.get("title") or ctx.get("title") or prd_title)
     project_slug = str(meta.get("project") or ctx.get("project") or project_dir.name)
     doc_version = str(meta.get("doc_version") or ctx.get("doc_version") or "v1.0")
+    is_en = str(meta.get("lang") or "").strip().lower().startswith("en")
     wt_sha256 = _sha256_file(wt_path)
-    exported_at = _now_iso()
 
-    rows = _build_export_rows(prd_sections, spec_data, screenshots_src)
+    # 4. Build 图2-identical Left-Prototype / Right-Spec rows (`序号 | 页面 | 需求说明` + nested `原型 | 说明`)
+    rows = build_fig2_rows(
+        prd_sections,
+        spec_data,
+        screenshots_dst,
+        _format_inline_xhtml,
+        _md_block_to_xhtml,
+    )
 
-    # 3. Generate adapter-appropriate export artifacts (do NOT dump Confluence XML into non-Confluence workspaces!)
-    html_content = _render_wiki_html(doc_title, project_slug, doc_version, wt_sha256, exported_at, rows)
+    # 5. Generate all 3 synchronized Left-Prototype / Right-Spec deliverables in wiki-export/:
+    #    (a) Self-contained Base64 wiki-page.html (with 1-click Copy Rich Table to paste into WeCom / Feishu Doc)
+    html_content = render_fig2_html(doc_title, doc_version, zip_path.name, rows, is_en=is_en)
     html_out = export_dir / "wiki-page.html"
     html_out.write_text(html_content, encoding="utf-8")
 
-    # Also build clean single-document WeCom / Feishu Markdown body (human-readable PRD + node spec summary)
-    wecom_doc_md_lines = [
-        f"# {doc_title}",
-        "",
-        f"> 版本：{doc_version} | 更新时间：{exported_at} | 交互走查原型指纹：{wt_sha256[:12]}",
-        "",
-        prd_text.strip(),
-        "",
-    ]
-    wecom_md_out = export_dir / f"{doc_title}.md"
-    wecom_md_out.write_text("\n".join(wecom_doc_md_lines), encoding="utf-8")
+    #    (b) Native Office Open XML .docx (<doc_title>-产品方案.docx) with embedded PNGs & nested tables
+    #        -> WeCom (企业微信文档) opens/imports .docx directly as a 图2-style online collaborative doc!
+    safe_title = re.sub(r'[\\/:*?"<>|]+', "-", doc_title).strip() or project_slug
+    docx_suffix = "Spec" if is_en else "产品方案"
+    docx_out = export_dir / f"{safe_title}-{docx_suffix}.docx"
+    write_fig2_docx(docx_out, doc_title, doc_version, zip_path.name, rows, is_en=is_en)
 
+    #    (c) Confluence 7.4+ Storage XML (always generated & strictly ET.fromstring verified)
     try:
-        storage_xml = _render_confluence_storage_xml(
-            doc_title, project_slug, doc_version, wt_sha256, exported_at, rows
-        )
-        # Always verify XML well-formedness in memory as a structural table gate
+        storage_xml = render_fig2_confluence_xml(doc_title, doc_version, zip_path.name, rows, is_en=is_en)
         ET.fromstring(storage_xml.encode("utf-8"))
     except ET.ParseError as exc:
         print(f"ERROR: Generated Confluence Storage XML failed well-formedness check: {exc}", file=sys.stderr)
         return 1
 
-    adapter_name = ctx.get("wiki_adapter", "local-obsidian")
-    if adapter_name == "confluence":
-        xml_out = export_dir / "confluence-storage.xml"
-        xml_out.write_text(storage_xml, encoding="utf-8")
-        print(f"[wiki_sync] Exported Confluence package to {export_dir}: {zip_path.name}, {xml_out.name}")
-    else:
-        # Remove stale confluence-storage.xml if present so Agents NEVER upload it to WeCom / Feishu!
-        stale_xml = export_dir / "confluence-storage.xml"
-        if stale_xml.is_file():
-            stale_xml.unlink()
-        print(f"[wiki_sync] Exported clean {adapter_name} package to {export_dir}: {wecom_md_out.name}, {zip_path.name}")
+    xml_out = export_dir / "confluence-storage.xml"
+    xml_out.write_text(storage_xml, encoding="utf-8")
+
+    print(
+        f"[wiki_sync] Exported Left-Prototype/Right-Spec bundle to {export_dir}:\n"
+        f"  - {docx_out.name} (WeCom / Feishu / Word native import with embedded prototype screenshots)\n"
+        f"  - {html_out.name} (1-click copy rich table + Base64 self-contained preview)\n"
+        f"  - {xml_out.name} (Confluence Storage XML, 0 broken tables)\n"
+        f"  - {zip_path.name} (Interactive prototype attachment)"
+    )
     return 0
 
 
@@ -1447,6 +1457,10 @@ def cmd_push(project_dir: Path, force: bool = False, page_id_override: Optional[
                 put_resp = _http_json_request(put_url, "PUT", headers, payload=put_payload)
                 final_ver = int(((put_resp.get("version") or {}).get("number")) or next_ver)
                 _upload_confluence_attachment(base_url, page_id, zip_path, env)
+                shots_dir = export_dir / "screenshots"
+                if shots_dir.is_dir():
+                    for sp in sorted(shots_dir.glob("*.png")):
+                        _upload_confluence_attachment(base_url, page_id, sp, env)
             else:
                 space_key = (env.get("CONFLUENCE_SPACE_KEY") or wiki_cfg.get("space_key") or "").strip()
                 if not space_key:
@@ -1475,6 +1489,10 @@ def cmd_push(project_dir: Path, force: bool = False, page_id_override: Optional[
                 final_ver = int(((post_resp.get("version") or {}).get("number")) or 1)
                 if page_id:
                     _upload_confluence_attachment(base_url, page_id, zip_path, env)
+                    shots_dir = export_dir / "screenshots"
+                    if shots_dir.is_dir():
+                        for sp in sorted(shots_dir.glob("*.png")):
+                            _upload_confluence_attachment(base_url, page_id, sp, env)
 
             pushed_at = _now_iso()
             manifest.update(
@@ -1510,40 +1528,56 @@ def cmd_push(project_dir: Path, force: bool = False, page_id_override: Optional[
                 )
                 return 1
 
-        # Mode 2: Native Enterprise WeChat Online Document (WeDoc create_doc + batch_update)
+        # Mode 2: Enterprise WeChat (WeDoc API first; graceful fallback to 图2-style .docx / XML / HTML when Bot lacks wedoc API!)
         wecom_id = (env.get("WECOM_CORP_ID") or env.get("WECOM_BOT_ID") or "").strip()
         wecom_sec = (env.get("WECOM_CORP_SECRET") or env.get("WECOM_BOT_SECRET") or "").strip()
         if adapter == "wecom" and wecom_id and wecom_sec:
-            prd_body = (project_dir / "prd.md").read_text(encoding="utf-8")
-            docid, share_url = _push_wecom_wedoc(env, wiki_cfg, doc_title, prd_body, page_id)
-            next_ver = (recorded_ver or 0) + 1
-            pushed_at = _now_iso()
-            manifest.update(
-                {
-                    "adapter": "wecom",
-                    "remote_page_id": docid,
-                    "remote_url": share_url,
-                    "remote_version": next_ver,
-                    "pushed_at": pushed_at,
-                    "walkthrough_sha256": wt_sha256,
-                }
-            )
-            save_manifest(project_dir, manifest)
-            if wecom_webhook:
-                link_line = f"> **在线文档链接**：[点击打开《{doc_title}》]({share_url})\n" if share_url else ""
-                card_md = (
-                    f"### 需求定稿更新：{doc_title}\n"
-                    f"{link_line}"
-                    f"> **版本**：`v{next_ver}` · **更新时间**：`{pushed_at}`"
+            try:
+                prd_body = (project_dir / "prd.md").read_text(encoding="utf-8")
+                docid, share_url = _push_wecom_wedoc(env, wiki_cfg, doc_title, prd_body, page_id)
+                next_ver = (recorded_ver or 0) + 1
+                pushed_at = _now_iso()
+                manifest.update(
+                    {
+                        "adapter": "wecom",
+                        "remote_page_id": docid,
+                        "remote_url": share_url,
+                        "remote_version": next_ver,
+                        "pushed_at": pushed_at,
+                        "walkthrough_sha256": wt_sha256,
+                    }
                 )
-                _http_json_request(
-                    wecom_webhook,
-                    "POST",
-                    {"Content-Type": "application/json"},
-                    payload={"msgtype": "markdown", "markdown": {"content": card_md}},
+                save_manifest(project_dir, manifest)
+                if wecom_webhook:
+                    link_line = f"> **在线文档链接**：[点击打开《{doc_title}》]({share_url})\n" if share_url else ""
+                    card_md = (
+                        f"### 需求定稿更新：{doc_title}\n"
+                        f"{link_line}"
+                        f"> **版本**：`v{next_ver}` · **更新时间**：`{pushed_at}`"
+                    )
+                    _http_json_request(
+                        wecom_webhook,
+                        "POST",
+                        {"Content-Type": "application/json"},
+                        payload={"msgtype": "markdown", "markdown": {"content": card_md}},
+                    )
+                print(
+                    f"[wiki_sync] Published native WeCom online document: docid={docid} url={share_url}\n"
+                    f"[wiki_sync] TIP: For rich Left-Prototype/Right-Spec tables with embedded screenshots (图2同款), "
+                    f"import or upload ONLY the generated .docx in {export_dir} (or 1-click copy from wiki-page.html)."
                 )
-            print(f"[wiki_sync] Published SINGLE native WeCom online document: docid={docid} url={share_url}")
-            return 0
+                return 0
+            except Exception as wedoc_exc:
+                safe_w_err = redact_text(str(wedoc_exc), secrets)
+                docx_candidates = list(export_dir.glob("*.docx"))
+                docx_name = docx_candidates[0].name if docx_candidates else "产品方案.docx"
+                print(
+                    f"[wiki_sync] Note: Direct WeCom wedoc API unavailable ({safe_w_err}). "
+                    f"Falling back to Left-Prototype/Right-Spec bundle in {export_dir}:\n"
+                    f"  -> Upload/import ONLY '{docx_name}' into WeCom (opens natively as 图2-style online doc) "
+                    f"or open 'wiki-page.html' and click '一键复制左图右文全表' to paste into a WeCom Doc!\n"
+                    f"  -> NEVER upload project-context.md, raw prd.md, or spec.json to WeDrive."
+                )
 
         # Mode 2b: WeCom Webhook group card notification only (when no WeDoc API credentials)
         if wecom_webhook and adapter == "wecom":

@@ -61,9 +61,10 @@
    - `05` 首版编译通过门禁时，若无 `versions/v1` 则静默执行 `python3 scripts/version_manager.py snapshot <project_dir> --note "v1 初稿基线"`；
    - 收到 `review-feedback.md` / `.jsonl` 或 PM 纠偏时，只修改受影响的 PRD 章节和对应 `pages/*.html` 片段（严禁全量重写无关页面），同时静默调用 `python3 scripts/eval_tracker.py log-decision`（单项目业务规则）或 `log-defect`（通用缺陷/个人品味）；
    - 定稿执行 `06`（或本地确认定稿）时，静默调用 `python3 scripts/eval_tracker.py score <project_dir> --stage final` 自动记分；若输出含 `[ITERATION_TRIGGER]`（攒满 3 个需求或 3 条错题），收尾附带 1 句话提醒 PM 可说“复盘优化”触发 `07-iterate-skills`。
-4. **本地工程资产与远端原生文档严格分离（严禁把微盘/Wiki 当网盘甩垃圾）**：
-   - 本地 `projects/<project>/` 下的 `spec.json`、`project-context.md`、`prd.md`、`pages/*.html`、`walkthrough.html` 是留在本机供 Agent 反复迭代与多人走查复用的工程资产；
-   - 定稿执行 `06` 推送到远端时：**企业微信（`wecom`）只允许创建/更新【1 篇原生企微在线文档（WeDoc 文档 `doc_type=3` 或智能文档）】**（Confluence 只推 1 篇原生 Wiki 页面，飞书只推 1 篇飞书云文档），**严禁把 `confluence-storage.xml`、`project-context.md`、`prd.md`、`wiki-page.html`、`walkthrough.html.zip` 等本地工程文件上传到企微微盘目录！**
+4. **强制「左原型截图 + 右需求说明」交付 & 本地工程资产严格分离**：
+   - 本地 `projects/<project>/` 下的 `spec.json`、`project-context.md`、`prd.md`、`pages/*.html` 是留在本机供 Agent 反复迭代复用的工程源文件，**严禁上传到企微微盘或 Wiki**；
+   - 定稿执行 `06`（`python3 scripts/wiki_sync.py push/export`）时，自动截取所有原型页与改点局部控件的高清灰阶图，统一生成 **`序号 | 页面（左原型图） | 需求说明（右规则 + 嵌套 原型|说明 子表）`** 三套同构产物：**`<项目名>-产品方案.docx`**、**`confluence-storage.xml`** 与带一键复制按钮的 **`wiki-page.html`**；
+   - 若企业微信（`wecom`）机器人无权直接通过 API 创建富文本图文表文档，**只允许上传/导入单篇 `<项目名>-产品方案.docx`（企微直接在线打开/转为左图右文企微文档，可配 1 个 `walkthrough.html.zip`）或用 `wiki-page.html` 一键复制粘贴进企微文档**！
 5. **已有工作区无损升级**：当用户要求“升级/更新 OpenPM”时，优先运行 `python3 scripts/upgrade_openpm.py`（若本地尚无该脚本，先执行 `git fetch origin main && git checkout origin/main -- AGENTS.md CLAUDE.md WORKBUDDY.md .cursorrules scripts skills specs adapters templates && python3 scripts/upgrade_openpm.py`），100% 保留用户的 `.env.local` 与 `projects/*` 现有业务目录，并将检测出的旧项目门禁问题自动修复重编。
 
 ---

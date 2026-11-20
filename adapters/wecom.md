@@ -1,34 +1,27 @@
-# 企业微信适配器（`wecom` · 原生企微在线文档交付规范）
+# 企业微信适配器（`wecom` · 左原型右说明在线文档交付规范）
 
-本适配器用于对接**企业微信在线文档 / 智能文档（WeDoc）**，核心铁律是：**「本地留工程源文件给 AI 反复复用，远端只交付一篇人类同事点开即读的企业微信在线文档」**。
-
----
-
-## ⚠️ 严禁违规操作（最高红线！）
-
-当向企业微信知识库 / 微盘推送定稿时：
-1. **严禁把本地工程文件当成普通网盘文件一股脑上传到企微目录！**
-   - 绝对禁止上传：`confluence-storage.xml`、`project-context.md`、`spec.json`、裸 `prd.md`、`wiki-page.html`、`flow.svg`、`pages/*.html`。这些文件仅保存在本地 `projects/<project>/` 供 AI Agent 后续增量改稿复用！
-2. **远端企微知识库里应该只有什么？**
-   - **唯一核心交付物**：在目标知识库空间下创建或更新**一篇原生的「企业微信在线文档（文档 `doc_type=3` 或智能文档 `doc_type=11`）」**，标题直接用干净的业务名称（如《创建网页分享·第一期》），正文直接写入排版好的结构化 PRD 与页面对照表；
-   - **可选单一交互附件**：仅当需要让同事下载点选走查时，可在文档旁附带**唯一一个**重命名干净的 `《<需求标题>-交互走查原型.html》`（或 `.zip`），绝不准堆放其他杂乱工程文件！
+本适配器用于对接**企业微信在线文档 / 微盘知识库**，核心原则是：
+1. **必须产出「左原型截图 + 右结构化说明（含嵌套 `原型 | 说明` 子表）」对照版**（表头固定三列：`序号 | 页面 | 需求说明`），绝不交付干巴巴的纯文字 Markdown；
+2. **本地留工程源文件给 AI 反复利用，远端只交付 1 份左图右文成品文档（可配 1 个交互原型包）**，严禁把 `project-context.md`、`spec.json`、裸 `prd.md` 堆进微盘。
 
 ---
 
-## 1. 凭证配置（`.env.local` 隔离）
+## 1. `wiki_sync.py export / push` 自动生成的左图右文交付物
 
-| 模式 | 用途 | `.env.local` 字段 |
-| :--- | :--- | :--- |
-| **原生企微文档 API 模式（推荐）** | 调用 `wedoc/create_doc` + `wedoc/document/batch_update` 直接新建/更新企微在线文档或智能文档 | `WECOM_CORP_ID`（或 `WECOM_BOT_ID`）+ `WECOM_CORP_SECRET`（或 `WECOM_BOT_SECRET`），可选 `WECOM_SPACE_ID`、`WECOM_FOLDER_ID`、`WECOM_DOC_TYPE=3`（`3`=文档，`11`=智能文档） |
-| **客户端已挂载企微文档 MCP / 插件模式** | 若当前 Agent 客户端（如 Codex / WorkBuddy）已连接企微文档 MCP 工具 | 直接调用企微「新建在线文档 / 写入文档正文」工具创建单篇企微文档，并将返回的 `docid` 与 `url` 写入 `_manifest.json`，**严禁调用微盘文件上传接口把本地目录的 `.xml` / `.md` 原文件传上去！** |
-| **群机器人通知（可选叠加）** | 文档创建/更新完成后往研发群发卡片链接 | `WECOM_WEBHOOK` |
+运行 `python3 scripts/wiki_sync.py push projects/<project>`（或 `export`）时，脚本会自动调起本地无头浏览器截取所有原型页及改点局部控件的高清灰阶图，并在 `wiki-export/` 下生成三套完全同构的「左原型右说明」成品：
+
+| 成品文件 | 适用场景（尤其当企微机器人无法直接通过 API 创建富文本图文表时） |
+| :--- | :--- |
+| **`<项目名>-产品方案.docx`（企微首选）** | 原生内嵌全部高清原型截图与嵌套 `原型 \| 说明` 子表的 Word OOXML 文档。**当机器人无权直接创建富文本企微文档时，只需把这唯一 1 个 `.docx` 上传至企微目标目录（或在企微「文档 → 导入本地文件」导入）**，企微即可直接在线打开/转为左原型右说明的**企业微信在线文档**！ |
+| **`wiki-page.html`（一键复制兜底）** | 单文件内嵌 Base64 原型截图，顶部自带 **「一键复制左图右文全表」** 按钮；点一下即可 `Cmd/Ctrl + V` 原样粘贴进任意新建的企微在线文档或飞书文档。 |
+| **`confluence-storage.xml`（XML 源码）** | 严格通过 XML 1.0 零破表校验的 3 列左图右文 + 嵌套子表 Storage XML，可直接粘贴至 Confluence 源码编辑器或通过 API 推送。 |
+| **`walkthrough.html.zip`（可选交互附件）** | 单文件离线走查工作台压缩包，供研发/测试下载点击走查。 |
 
 ---
 
-## 2. 标准执行流程
+## 2. 企微交付双通道（自动降级，绝不卡死）
 
-1. **拉取旧文档（`01-pull-wiki`）**：读取已有企微在线文档正文存入本地 `history/prd-remote.md`，输出 `history/pull-diff.md`。
-2. **定稿推送单篇企微在线文档（`06-push-wiki`）**：
-   - 运行 `python3 scripts/wiki_sync.py push projects/<project>`（或调用客户端企微在线文档创建/更新工具）；
-   - 若 `_manifest.json` 中尚无 `remote_page_id`（0 启动首次定稿），在目标知识库创建**一篇企业微信文档/智能文档**并写入正文，保存 `docid` 与 `share_url` 到本地 `_manifest.json`；
-   - 若已有 `remote_page_id`，直接更新同一篇企微文档正文，保持文档链接永久不变。
+1. **通道 A（企微自建应用已开通 WeDoc API）**：配置 `WECOM_CORP_ID`（或 `WECOM_BOT_ID`）+ `WECOM_CORP_SECRET`（或 `WECOM_BOT_SECRET`），自动创建/更新在线文档并推送 `WECOM_WEBHOOK` 群卡片通知。
+2. **通道 B（常规企微机器人 / 微盘 MCP / 无直接建文档权限）**：
+   - **若通过微盘工具上传**：**只允许上传 `<项目名>-产品方案.docx`（及可选的 `walkthrough.html.zip`）**，企微内点开即为左原型右说明文档；
+   - **严禁上传**：`project-context.md`、`spec.json`、裸 `prd.md`、`pages/*.html` 等本地 Agent 工程文件！
