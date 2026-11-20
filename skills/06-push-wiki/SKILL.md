@@ -14,12 +14,13 @@ description: 调用 scripts/wiki_sync.py 将「左图右文」对照 PRD、纯�
 - `<project_dir>/project-context.md`（读取 `wiki_adapter` 与 `wiki_config`）
 - 根目录 `.env.local`（读取 `WECOM_BOT_ID`+`WECOM_BOT_SECRET` / `CONFLUENCE_PAT` / `FEISHU_APP_ID`+`FEISHU_APP_SECRET`，严禁进 Git）
 
-## 标准执行步骤（强制产出「左原型右说明」+ 严禁向微盘倾倒工程垃圾！）
+## 标准执行步骤（零套娃、零重复、全变体灰阶截图、诚实状态码！）
 
-> **核心交付标准（Confluence / 企业微信 / 飞书通用）**：
-> 1. **必须是「左原型截图 + 右需求说明」三列对照表（`序号 | 页面 | 需求说明`，含嵌套 `原型 | 说明` 局部控件子表）**，严禁只推一篇干巴巴的纯文字 `prd.md`！
-> 2. **`project-context.md`、`spec.json`、裸 `prd.md`、`pages/*.html` 仅供本地 Agent 反复复用，绝对严禁把它们上传到企微微盘或知识库目录！**
-> 3. **当企微机器人无法直接通过 API 创建带图表格的企微在线文档时**：直接交付/上传 `wiki-export/` 下自动生成的单篇 **`<项目名>-产品方案.docx`**（内嵌全部原型截图与嵌套子表，上传企微或导入后直接就是左原型右说明的企业微信文档！）或引导 PM 用 `wiki-page.html` 顶部的「一键复制左图右文全表」直接粘贴进企微文档，以及按需使用 `confluence-storage.xml`。
+> **核心交付门禁（严禁踩坑）**：
+> 1. **禁止循环套表与内容重复**：外层三列 `序号 | 页面 | 需求说明` 即唯一图文对照容器，**严禁在右栏内再套一层 `原型 | 说明` 子表复述外层内容**；每条业务规则全篇只准出现一次！
+> 2. **完整覆盖多端变体 & 强制 100% 纯灰阶**：`wiki_sync.py` 自动截取基页面及全部 `variant_of`（如 `Web/PC` + `App 375px`）变体并强制 `grayscale(100%)`；**若返回退出码 `3`（`SCREENSHOT_CAPTURE_FAILED`，受限沙箱拦截无头浏览器），必须申请提权脱离沙箱重跑，严禁交付无图文档！**
+> 3. **严禁“假成功”（退出码 `2` 诚实汇报）**：企微智能机器人 `WECOM_BOT_ID` 无法调用企业 `wedoc` 接口（`40013 invalid corpid`）。当 `wiki_sync.py push` 返回**退出码 `2`（`REMOTE_PUSH_NOT_UPLOADED`）**时，代表**本地 `wiki-export/<项目名>-产品方案.docx` 和 `wiki-page.html` 已生成完毕，但尚未上传到企微远端**——此时若有企微 MCP 上传工具则只传单篇 `.docx`，若无则必须如实把本地 `.docx` 和 `wiki-page.html`（一键复制）交由 PM 导入，**绝不准谎称“已自动上传企微成功”！**
+> 4. **本地工程源文件隔离**：严禁把 `project-context.md`、`spec.json`、裸 `prd.md`、`pages/*.html` 上传到企微微盘或 Wiki。
 
 1. **调用统一同步脚本执行打包与推送**：
    ```bash

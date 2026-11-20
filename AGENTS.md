@@ -61,10 +61,10 @@
    - `05` 首版编译通过门禁时，若无 `versions/v1` 则静默执行 `python3 scripts/version_manager.py snapshot <project_dir> --note "v1 初稿基线"`；
    - 收到 `review-feedback.md` / `.jsonl` 或 PM 纠偏时，只修改受影响的 PRD 章节和对应 `pages/*.html` 片段（严禁全量重写无关页面），同时静默调用 `python3 scripts/eval_tracker.py log-decision`（单项目业务规则）或 `log-defect`（通用缺陷/个人品味）；
    - 定稿执行 `06`（或本地确认定稿）时，静默调用 `python3 scripts/eval_tracker.py score <project_dir> --stage final` 自动记分；若输出含 `[ITERATION_TRIGGER]`（攒满 3 个需求或 3 条错题），收尾附带 1 句话提醒 PM 可说“复盘优化”触发 `07-iterate-skills`。
-4. **强制「左原型截图 + 右需求说明」交付 & 本地工程资产严格分离**：
-   - 本地 `projects/<project>/` 下的 `spec.json`、`project-context.md`、`prd.md`、`pages/*.html` 是留在本机供 Agent 反复迭代复用的工程源文件，**严禁上传到企微微盘或 Wiki**；
-   - 定稿执行 `06`（`python3 scripts/wiki_sync.py push/export`）时，自动截取所有原型页与改点局部控件的高清灰阶图，统一生成 **`序号 | 页面（左原型图） | 需求说明（右规则 + 嵌套 原型|说明 子表）`** 三套同构产物：**`<项目名>-产品方案.docx`**、**`confluence-storage.xml`** 与带一键复制按钮的 **`wiki-page.html`**；
-   - 若企业微信（`wecom`）机器人无权直接通过 API 创建富文本图文表文档，**只允许上传/导入单篇 `<项目名>-产品方案.docx`（企微直接在线打开/转为左图右文企微文档，可配 1 个 `walkthrough.html.zip`）或用 `wiki-page.html` 一键复制粘贴进企微文档**！
+4. **强制「左原型截图 + 右无重复说明」交付、全变体灰阶门禁 & 严禁假成功**：
+   - 本地 `projects/<project>/` 下的 `spec.json`、`project-context.md`、`prd.md`、`pages/*.html` 仅供本机 Agent 复用，**严禁上传微盘或 Wiki**；
+   - 定稿执行 `06`（`python3 scripts/wiki_sync.py push/export`）时，自动截取基页面与全部 `variant_of` 多端变体（`Web/PC` + `App 375px`）的 **100% 强制纯灰阶图**，生成外层三列 **`序号 | 页面（含跨页吸顶与归属标签） | 需求说明（单一权威信息源，严禁再套嵌 `原型|说明` 循环子表或内外重复复述！）`** 的 `<项目名>-产品方案.docx`、`confluence-storage.xml` 与一键复制版 `wiki-page.html`；
+   - **严禁吞错与严禁假成功**：若 `wiki_sync.py` 返回退出码 `3`（沙箱拦截 Chrome 截图），必须提权脱离沙箱重跑以补齐截图；若返回退出码 `2`（如企微智能机器人 `Bot ID` 不支持 `wedoc` 接口报 `40013`），代表仅完成本地导出而**未上传远端**，必须用授权 MCP 只传单篇 `.docx` 或如实把 `.docx` / `wiki-page.html` 发给 PM，**严禁谎报“已推送到企微”**！
 5. **已有工作区无损升级**：当用户要求“升级/更新 OpenPM”时，优先运行 `python3 scripts/upgrade_openpm.py`（若本地尚无该脚本，先执行 `git fetch origin main && git checkout origin/main -- AGENTS.md CLAUDE.md WORKBUDDY.md .cursorrules scripts skills specs adapters templates && python3 scripts/upgrade_openpm.py`），100% 保留用户的 `.env.local` 与 `projects/*` 现有业务目录，并将检测出的旧项目门禁问题自动修复重编。
 
 ---

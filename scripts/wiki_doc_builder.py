@@ -1,20 +1,26 @@
 #!/usr/bin/env python3
-"""Left-Prototype / Right-Specification (图2 Confluence & WeCom Online Doc style) Builder.
+"""Left-Prototype / Right-Specification (Confluence & WeCom Online Doc style) Builder.
 
-Zero third-party dependencies (Python 3.9+ stdlib only + optional local Headless Chrome for auto-screenshots).
-Generates:
-  1. Auto-rendered grayscale prototype page PNGs & anchored component close-up PNGs from walkthrough.html;
-  2. Unified 3-column (`序号 | 页面 | 需求说明`) + nested 2-column (`原型 | 说明`) data model;
-  3. Native Office Open XML `.docx` (`<title>.docx`) that Enterprise WeChat (企微在线文档), Feishu, and Word
-     import/open directly as a rich Left-Image / Right-Spec online document;
-  4. Confluence 7.4+ Storage XML (`confluence-storage.xml`) with `<ac:image><ri:attachment/></ac:image>`;
-  5. Self-contained Base64 `wiki-page.html` with 1-click Rich-Table Copy for pasting into WeCom / Feishu Docs.
+Zero third-party dependencies (Python 3.9+ stdlib only + local Headless Chrome for auto-screenshots).
+Key guarantees:
+  1. NO Recursive `原型 | 说明` Sub-Table Nesting: Outer `序号 | 页面 | 需求说明` IS the sole prototype-to-spec
+     container. `spec_cards` are never echoed into a redundant inner `原型 | 说明` sub-table.
+  2. Single Source of Truth (Zero Duplication): When `prd.md` defines a page's rules, `prd.md` is authoritative;
+     `node.anno` items are merged ONLY if non-overlapping, so no rule ever appears twice.
+  3. Fail-Fast Screenshot Gate: Raises `ScreenshotCaptureError` (exit code 3) if sandbox blocks Chrome or any
+     expected page/variant screenshot is missing, instead of silently producing blank placeholders.
+  4. Full `variant_of` Multi-Platform Coverage: Automatically captures & pairs Web, PC, and Mobile App (375px)
+     variants under their parent screen entry.
+  5. Forced 100% Pure Grayscale: Applies `filter: grayscale(100%) !important` inside Chrome before capture +
+     pure neutral `#1f1f1f`/`#d9d9d9` styling in HTML & `.docx` (zero blue tints).
+  6. Cross-Page Context Preservation: Sticky left prototype column in HTML, `<w:tblHeader/>` repeating headers
+     in `.docx`, and automatic `N-续` continuation splitting with left-column variant/context preview when a
+     single screen's specification is extra long.
 """
 
 from __future__ import annotations
 
 import base64
-import html
 import json
 import os
 import re
@@ -28,6 +34,11 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 XML_ILLEGAL_RE = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\ufffe\uffff]")
+SCREENSHOT_DPR = 1.5
+
+
+class ScreenshotCaptureError(RuntimeError):
+    """Raised when Headless Chrome cannot capture required prototype screenshots (e.g. restricted sandbox)."""
 
 
 def _xe(val: Any) -> str:
@@ -63,48 +74,88 @@ def _png_dimensions(png_bytes: bytes) -> Tuple[int, int]:
     return 640, 420
 
 
-def auto_capture_screenshots(
-    project_dir: Path,
-    wt_path: Path,
-    spec_data: Optional[Dict[str, Any]],
-    screenshots_dir: Path,
-) -> Dict[str, Path]:
-    """Automatically capture clean grayscale PNGs of prototype pages & anchored components via Chrome CDP pipe."""
-    captured: Dict[str, Path] = {}
-    screenshots_dir.mkdir(parents=True, exist_ok=True)
-
-    # First index any pre-existing screenshots
-    for p in screenshots_dir.glob("*.png"):
-        captured[p.stem] = p
-
-    if not isinstance(spec_data, dict) or not wt_path.is_file():
-        return captured
-
-    chrome_bin = _find_chrome_binary()
-    if not chrome_bin:
-        return captured
+def _collect_expected_pages(spec_data: Optional[Dict[str, Any]]) -> Tuple[List[str], Dict[str, List[str]], Dict[str, str]]:
+    """Return (ordered_all_pages_to_capture, variants_by_base_page, node_for_base_page)."""
+    if not isinstance(spec_data, dict):
+        return [], {}, {}
 
     pages_dict = spec_data.get("pages") or {}
     nodes_dict = spec_data.get("nodes") or {}
     spec_cards = spec_data.get("spec_cards") or []
 
-    # Collect unique base pages used by nodes + spec_cards
-    target_pages: List[str] = []
+    base_pages: List[str] = []
     node_for_page: Dict[str, str] = {}
     for nid, ndef in nodes_dict.items():
         if isinstance(ndef, dict) and ndef.get("page"):
-            pid = str(ndef["page"])
-            if pid not in target_pages:
-                target_pages.append(pid)
-            node_for_page.setdefault(pid, nid)
+            raw_pid = str(ndef["page"])
+            p_obj = pages_dict.get(raw_pid) if isinstance(pages_dict.get(raw_pid), dict) else {}
+            bp = str(p_obj.get("variant_of") or raw_pid)
+            if bp not in base_pages:
+                base_pages.append(bp)
+            node_for_page.setdefault(bp, nid)
+
     for sc in spec_cards:
         if isinstance(sc, dict) and sc.get("page"):
-            pid = str(sc["page"])
-            if pid not in target_pages and pid in pages_dict:
-                target_pages.append(pid)
+            raw_pid = str(sc["page"])
+            p_obj = pages_dict.get(raw_pid) if isinstance(pages_dict.get(raw_pid), dict) else {}
+            bp = str(p_obj.get("variant_of") or raw_pid)
+            if bp not in base_pages and bp in pages_dict:
+                base_pages.append(bp)
 
-    if not target_pages:
-        return captured
+    # Also include any standalone base pages in spec.json["pages"] not yet listed
+    for cand_pid, pdef in pages_dict.items():
+        if not isinstance(pdef, dict):
+            continue
+        if not pdef.get("variant_of") and cand_pid not in base_pages:
+            base_pages.append(cand_pid)
+
+    variants_by_base: Dict[str, List[str]] = {bp: [] for bp in base_pages}
+    for cand_pid, pdef in pages_dict.items():
+        if not isinstance(pdef, dict):
+            continue
+        v_of = str(pdef.get("variant_of") or "").strip()
+        if v_of and v_of in variants_by_base and cand_pid != v_of:
+            variants_by_base[v_of].append(cand_pid)
+
+    ordered_all: List[str] = []
+    for bp in base_pages:
+        if bp not in ordered_all:
+            ordered_all.append(bp)
+        for vp in variants_by_base.get(bp, []):
+            if vp not in ordered_all:
+                ordered_all.append(vp)
+
+    return ordered_all, variants_by_base, node_for_page
+
+
+def auto_capture_screenshots(
+    project_dir: Path,
+    wt_path: Path,
+    spec_data: Optional[Dict[str, Any]],
+    screenshots_dir: Path,
+    allow_missing: bool = False,
+) -> Dict[str, Path]:
+    """Capture 100% pure-grayscale PNGs for all base pages and `variant_of` platform variants.
+
+    Raises ScreenshotCaptureError if required page screenshots cannot be rendered and `allow_missing` is False.
+    """
+    screenshots_dir.mkdir(parents=True, exist_ok=True)
+    ordered_pages, _, node_for_page = _collect_expected_pages(spec_data)
+    if not ordered_pages or not isinstance(spec_data, dict):
+        return {p.stem: p for p in screenshots_dir.glob("*.png")}
+
+    chrome_bin = _find_chrome_binary()
+    if not chrome_bin:
+        existing = {p.stem: p for p in screenshots_dir.glob("*.png")}
+        missing = [pid for pid in ordered_pages if pid not in existing]
+        if missing and not allow_missing:
+            raise ScreenshotCaptureError(
+                f"未检测到本地 Chrome/Chromium 浏览器，且缺少 {len(missing)} 张原型截图（{', '.join(missing[:5])}）。"
+            )
+        return existing
+
+    pages_dict = spec_data.get("pages") or {}
+    captured: Dict[str, Path] = {}
 
     r_cmd, w_cmd = os.pipe()
     r_res, w_res = os.pipe()
@@ -115,7 +166,10 @@ def auto_capture_screenshots(
 
     prof_dir = f"/tmp/openpm-wiki-shot-{os.getpid()}"
     shutil.rmtree(prof_dir, ignore_errors=True)
-    proc = None
+    proc: Optional[subprocess.Popen] = None
+    stderr_path = Path(f"/tmp/openpm-chrome-err-{os.getpid()}.log")
+    err_fh = open(stderr_path, "wb")
+
     try:
         proc = subprocess.Popen(
             [
@@ -124,15 +178,20 @@ def auto_capture_screenshots(
                 f"--user-data-dir={prof_dir}",
                 "--no-sandbox",
                 "--disable-gpu",
+                "--disable-crash-reporter",
+                "--disable-breakpad",
+                "--no-first-run",
+                "--no-default-browser-check",
+                "--disable-dev-shm-usage",
                 "--hide-scrollbars",
-                "--window-size=1600,1400",
+                "--window-size=1600,1500",
                 "--remote-debugging-pipe",
                 "about:blank",
             ],
             pass_fds=(3, 4),
             preexec_fn=_setup_fds,
             stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
+            stderr=err_fh,
         )
         os.close(r_cmd)
         os.close(w_res)
@@ -155,13 +214,13 @@ def auto_capture_screenshots(
                 while b"\0" not in buf:
                     chunk = os.read(r_res, 262144)
                     if not chunk:
-                        raise RuntimeError("CDP pipe closed")
+                        raise RuntimeError("Chrome CDP 管道意外关闭（通常因受限沙箱禁止启动无头浏览器或 Mach 端口）")
                     buf += chunk
                 raw, buf = buf.split(b"\0", 1)
                 msg = json.loads(raw.decode("utf-8"))
                 if msg.get("id") == cid:
                     if "error" in msg:
-                        raise RuntimeError(str(msg["error"]))
+                        raise RuntimeError(f"CDP {method} error: {msg['error']}")
                     return msg.get("result") or {}
 
         def _eval(expr: str, await_p: bool = False) -> Any:
@@ -169,7 +228,10 @@ def auto_capture_screenshots(
             return (r.get("result") or {}).get("value")
 
         targets = _cdp("Target.getTargets", use_sess=False).get("targetInfos") or []
-        page_target = next(t for t in targets if t.get("type") == "page")
+        page_target = next((t for t in targets if t.get("type") == "page"), None)
+        if not page_target:
+            raise RuntimeError("Chrome 未能创建页面渲染目标（Target.getTargets 为空）")
+
         session_id = _cdp(
             "Target.attachToTarget",
             {"targetId": page_target["targetId"], "flatten": True},
@@ -179,30 +241,38 @@ def auto_capture_screenshots(
         _cdp("Runtime.enable")
         _cdp(
             "Emulation.setDeviceMetricsOverride",
-            {"width": 1600, "height": 1400, "deviceScaleFactor": 1.5, "mobile": False},
+            {"width": 1600, "height": 1500, "deviceScaleFactor": SCREENSHOT_DPR, "mobile": False},
         )
         _cdp("Page.navigate", {"url": wt_path.resolve().as_uri()})
         time.sleep(0.65)
 
-        # Clean pure grayscale wireframe mode (no orange delta outlines, expand stage so full page height is visible!)
+        # Force 100% pure grayscale across ALL DOM elements & native OS form controls!
         _eval(
             """
             (() => {
               if (window.toggleDeltaHighlight) window.toggleDeltaHighlight(false);
               const st = document.createElement('style');
+              st.id = '__openpm_wiki_grayscale_enforce';
               st.textContent = `
+                html, body, .page, .page *, *::before, *::after {
+                  filter: grayscale(100%) !important;
+                  -webkit-filter: grayscale(100%) !important;
+                  accent-color: #262626 !important;
+                }
                 .insp-body, .stage { overflow: visible !important; max-height: none !important; height: auto !important; }
-                .wb-stage, .flow-panel, .inspector-drawer { height: auto !important; min-height: 1200px !important; overflow: visible !important; }
+                .wb-stage, .flow-panel, .inspector-drawer { height: auto !important; min-height: 1400px !important; overflow: visible !important; }
               `;
               document.head.appendChild(st);
             })()
             """
         )
 
-        for pid in target_pages:
+        # Capture every base page AND every `variant_of` page (Web + PC + App 375px)!
+        for pid in ordered_pages:
             pdef = pages_dict.get(pid) if isinstance(pages_dict.get(pid), dict) else {}
             plat = str(pdef.get("platform") or "")
-            nid = node_for_page.get(pid, "")
+            base_ref = str(pdef.get("variant_of") or pid)
+            nid = node_for_page.get(pid) or node_for_page.get(base_ref) or ""
             js_switch = f"""
             new Promise(resolve => {{
               if ({json.dumps(plat)} && window.setVar) window.setVar('platform', {json.dumps(plat)});
@@ -212,12 +282,13 @@ def auto_capture_screenshots(
                 const el = document.getElementById({json.dumps(pid)}) || document.querySelector('.page.active');
                 if (!el) return resolve(null);
                 const r = el.getBoundingClientRect();
-                resolve({{ x: Math.max(0, r.left), y: Math.max(0, r.top), width: Math.max(120, r.width), height: Math.max(80, r.height) }});
+                if (r.width < 40 || r.height < 30) return resolve(null);
+                resolve({{ x: Math.max(0, r.left), y: Math.max(0, r.top), width: r.width, height: r.height }});
               }}));
             }})
             """
             rect = _eval(js_switch, await_p=True)
-            if isinstance(rect, dict) and rect.get("width", 0) > 40:
+            if isinstance(rect, dict) and rect.get("width", 0) >= 40:
                 shot = _cdp(
                     "Page.captureScreenshot",
                     {
@@ -226,7 +297,7 @@ def auto_capture_screenshots(
                             "x": float(rect["x"]),
                             "y": float(rect["y"]),
                             "width": float(rect["width"]),
-                            "height": float(min(rect["height"], 1250.0)),
+                            "height": float(min(rect["height"], 1350.0)),
                             "scale": 1.0,
                         },
                     },
@@ -235,60 +306,21 @@ def auto_capture_screenshots(
                 out_png.write_bytes(base64.b64decode(shot["data"]))
                 captured[pid] = out_png
 
-        # Also capture close-up component crops for spec_cards (for the nested `原型 | 说明` sub-table in 图2!)
-        for sc in spec_cards:
-            if not isinstance(sc, dict):
-                continue
-            cid = str(sc.get("id") or "").strip()
-            pid = str(sc.get("page") or "").strip()
-            anchor = str(sc.get("anchor") or "").strip()
-            if not (cid and pid and anchor):
-                continue
-            js_crop = f"""
-            new Promise(resolve => {{
-              if (window.showPage) window.showPage({json.dumps(pid)});
-              requestAnimationFrame(() => requestAnimationFrame(() => {{
-                const pg = document.getElementById({json.dumps(pid)}) || document.querySelector('.page.active');
-                if (!pg) return resolve(null);
-                let target = pg.querySelector('[data-comp-id=' + JSON.stringify({json.dumps(anchor)}) + ']')
-                          || pg.querySelector('[data-anchor=' + JSON.stringify({json.dumps(anchor)}) + ']');
-                if (!target) return resolve(null);
-                // Expand slightly to immediate form-row or card if control is tiny (< 72px tall) so close-up has context like 图2!
-                const ctx = target.closest('.wt-card, .wt-modal, .wt-alert, .wt-field, tr');
-                const boxEl = (ctx && ctx.getBoundingClientRect().height <= 260) ? ctx : target;
-                const pr = pg.getBoundingClientRect();
-                const br = boxEl.getBoundingClientRect();
-                const pad = 12;
-                const x = Math.max(pr.left, br.left - pad);
-                const y = Math.max(pr.top, br.top - pad);
-                const right = Math.min(pr.right, br.right + pad);
-                const bottom = Math.min(pr.bottom, br.bottom + pad);
-                resolve({{ x, y, width: Math.max(80, right - x), height: Math.max(36, bottom - y) }});
-              }}));
-            }})
-            """
-            crect = _eval(js_crop, await_p=True)
-            if isinstance(crect, dict) and crect.get("width", 0) > 40:
-                cshot = _cdp(
-                    "Page.captureScreenshot",
-                    {
-                        "format": "png",
-                        "clip": {
-                            "x": float(crect["x"]),
-                            "y": float(crect["y"]),
-                            "width": float(crect["width"]),
-                            "height": float(min(crect["height"], 400.0)),
-                            "scale": 1.0,
-                        },
-                    },
-                )
-                safe_cid = re.sub(r"[^A-Za-z0-9_-]", "_", cid)
-                comp_png = screenshots_dir / f"comp_{safe_cid}.png"
-                comp_png.write_bytes(base64.b64decode(cshot["data"]))
-                captured[f"comp_{safe_cid}"] = comp_png
-    except Exception:
-        pass
+    except Exception as exc:
+        err_fh.flush()
+        chrome_stderr = ""
+        if stderr_path.is_file():
+            chrome_stderr = stderr_path.read_text(encoding="utf-8", errors="ignore").strip()[-400:]
+        if not allow_missing:
+            detail = f"{exc}" + (f" | Chrome stderr: {chrome_stderr}" if chrome_stderr else "")
+            raise ScreenshotCaptureError(
+                f"无头浏览器截图失败（目标共 {len(ordered_pages)} 张页面变体截图）。原因：{detail}。\n"
+                f"👉 解决方式：当前受限沙箱环境阻止了 Chrome 截图，请申请放宽运行权限（脱离沙箱/提权）后重新运行 `wiki_sync.py export/push`，严禁直接交付无图残次文档！"
+            ) from exc
+        return {p.stem: p for p in screenshots_dir.glob("*.png")}
     finally:
+        err_fh.close()
+        stderr_path.unlink(missing_ok=True)
         for fd in (w_cmd, r_res):
             try:
                 os.close(fd)
@@ -305,20 +337,25 @@ def auto_capture_screenshots(
                     pass
         shutil.rmtree(prof_dir, ignore_errors=True)
 
+    missing_after = [pid for pid in ordered_pages if pid not in captured]
+    if missing_after and not allow_missing:
+        raise ScreenshotCaptureError(
+            f"原型截图覆盖不完整，以下 {len(missing_after)} 个页面/变体未截到图片：{', '.join(missing_after)}。"
+        )
     return captured
 
 
 def _split_fine_grained_sections(prd_sections: List[Tuple[str, str]]) -> List[Tuple[str, str]]:
-    """Split H2 sections further on H3 (`### `) so each page-specific subsection maps cleanly to its own row!"""
+    """Split H2 sections further on H3/H4 (`### ` / `#### `) so each page subsection maps cleanly to its own row."""
     fine: List[Tuple[str, str]] = []
     for h2_title, sec_md in prd_sections:
         cur_t = h2_title
         cur_lines: List[str] = []
-        has_h3 = False
+        has_sub = False
         for ln in sec_md.splitlines():
             m3 = re.match(r"^#{2,4}\s+(.*)$", ln.strip())
             if m3:
-                has_h3 = True
+                has_sub = True
                 if any(x.strip() for x in cur_lines):
                     fine.append((cur_t, "\n".join(cur_lines).strip()))
                 cur_t = m3.group(1).strip()
@@ -326,21 +363,79 @@ def _split_fine_grained_sections(prd_sections: List[Tuple[str, str]]) -> List[Tu
             else:
                 cur_lines.append(ln)
         if any(x.strip() for x in cur_lines):
-            fine.append((cur_t if has_h3 else h2_title, "\n".join(cur_lines).strip()))
+            fine.append((cur_t if has_sub else h2_title, "\n".join(cur_lines).strip()))
     return fine
 
 
-def _extract_prd_bullets(sec_md: str) -> List[str]:
-    bullets: List[str] = []
-    for raw in sec_md.splitlines():
+def _normalize_dedup_key(txt: str) -> str:
+    """Create a normalized fingerprint to detect overlapping rules between node.anno and prd.md."""
+    s = re.sub(r"[`*_#\s·•:：,，.。;；()（）\[\]【】/-]+", "", txt.lower())
+    return s[:28]
+
+
+def _extract_prd_plain_blocks(sec_md: str) -> List[Dict[str, Any]]:
+    """Parse a Markdown section into clean plain-text paragraphs/bullets AND genuine Markdown data tables for .docx."""
+    blocks: List[Dict[str, Any]] = []
+    lines = sec_md.splitlines()
+    i = 0
+    n = len(lines)
+    while i < n:
+        raw = lines[i]
         s = raw.strip()
-        if not s or s.startswith("```") or s.startswith("|") or s == "---" or s.startswith("#"):
+        if not s or s == "---":
+            i += 1
             continue
-        s = re.sub(r"^>\s*(\[!NOTE\]|\[!IMPORTANT\]|\[!WARNING\]|\[!TIP\])?\s*", "", s)
-        s = re.sub(r"^([-*+•]|\d+\.)\s+", "", s).strip()
-        if s:
-            bullets.append(s)
-    return bullets
+        if s.startswith("```"):
+            i += 1
+            code_lns = []
+            while i < n and not lines[i].strip().startswith("```"):
+                code_lns.append(lines[i])
+                i += 1
+            if i < n:
+                i += 1
+            if code_lns:
+                blocks.append({"kind": "text", "text": "\n".join(code_lns), "bold": False})
+            continue
+        # Genuine Markdown data table authored in prd.md (e.g. field dictionary / error codes)
+        if s.startswith("|") and i + 1 < n and re.fullmatch(r"[\s|:-]+", lines[i + 1].strip()):
+            hdr = [c.strip() for c in s.strip("|").split("|")]
+            i += 2
+            t_rows = []
+            while i < n and lines[i].strip().startswith("|"):
+                rc = [
+                    re.sub(r"`([^`]+)`", r"\1", re.sub(r"\*\*([^*]+)\*\*", r"\1", c.strip()))
+                    for c in lines[i].strip().strip("|").split("|")
+                ]
+                if not all(re.fullmatch(r":?-{2,}:?", x) for x in rc if x):
+                    if len(rc) < len(hdr):
+                        rc.extend([""] * (len(hdr) - len(rc)))
+                    t_rows.append(rc[: len(hdr)])
+                i += 1
+            clean_hdr = [re.sub(r"`([^`]+)`", r"\1", re.sub(r"\*\*([^*]+)\*\*", r"\1", c)) for c in hdr]
+            if clean_hdr and t_rows:
+                blocks.append({"kind": "table", "headers": clean_hdr, "rows": t_rows})
+            continue
+
+        clean = re.sub(r"^>\s*(\[!NOTE\]|\[!IMPORTANT\]|\[!WARNING\]|\[!TIP\])?\s*", "", s)
+        clean = re.sub(r"^#{1,6}\s+", "", clean)
+        clean = re.sub(r"^([-*+•]|\d+\.)\s+", "", clean).strip()
+        clean = re.sub(r"`([^`]+)`", r"\1", re.sub(r"\*\*([^*]+)\*\*", r"\1", clean))
+        if clean:
+            blocks.append({"kind": "text", "text": f"· {clean}", "bold": False})
+        i += 1
+    return blocks
+
+
+def _platform_badge(pdef: Dict[str, Any], is_en: bool) -> str:
+    plat = str(pdef.get("platform") or "").lower()
+    frame = str(pdef.get("frame") or "").lower()
+    if plat == "app" or frame == "phone":
+        return "Mobile App (375px)" if is_en else "App 端（375px）"
+    if plat == "pc":
+        return "Desktop Client" if is_en else "PC 客户端"
+    if plat in ("web", "web-admin") or frame == "wide":
+        return "Web / Desktop" if is_en else "Web / PC 端"
+    return str(pdef.get("title") or plat or "")
 
 
 def build_fig2_rows(
@@ -350,7 +445,7 @@ def build_fig2_rows(
     format_inline_xhtml_fn: Any,
     md_block_to_xhtml_fn: Any,
 ) -> List[Dict[str, Any]]:
-    """Build 图2-style rows: 1 screen/module per row, left rendered PNG(s), right clean bullets + nested `原型 | 说明` sub-table."""
+    """Build Single-Source-of-Truth Left-Prototype / Right-Spec rows (ZERO recursive `原型|说明` nesting, ZERO duplicate text)."""
     rows: List[Dict[str, Any]] = []
     is_en = bool(
         isinstance(spec_data, dict)
@@ -361,15 +456,10 @@ def build_fig2_rows(
         nodes: Dict[str, Any] = spec_data["nodes"]
         pages: Dict[str, Any] = spec_data.get("pages") or {}
         vars_list: List[Any] = spec_data.get("vars") or []
-        spec_cards: List[Any] = spec_data.get("spec_cards") or []
 
+        _, variants_by_base, _ = _collect_expected_pages(spec_data)
         vars_by_id = {v["id"]: v for v in vars_list if isinstance(v, dict) and v.get("id")}
-        cards_by_page: Dict[str, List[Dict[str, Any]]] = {}
-        for c in spec_cards:
-            if isinstance(c, dict) and c.get("page"):
-                cards_by_page.setdefault(str(c["page"]), []).append(c)
 
-        # Map fine-grained H3/H2 PRD sections to a SINGLE specific page (do NOT dump multi-page overview tables into Row 1!)
         fine_sections = _split_fine_grained_sections(prd_sections)
         matched_sec_indices: set = set()
         page_groups: Dict[str, Dict[str, Any]] = {}
@@ -378,7 +468,9 @@ def build_fig2_rows(
         for nid, ndef in nodes.items():
             if not isinstance(ndef, dict):
                 continue
-            pid = str(ndef.get("page") or nid)
+            raw_pid = str(ndef.get("page") or nid)
+            p_obj = pages.get(raw_pid) if isinstance(pages_dict := pages, dict) and isinstance(pages_dict.get(raw_pid), dict) else {}
+            pid = str(p_obj.get("variant_of") or raw_pid)
             if pid not in page_groups:
                 page_groups[pid] = {"nodes": [], "changes": set()}
                 page_order.append(pid)
@@ -386,11 +478,13 @@ def build_fig2_rows(
             page_groups[pid]["changes"].add(str(ndef.get("change") or "unchanged"))
 
         all_base_pids = set(page_order)
+        seq_num = 0
 
         for pid in page_order:
+            seq_num += 1
             grp = page_groups[pid]
             grp_nodes: List[Tuple[str, Dict[str, Any]]] = grp["nodes"]
-            primary_nid, primary_ndef = grp_nodes[0]
+            _, primary_ndef = grp_nodes[0]
             pdef = pages.get(pid) if isinstance(pages.get(pid), dict) else {}
             raw_title = str(primary_ndef.get("title") or pdef.get("title") or pid)
 
@@ -403,155 +497,191 @@ def build_fig2_rows(
                 badge = ""
             heading = raw_title if ("新增" in raw_title or "改动" in raw_title or "New" in raw_title) else f"{raw_title}{badge}"
 
-            # Collect primary screenshot (plus optional mobile companion or state screenshot if present)
-            shots: List[Path] = []
+            # Collect base screenshot + ALL `variant_of` platform screenshots (Web + PC + App 375px)!
+            variant_pids = variants_by_base.get(pid, [])
+            labeled_shots: List[Tuple[str, Path]] = []
             main_shot = screenshots_dir / f"{pid}.png"
             if main_shot.is_file():
-                shots.append(main_shot)
+                lbl = _platform_badge(pdef, is_en) if variant_pids else ""
+                labeled_shots.append((lbl, main_shot))
+            for vpid in variant_pids:
+                vshot = screenshots_dir / f"{vpid}.png"
+                if vshot.is_file():
+                    vpdef = pages.get(vpid) if isinstance(pages.get(vpid), dict) else {}
+                    labeled_shots.append((_platform_badge(vpdef, is_en), vshot))
 
-            bullets_xhtml: List[str] = []
-            bullets_plain: List[str] = []
-            sub_rows: List[Dict[str, Any]] = []
+            all_shots = [sp for _, sp in labeled_shots]
 
-            # 1. Node business annotations
-            for nid, ndef in grp_nodes:
+            # 1. Match authoritative PRD subsections scoped to THIS page (including its variant_of IDs)
+            own_pids = {pid} | set(variant_pids)
+            own_nids = {nid for nid, _ in grp_nodes}
+            match_tokens = own_pids | own_nids
+            other_base_pids = all_base_pids - {pid}
+            other_nids = set(nodes.keys()) - own_nids
+
+            matched_md_chunks: List[str] = []
+            for s_idx, (s_title, s_md) in enumerate(fine_sections):
+                if s_idx in matched_sec_indices:
+                    continue
+                in_title = any(re.search(rf"(?<![A-Za-z0-9_-]){re.escape(tok)}(?![A-Za-z0-9_-])", s_title) for tok in match_tokens)
+                in_body = any(re.search(rf"(?<![A-Za-z0-9_-]){re.escape(tok)}(?![A-Za-z0-9_-])", s_md) for tok in match_tokens)
+                mentions_other_pages = sum(
+                    1
+                    for op in other_base_pids
+                    if re.search(rf"(?<![A-Za-z0-9_-]){re.escape(op)}(?![A-Za-z0-9_-])", s_md + " " + s_title)
+                )
+                mentions_other_nodes = sum(
+                    1
+                    for on in other_nids
+                    if re.search(rf"(?<![A-Za-z0-9_-]){re.escape(on)}(?![A-Za-z0-9_-])", s_md + " " + s_title)
+                )
+                if (in_title or in_body) and mentions_other_pages == 0 and mentions_other_nodes <= 1:
+                    matched_sec_indices.add(s_idx)
+                    matched_md_chunks.append(s_md)
+
+            prd_combined_md = "\n\n".join(matched_md_chunks)
+            prd_norm_corpus = re.sub(r"[`*_#\s·•:：,，.。;；()（）\[\]【】/-]+", "", prd_combined_md.lower())
+
+            # 2. Single Source of Truth Merging (NO spec_cards echo, NO duplicate anno bullets!):
+            #    Only include a `node.anno` item or `branchVar` summary if its key/content is NOT already covered in `prd_combined_md`.
+            seen_keys: set = set()
+            lead_xhtml: List[str] = []
+            lead_docx_blocks: List[Dict[str, Any]] = []
+
+            for _, ndef in grp_nodes:
                 annos = ndef.get("anno")
                 if isinstance(annos, list):
                     for pair in annos:
                         if isinstance(pair, list) and len(pair) >= 2:
                             k_txt, v_txt = str(pair[0]).strip(), str(pair[1]).strip()
-                            bullets_xhtml.append(f"<p>&#183; <strong>{_xe(k_txt)}</strong>：{_xe(v_txt)}</p>")
-                            bullets_plain.append(f"· {k_txt}：{v_txt}")
+                            k_norm = _normalize_dedup_key(k_txt)
+                            v_norm = _normalize_dedup_key(v_txt)[:18]
+                            if k_norm in seen_keys:
+                                continue
+                            # Skip if PRD section for this page already explains this exact topic!
+                            if prd_norm_corpus and (
+                                (len(k_norm) >= 4 and k_norm in prd_norm_corpus)
+                                or (len(v_norm) >= 8 and v_norm in prd_norm_corpus)
+                            ):
+                                continue
+                            seen_keys.add(k_norm)
+                            lead_xhtml.append(f"<p>&#183; <strong>{_xe(k_txt)}</strong>：{_xe(v_txt)}</p>")
+                            lead_docx_blocks.append({"kind": "text", "text": f"· {k_txt}：{v_txt}", "bold": False})
 
-            # 2. Match fine-grained PRD subsections scoped specifically to THIS page!
-            match_tokens = {pid} | {nid for nid, _ in grp_nodes}
-            other_pids = all_base_pids - {pid}
-            extra_xhtml_blocks: List[str] = []
-            for s_idx, (s_title, s_md) in enumerate(fine_sections):
-                if s_idx in matched_sec_indices:
-                    continue
-                in_title = any(tok in s_title for tok in match_tokens)
-                in_body = any(tok in s_md for tok in match_tokens)
-                mentions_other_pages = sum(1 for op in other_pids if op in s_md or op in s_title)
-                if (in_title or in_body) and mentions_other_pages == 0:
-                    matched_sec_indices.add(s_idx)
-                    extra_xhtml_blocks.append(md_block_to_xhtml_fn(s_md))
-                    for b in _extract_prd_bullets(s_md)[:6]:
-                        plain_b = re.sub(r"\*\*([^*]+)\*\*", r"\1", b)
-                        plain_b = re.sub(r"`([^`]+)`", r"\1", plain_b)
-                        bullets_plain.append(f"· {plain_b}")
-
-            # 3. Build 图2-style nested `原型 | 说明` sub-table from spec_cards + decision branches!
-            for sc in cards_by_page.get(pid, []):
-                cid = str(sc.get("id") or "").strip()
-                safe_cid = re.sub(r"[^A-Za-z0-9_-]", "_", cid)
-                comp_shot = screenshots_dir / f"comp_{safe_cid}.png"
-                sc_title = str(sc.get("title") or cid)
-                sc_body = str(sc.get("body") or "")
-                sub_rows.append(
-                    {
-                        "shot": comp_shot if comp_shot.is_file() else None,
-                        "label": sc_title,
-                        "desc_xhtml": f"<p>&#183; <strong>{_xe(sc_title)}</strong>：{_xe(sc_body)}</p>",
-                        "desc_plain": f"· {sc_title}：{sc_body}",
-                    }
-                )
-
-            for nid, ndef in grp_nodes:
+                # If this page hosts a decision diamond and PRD didn't already spell out the branch options, add 1 concise bullet (NOT a nested table!)
                 bvar_id = ndef.get("branchVar")
                 if ndef.get("isDecision") and isinstance(bvar_id, str) and bvar_id in vars_by_id:
                     bvar = vars_by_id[bvar_id]
                     bvar_label = str(bvar.get("label") or bvar_id)
-                    opts = [o for o in (bvar.get("options") or []) if isinstance(o, dict)]
-                    if opts:
-                        opt_lines_x = []
-                        opt_lines_p = []
-                        for o in opts:
-                            tgt_id = str(o.get("target") or "-")
-                            tgt_title = str((nodes.get(tgt_id) or {}).get("title") or tgt_id)
-                            lbl = str(o.get("label") or o.get("id") or "")
-                            opt_lines_x.append(f"<p>&#183; <strong>{_xe(lbl)}</strong> &#8594; {_xe(tgt_title)}</p>")
-                            opt_lines_p.append(f"· {lbl} → {tgt_title}")
-                        sub_rows.append(
-                            {
-                                "shot": None,
-                                "label": f"{bvar_label}" + (" (Branch)" if is_en else "（分支判断）"),
-                                "desc_xhtml": "".join(opt_lines_x),
-                                "desc_plain": "\n".join(opt_lines_p),
-                            }
-                        )
+                    if _normalize_dedup_key(bvar_label) not in prd_norm_corpus and bvar_id.lower() not in prd_combined_md.lower():
+                        opts = [o for o in (bvar.get("options") or []) if isinstance(o, dict)]
+                        if opts:
+                            parts_str = "；".join(
+                                f"{o.get('label', o.get('id', ''))} → {(nodes.get(str(o.get('target') or '')) or {}).get('title', o.get('target', '-'))}"
+                                for o in opts
+                            )
+                            tag_lbl = "Routing" if is_en else "分支流转"
+                            lead_xhtml.append(f"<p>&#183; <strong>{_xe(bvar_label)}（{tag_lbl}）</strong>：{_xe(parts_str)}</p>")
+                            lead_docx_blocks.append({"kind": "text", "text": f"· {bvar_label}（{tag_lbl}）：{parts_str}", "bold": False})
 
-            # Compose right_xhtml cleanly like 图2
-            right_chunks: List[str] = [f"<p><strong>{_xe(heading)}</strong></p>"]
-            right_chunks.extend(bullets_xhtml)
-            right_chunks.extend(extra_xhtml_blocks)
+            prd_xhtml_list = [md_block_to_xhtml_fn(ch) for ch in matched_md_chunks if ch.strip()]
+            prd_docx_blocks: List[Dict[str, Any]] = []
+            for ch in matched_md_chunks:
+                prd_docx_blocks.extend(_extract_prd_plain_blocks(ch))
 
-            if sub_rows:
-                th_left = "Prototype / State" if is_en else "原型"
-                th_right = "Specification" if is_en else "说明"
-                sub_trs_html: List[str] = [f"<tr><th>{th_left}</th><th>{th_right}</th></tr>"]
-                sub_trs_xml: List[str] = [f"<tr><th>{th_left}</th><th>{th_right}</th></tr>"]
-                for sr in sub_rows:
-                    cshot: Optional[Path] = sr["shot"]
-                    if cshot is not None:
-                        b64_c = base64.b64encode(cshot.read_bytes()).decode("ascii")
-                        left_h = f'<img class="sub-shot" src="data:image/png;base64,{b64_c}" alt="{_xe(sr["label"])}" />'
-                        left_x = (
-                            f'<p><ac:image ac:width="220">'
-                            f'<ri:attachment ri:filename="{_xe(cshot.name)}" />'
-                            f"</ac:image></p>"
-                        )
-                    else:
-                        left_h = f"<strong>{_xe(sr['label'])}</strong>"
-                        left_x = f"<p><strong>{_xe(sr['label'])}</strong></p>"
-                    sub_trs_html.append(f"<tr><td class=\"sub-col-proto\">{left_h}</td><td>{sr['desc_xhtml']}</td></tr>")
-                    sub_trs_xml.append(f"<tr><td>{left_x}</td><td>{sr['desc_xhtml']}</td></tr>")
+            all_docx_blocks = lead_docx_blocks + prd_docx_blocks
+            all_xhtml_parts = lead_xhtml + prd_xhtml_list
 
-                right_chunks_html = list(right_chunks) + [
-                    f'<table class="nested-table"><tbody>{"".join(sub_trs_html)}</tbody></table>'
-                ]
-                right_chunks_xml = list(right_chunks) + [
-                    f'<table class="nested-table"><tbody>{"".join(sub_trs_xml)}</tbody></table>'
-                ]
+            # 3. Cross-page context split (`N-续`) ONLY when a single page's specification is genuinely huge (> 12 blocks & >= 2 chunks/variants)
+            if len(all_docx_blocks) >= 12 and len(matched_md_chunks) >= 2:
+                mid_chunk = len(matched_md_chunks) // 2
+                part1_md = matched_md_chunks[:mid_chunk]
+                part2_md = matched_md_chunks[mid_chunk:]
+
+                p1_blocks = lead_docx_blocks + [b for ch in part1_md for b in _extract_prd_plain_blocks(ch)]
+                p2_blocks = [b for ch in part2_md for b in _extract_prd_plain_blocks(ch)]
+                p1_xhtml = "\n".join([f"<p><strong>{_xe(heading)}</strong></p>"] + lead_xhtml + [md_block_to_xhtml_fn(c) for c in part1_md])
+
+                primary_labeled = labeled_shots[:1] if len(labeled_shots) >= 2 else labeled_shots
+                cont_labeled = labeled_shots[1:] if len(labeled_shots) >= 2 else labeled_shots[:1]
+
+                rows.append(
+                    {
+                        "display_idx": str(seq_num),
+                        "context_tag": f"#{seq_num} · {heading}",
+                        "label_id": pid,
+                        "subtitle": heading,
+                        "screenshot": primary_labeled[0][1] if primary_labeled else None,
+                        "screenshots": [sp for _, sp in primary_labeled],
+                        "labeled_shots": primary_labeled,
+                        "heading": heading,
+                        "docx_blocks": p1_blocks,
+                        "right_xhtml_html": p1_xhtml,
+                        "right_xhtml": p1_xhtml,
+                    }
+                )
+
+                cont_idx = f"{seq_num}-cont" if is_en else f"{seq_num}-续"
+                cont_heading = f"[Cont. #{seq_num}] {raw_title}" if is_en else f"【续 #{seq_num} · {raw_title}】"
+                p2_xhtml = "\n".join([f"<p><strong>{_xe(cont_heading)}</strong></p>"] + [md_block_to_xhtml_fn(c) for c in part2_md])
+                rows.append(
+                    {
+                        "display_idx": cont_idx,
+                        "context_tag": cont_heading,
+                        "label_id": f"{pid}#cont",
+                        "subtitle": cont_heading,
+                        "screenshot": cont_labeled[0][1] if cont_labeled else None,
+                        "screenshots": [sp for _, sp in cont_labeled],
+                        "labeled_shots": cont_labeled,
+                        "heading": cont_heading,
+                        "docx_blocks": p2_blocks,
+                        "right_xhtml_html": p2_xhtml,
+                        "right_xhtml": p2_xhtml,
+                    }
+                )
             else:
-                right_chunks_html = list(right_chunks)
-                right_chunks_xml = list(right_chunks)
+                full_xhtml = "\n".join([f"<p><strong>{_xe(heading)}</strong></p>"] + all_xhtml_parts)
+                rows.append(
+                    {
+                        "display_idx": str(seq_num),
+                        "context_tag": f"#{seq_num} · {heading}",
+                        "label_id": pid,
+                        "subtitle": heading,
+                        "screenshot": all_shots[0] if all_shots else None,
+                        "screenshots": all_shots,
+                        "labeled_shots": labeled_shots,
+                        "heading": heading,
+                        "docx_blocks": all_docx_blocks,
+                        "right_xhtml_html": full_xhtml,
+                        "right_xhtml": full_xhtml,
+                    }
+                )
 
-            rows.append(
-                {
-                    "label_id": pid,
-                    "subtitle": heading,
-                    "screenshot": shots[0] if shots else None,
-                    "screenshots": shots,
-                    "heading": heading,
-                    "bullets_plain": bullets_plain,
-                    "sub_rows": sub_rows,
-                    "right_xhtml_html": "\n".join(right_chunks_html),
-                    "right_xhtml": "\n".join(right_chunks_xml),
-                }
-            )
-
-        # Append only non-redundant global sections (e.g. Data Metrics / Edge Cases / Permissions) at the bottom
+        # Append non-redundant global sections (e.g. Non-functional / Audit / Edge Cases — skip front metadata & multi-page summary tables!)
         for s_idx, (s_title, s_md) in enumerate(fine_sections):
             if s_idx in matched_sec_indices or not s_md.strip():
                 continue
-            # Skip front-overview summary tables that already list >= 2 base pages covered above
+            if s_title in ("文档概览", "Document Overview"):
+                continue
             if sum(1 for op in all_base_pids if op in s_md) >= 2:
                 continue
-            b_plain = [
-                "· " + re.sub(r"`([^`]+)`", r"\1", re.sub(r"\*\*([^*]+)\*\*", r"\1", b))
-                for b in _extract_prd_bullets(s_md)
-            ]
+            # Also skip pure topology summary sections if all decision vars were already covered on their pages
+            if sum(1 for nid in nodes if nid in s_md) >= 3:
+                continue
+            seq_num += 1
+            g_blocks = _extract_prd_plain_blocks(s_md)
             x_body = f"<p><strong>{_xe(s_title)}</strong></p>\n{md_block_to_xhtml_fn(s_md)}"
             rows.append(
                 {
-                    "label_id": "全局说明" if not is_en else "Global Rules",
+                    "display_idx": str(seq_num),
+                    "context_tag": f"#{seq_num} · {s_title}",
+                    "label_id": "Global Rules" if is_en else "全局说明",
                     "subtitle": s_title,
                     "screenshot": None,
                     "screenshots": [],
+                    "labeled_shots": [],
                     "heading": s_title,
-                    "bullets_plain": b_plain or [s_md.strip()[:400]],
-                    "sub_rows": [],
+                    "docx_blocks": g_blocks,
                     "right_xhtml_html": x_body,
                     "right_xhtml": x_body,
                 }
@@ -561,16 +691,17 @@ def build_fig2_rows(
     # Fallback when no spec.json exists
     for sec_idx, (sec_title, sec_md) in enumerate(prd_sections, start=1):
         x_body = f"<p><strong>{_xe(sec_title)}</strong></p>\n{md_block_to_xhtml_fn(sec_md)}"
-        b_plain = ["· " + b for b in _extract_prd_bullets(sec_md)]
         rows.append(
             {
+                "display_idx": str(sec_idx),
+                "context_tag": f"#{sec_idx} · {sec_title}",
                 "label_id": f"SEC-{sec_idx}",
                 "subtitle": sec_title,
                 "screenshot": None,
                 "screenshots": [],
+                "labeled_shots": [],
                 "heading": sec_title,
-                "bullets_plain": b_plain,
-                "sub_rows": [],
+                "docx_blocks": _extract_prd_plain_blocks(sec_md),
                 "right_xhtml_html": x_body,
                 "right_xhtml": x_body,
             }
@@ -585,24 +716,33 @@ def render_fig2_html(
     rows: List[Dict[str, Any]],
     is_en: bool = False,
 ) -> str:
-    """Render 图2-identical HTML with Base64-inlined PNGs and 1-click Copy Rich Table for WeCom / Feishu Docs."""
+    """Render 100% pure-grayscale Left-Prototype/Right-Spec HTML with sticky prototype column & 1-click Copy."""
     tr_list: List[str] = []
     for idx, row in enumerate(rows, start=1):
-        shots: List[Path] = row.get("screenshots") or ([row["screenshot"]] if row.get("screenshot") else [])
-        if shots:
-            imgs = []
-            for sp in shots:
-                if sp and sp.is_file():
-                    b64 = base64.b64encode(sp.read_bytes()).decode("ascii")
-                    imgs.append(f'<img class="wf-shot" src="data:image/png;base64,{b64}" alt="{_xe(row["subtitle"])}" />')
-            left_cell = "".join(imgs)
+        disp_idx = str(row.get("display_idx") or idx)
+        ctx_tag = str(row.get("context_tag") or row.get("subtitle") or "")
+        labeled_shots: List[Tuple[str, Path]] = row.get("labeled_shots") or [
+            ("", sp) for sp in (row.get("screenshots") or []) if sp
+        ]
+        valid_labeled = [(lbl, sp) for lbl, sp in labeled_shots if sp and sp.is_file()]
+
+        if valid_labeled:
+            blocks = [f'<div class="ctx-pill">{_xe(ctx_tag)}</div>']
+            for lbl, sp in valid_labeled:
+                b64 = base64.b64encode(sp.read_bytes()).decode("ascii")
+                cap = f'<div class="plat-cap">{_xe(lbl)}</div>' if lbl else ""
+                blocks.append(
+                    f'<div class="shot-card">{cap}'
+                    f'<img class="wf-shot" src="data:image/png;base64,{b64}" alt="{_xe(row["subtitle"])}" /></div>'
+                )
+            left_cell = f'<div class="col-page-sticky">{"".join(blocks)}</div>'
         else:
-            left_cell = f'<div class="wf-global-tag">{_xe(row["subtitle"])}</div>'
+            left_cell = f'<div class="col-page-sticky"><div class="wf-global-tag">{_xe(ctx_tag)}</div></div>'
 
         right_html = row.get("right_xhtml_html") or row.get("right_xhtml") or ""
         tr_list.append(
             "<tr>"
-            f'<td class="col-idx">{idx}</td>'
+            f'<td class="col-idx">{_xe(disp_idx)}</td>'
             f'<td class="col-page">{left_cell}</td>'
             f'<td class="col-spec">{right_html}</td>'
             "</tr>"
@@ -611,8 +751,16 @@ def render_fig2_html(
     sec_hd = "Product Specification" if is_en else "产品方案"
     proto_lbl = "Interactive Prototype: " if is_en else "交互原型："
     dl_txt = "(Click to Download)" if is_en else "（点击下载）"
-    copy_btn = "Copy Rich Table (Paste into WeCom / Feishu Doc)" if is_en else "一键复制左图右文全表（可直接粘贴至企微在线文档 / 飞书）"
-    copied_txt = "Copied! Paste directly into WeCom / Feishu Doc" if is_en else "已复制图文表格！请直接 Cmd/Ctrl+V 粘贴到企业微信文档"
+    copy_btn = (
+        "Copy Rich Table (Paste into WeCom / Feishu Doc)"
+        if is_en
+        else "一键复制左图右文全表（可直接粘贴至企微在线文档 / 飞书）"
+    )
+    copied_txt = (
+        "Copied! Paste directly into WeCom / Feishu Doc"
+        if is_en
+        else "已复制图文表格！请直接 Cmd/Ctrl+V 粘贴到企业微信文档"
+    )
     th_1 = "No." if is_en else "序号"
     th_2 = "Screen" if is_en else "页面"
     th_3 = "Specification" if is_en else "需求说明"
@@ -626,48 +774,68 @@ def render_fig2_html(
 <style>
   * {{ box-sizing: border-box; }}
   body {{
-    margin: 0; padding: 24px 32px; background: #ffffff; color: #172b4d;
+    margin: 0; padding: 24px 32px; background: #ffffff; color: #1f1f1f;
     font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
-    font-size: 14px; line-height: 1.65;
+    font-size: 14px; line-height: 1.68;
   }}
   .doc-wrap {{ max-width: 1320px; margin: 0 auto; }}
   .doc-toolbar {{
     display: flex; align-items: center; justify-content: space-between; gap: 12px;
-    padding: 10px 14px; margin-bottom: 18px; background: #f7f7f8; border: 1px solid #dfe1e6; border-radius: 6px;
+    padding: 10px 14px; margin-bottom: 18px; background: #f5f5f5; border: 1px solid #d9d9d9; border-radius: 6px;
   }}
   .doc-toolbar button {{
     background: #262626; color: #ffffff; border: none; border-radius: 5px;
     padding: 7px 14px; font-size: 13px; font-weight: 600; cursor: pointer;
   }}
   .doc-toolbar button:hover {{ background: #111111; }}
-  h2.scheme-hd {{ margin: 0 0 8px; font-size: 20px; font-weight: 700; color: #172b4d; }}
+  h2.scheme-hd {{ margin: 0 0 8px; font-size: 20px; font-weight: 700; color: #141414; }}
   .proto-link-line {{ margin: 0 0 14px; font-size: 13.5px; color: #333333; }}
-  .proto-link-line a {{ color: #0052cc; text-decoration: none; }}
-  .proto-link-line a:hover {{ text-decoration: underline; }}
-  table.main-table {{ width: 100%; border-collapse: collapse; table-layout: fixed; border: 1px solid #dfe1e6; }}
+  .proto-link-line a {{ color: #1f1f1f; font-weight: 600; text-decoration: underline; }}
+  table.main-table {{ width: 100%; border-collapse: collapse; table-layout: fixed; border: 1px solid #d9d9d9; }}
+  table.main-table > thead {{ display: table-header-group; }}
   table.main-table > thead > tr > th,
   table.main-table > tbody > tr > td {{
-    border: 1px solid #dfe1e6; padding: 12px 14px; vertical-align: top; text-align: left;
+    border: 1px solid #d9d9d9; padding: 14px 16px; vertical-align: top; text-align: left;
   }}
-  table.main-table > thead > tr > th {{ background: #f4f5f7; color: #172b4d; font-weight: 700; font-size: 13.5px; }}
-  .col-idx {{ width: 56px; color: #172b4d; }}
-  .col-page {{ width: 340px; background: #ffffff; }}
-  .col-spec {{ width: auto; word-break: break-word; }}
-  .wf-shot {{ display: block; width: 100%; height: auto; border: 1px solid #dfe1e6; border-radius: 4px; margin-bottom: 8px; }}
-  .wf-shot:last-child {{ margin-bottom: 0; }}
+  table.main-table > thead > tr > th {{ background: #f2f2f2; color: #141414; font-weight: 700; font-size: 13.5px; }}
+  .col-idx {{ width: 62px; color: #262626; font-weight: 700; font-family: ui-monospace, monospace; }}
+  .col-page {{ width: 356px; background: #fafafa; }}
+  .col-page-sticky {{ position: sticky; top: 14px; }}
+  .ctx-pill {{
+    font-size: 11.5px; font-weight: 700; color: #333333; background: #ececec;
+    border: 1px solid #d4d4d4; border-radius: 4px; padding: 3px 8px; margin-bottom: 8px;
+  }}
+  .shot-card {{ margin-bottom: 12px; }}
+  .shot-card:last-child {{ margin-bottom: 0; }}
+  .plat-cap {{
+    font-size: 11px; font-weight: 600; color: #595959; margin-bottom: 4px;
+    font-family: ui-monospace, monospace;
+  }}
+  .col-spec {{ width: auto; word-break: break-word; background: #ffffff; }}
+  .wf-shot {{
+    display: block; max-width: 100%; height: auto; border: 1px solid #d4d4d4;
+    border-radius: 4px; filter: grayscale(100%);
+  }}
   .wf-global-tag {{
-    padding: 10px 12px; background: #f4f5f7; border: 1px solid #dfe1e6; border-radius: 4px;
-    font-weight: 600; color: #42526e; font-size: 13px; text-align: center;
+    padding: 10px 12px; background: #f2f2f2; border: 1px solid #d4d4d4; border-radius: 4px;
+    font-weight: 600; color: #404040; font-size: 13px; text-align: center;
   }}
-  table.nested-table {{ width: 100%; border-collapse: collapse; margin: 10px 0 4px; font-size: 13px; }}
-  table.nested-table th, table.nested-table td {{ border: 1px solid #dfe1e6; padding: 8px 10px; vertical-align: top; text-align: left; }}
-  table.nested-table th {{ background: #f4f5f7; font-weight: 700; color: #172b4d; }}
-  .sub-col-proto {{ width: 240px; }}
-  .sub-shot {{ display: block; max-width: 220px; width: 100%; height: auto; border: 1px solid #dfe1e6; border-radius: 3px; }}
+  table.nested-table {{ width: 100%; border-collapse: collapse; margin: 10px 0 6px; font-size: 13px; }}
+  table.nested-table th, table.nested-table td {{
+    border: 1px solid #d9d9d9; padding: 7px 10px; vertical-align: top; text-align: left;
+  }}
+  table.nested-table th {{ background: #f5f5f5; font-weight: 700; color: #1f1f1f; }}
   p {{ margin: 0 0 6px; }}
   ul {{ margin: 0 0 8px; padding-left: 18px; }}
-  code {{ font-family: ui-monospace, monospace; font-size: 12px; background: #f4f5f7; padding: 1px 4px; border-radius: 3px; }}
-  @media print {{ .doc-toolbar {{ display: none; }} body {{ padding: 0; }} }}
+  li {{ margin-bottom: 4px; }}
+  h3, h4, h5 {{ margin: 10px 0 6px; font-size: 14px; color: #141414; }}
+  code {{ font-family: ui-monospace, monospace; font-size: 12px; background: #f2f2f2; padding: 1px 4px; border-radius: 3px; color: #262626; }}
+  blockquote {{ margin: 8px 0; padding: 6px 12px; border-left: 3px solid #8c8c8c; background: #f7f7f7; color: #404040; }}
+  @media print {{
+    .doc-toolbar {{ display: none; }}
+    body {{ padding: 0; }}
+    .col-page-sticky {{ position: static; }}
+  }}
 </style>
 </head>
 <body>
@@ -723,22 +891,29 @@ def render_fig2_confluence_xml(
     rows: List[Dict[str, Any]],
     is_en: bool = False,
 ) -> str:
-    """Render 图2-identical Confluence 7.4+ Storage XML (`产品方案` + 3-col `序号 | 页面 | 需求说明` + nested `原型 | 说明`)."""
+    """Render Confluence 7.4+ Storage XML (clean 3-column `序号 | 页面 | 需求说明`, zero recursive sub-table clutter)."""
     tr_chunks: List[str] = []
     for idx, row in enumerate(rows, start=1):
-        shots: List[Path] = row.get("screenshots") or ([row["screenshot"]] if row.get("screenshot") else [])
-        valid_shots = [sp for sp in shots if sp and sp.is_file()]
-        if valid_shots:
-            left_visual = "".join(
-                f'<p><ac:image ac:width="310"><ri:attachment ri:filename="{_xe(sp.name)}" /></ac:image></p>'
-                for sp in valid_shots
-            )
+        disp_idx = str(row.get("display_idx") or idx)
+        ctx_tag = str(row.get("context_tag") or row.get("subtitle") or "")
+        labeled_shots: List[Tuple[str, Path]] = row.get("labeled_shots") or [
+            ("", sp) for sp in (row.get("screenshots") or []) if sp
+        ]
+        valid_labeled = [(lbl, sp) for lbl, sp in labeled_shots if sp and sp.is_file()]
+
+        if valid_labeled:
+            parts = [f"<p><strong>{_xe(ctx_tag)}</strong></p>"]
+            for lbl, sp in valid_labeled:
+                if lbl:
+                    parts.append(f"<p><code>{_xe(lbl)}</code></p>")
+                parts.append(f'<p><ac:image ac:width="310"><ri:attachment ri:filename="{_xe(sp.name)}" /></ac:image></p>')
+            left_visual = "".join(parts)
         else:
-            left_visual = f"<p><strong>{_xe(row['subtitle'])}</strong></p>"
+            left_visual = f"<p><strong>{_xe(ctx_tag)}</strong></p>"
 
         tr_chunks.append(
             "<tr>"
-            f"<td><p>{idx}</p></td>"
+            f"<td><p><strong>{_xe(disp_idx)}</strong></p></td>"
             f"<td>{left_visual}</td>"
             f"<td>{row['right_xhtml']}</td>"
             "</tr>"
@@ -762,8 +937,8 @@ def render_fig2_confluence_xml(
         "</ac:link></p>"
         "<table>"
         "<colgroup>"
-        '<col style="width: 56px;" />'
-        '<col style="width: 340px;" />'
+        '<col style="width: 62px;" />'
+        '<col style="width: 356px;" />'
         '<col style="width: auto;" />'
         "</colgroup>"
         "<thead>"
@@ -791,12 +966,8 @@ def write_fig2_docx(
     rows: List[Dict[str, Any]],
     is_en: bool = False,
 ) -> Path:
-    """Write a zero-dependency Office Open XML `.docx` matching 图2 (`序号 | 页面 | 需求说明` + embedded PNGs + nested `原型 | 说明`).
-
-    Enterprise WeChat (企业微信文档 -> 导入本地文档, or WeDrive click-to-open), Feishu Docs, WPS, and Word
-    render this directly as a native collaborative online document with all images & nested tables intact.
-    """
-    media_entries: List[Tuple[str, str, Path]] = []  # (rId, media_filename, path)
+    """Write pure-grayscale OOXML `.docx` with `<w:tblHeader/>` repeat, full variants, and zero recursive sub-tables."""
+    media_entries: List[Tuple[str, str, Path]] = []
     path_to_rid: Dict[str, Tuple[str, int, int]] = {}
 
     def _register_img(p: Path, max_w_px: int) -> Tuple[str, int, int]:
@@ -811,15 +982,17 @@ def write_fig2_docx(
             orig_w, orig_h = _png_dimensions(raw)
             media_entries.append((rid, mname, p))
             path_to_rid[key] = (rid, orig_w, orig_h)
-        scale = min(1.0, float(max_w_px) / float(max(1, orig_w)))
-        cx = int(round(orig_w * scale * 9525))
-        cy = int(round(orig_h * scale * 9525))
+        logical_w = max(1.0, orig_w / SCREENSHOT_DPR)
+        logical_h = max(1.0, orig_h / SCREENSHOT_DPR)
+        scale = min(1.0, float(max_w_px) / logical_w)
+        cx = int(round(logical_w * scale * 9525))
+        cy = int(round(logical_h * scale * 9525))
         return rid, cx, cy
 
-    def _w_p_text(txt: str, bold: bool = False, size_half_pt: int = 20, color: str = "172B4D") -> str:
+    def _w_p_text(txt: str, bold: bool = False, size_half_pt: int = 20, color: str = "1F1F1F") -> str:
         b_xml = "<w:b/><w:bCs/>" if bold else ""
         return (
-            "<w:p><w:pPr><w:spacing w:before=\"40\" w:after=\"60\"/></w:pPr>"
+            "<w:p><w:pPr><w:spacing w:before=\"36\" w:after=\"56\"/></w:pPr>"
             f"<w:r><w:rPr>{b_xml}<w:color w:val=\"{color}\"/>"
             f"<w:sz w:val=\"{size_half_pt}\"/><w:szCs w:val=\"{size_half_pt}\"/></w:rPr>"
             f"<w:t xml:space=\"preserve\">{_xe(txt)}</w:t></w:r></w:p>"
@@ -828,7 +1001,7 @@ def write_fig2_docx(
     def _w_p_img(p: Path, max_w_px: int, doc_pr_id: int) -> str:
         rid, cx, cy = _register_img(p, max_w_px=max_w_px)
         return (
-            "<w:p><w:pPr><w:spacing w:before=\"40\" w:after=\"80\"/></w:pPr><w:r><w:drawing>"
+            "<w:p><w:pPr><w:spacing w:before=\"36\" w:after=\"72\"/></w:pPr><w:r><w:drawing>"
             "<wp:inline distT=\"0\" distB=\"0\" distL=\"0\" distR=\"0\">"
             f"<wp:extent cx=\"{cx}\" cy=\"{cy}\"/>"
             f"<wp:docPr id=\"{doc_pr_id}\" name=\"Shot{doc_pr_id}\"/>"
@@ -845,28 +1018,26 @@ def write_fig2_docx(
 
     tbl_borders = (
         "<w:tblBorders>"
-        "<w:top w:val=\"single\" w:sz=\"6\" w:space=\"0\" w:color=\"DFE1E6\"/>"
-        "<w:left w:val=\"single\" w:sz=\"6\" w:space=\"0\" w:color=\"DFE1E6\"/>"
-        "<w:bottom w:val=\"single\" w:sz=\"6\" w:space=\"0\" w:color=\"DFE1E6\"/>"
-        "<w:right w:val=\"single\" w:sz=\"6\" w:space=\"0\" w:color=\"DFE1E6\"/>"
-        "<w:insideH w:val=\"single\" w:sz=\"6\" w:space=\"0\" w:color=\"DFE1E6\"/>"
-        "<w:insideV w:val=\"single\" w:sz=\"6\" w:space=\"0\" w:color=\"DFE1E6\"/>"
+        "<w:top w:val=\"single\" w:sz=\"6\" w:space=\"0\" w:color=\"D9D9D9\"/>"
+        "<w:left w:val=\"single\" w:sz=\"6\" w:space=\"0\" w:color=\"D9D9D9\"/>"
+        "<w:bottom w:val=\"single\" w:sz=\"6\" w:space=\"0\" w:color=\"D9D9D9\"/>"
+        "<w:right w:val=\"single\" w:sz=\"6\" w:space=\"0\" w:color=\"D9D9D9\"/>"
+        "<w:insideH w:val=\"single\" w:sz=\"6\" w:space=\"0\" w:color=\"D9D9D9\"/>"
+        "<w:insideV w:val=\"single\" w:sz=\"6\" w:space=\"0\" w:color=\"D9D9D9\"/>"
         "</w:tblBorders>"
     )
     cell_mar = (
         "<w:tblCellMar>"
-        "<w:top w:w=\"120\" w:type=\"dxa\"/>"
-        "<w:left w:w=\"150\" w:type=\"dxa\"/>"
-        "<w:bottom w:w=\"120\" w:type=\"dxa\"/>"
-        "<w:right w:w=\"150\" w:type=\"dxa\"/>"
+        "<w:top w:w=\"110\" w:type=\"dxa\"/>"
+        "<w:left w:w=\"140\" w:type=\"dxa\"/>"
+        "<w:bottom w:w=\"110\" w:type=\"dxa\"/>"
+        "<w:right w:w=\"140\" w:type=\"dxa\"/>"
         "</w:tblCellMar>"
     )
 
     th_1 = "No." if is_en else "序号"
     th_2 = "Screen" if is_en else "页面"
     th_3 = "Specification" if is_en else "需求说明"
-    sub_th_1 = "Prototype" if is_en else "原型"
-    sub_th_2 = "Specification" if is_en else "说明"
     sec_hd = "Product Specification" if is_en else "产品方案"
     proto_line = (
         f"Interactive Prototype: {zip_filename} ({version_str})"
@@ -874,73 +1045,68 @@ def write_fig2_docx(
         else f"交互原型：{zip_filename}（版本 {version_str}）"
     )
 
-    # Landscape A4 content width = 16838 - 1440 = 15398 dxa (~1026px): col1=800, col2=4800, col3=9798
     doc_pr_seq = 1
     tr_xml_list: List[str] = [
-        "<w:tr>"
-        f"<w:tc><w:tcPr><w:tcW w:w=\"800\" w:type=\"dxa\"/><w:shd w:val=\"clear\" w:fill=\"F4F5F7\"/></w:tcPr>{_w_p_text(th_1, bold=True)}</w:tc>"
-        f"<w:tc><w:tcPr><w:tcW w:w=\"4800\" w:type=\"dxa\"/><w:shd w:val=\"clear\" w:fill=\"F4F5F7\"/></w:tcPr>{_w_p_text(th_2, bold=True)}</w:tc>"
-        f"<w:tc><w:tcPr><w:tcW w:w=\"9798\" w:type=\"dxa\"/><w:shd w:val=\"clear\" w:fill=\"F4F5F7\"/></w:tcPr>{_w_p_text(th_3, bold=True)}</w:tc>"
+        "<w:tr><w:trPr><w:tblHeader/><w:cantSplit/></w:trPr>"
+        f"<w:tc><w:tcPr><w:tcW w:w=\"900\" w:type=\"dxa\"/><w:shd w:val=\"clear\" w:fill=\"F2F2F2\"/></w:tcPr>{_w_p_text(th_1, bold=True)}</w:tc>"
+        f"<w:tc><w:tcPr><w:tcW w:w=\"4800\" w:type=\"dxa\"/><w:shd w:val=\"clear\" w:fill=\"F2F2F2\"/></w:tcPr>{_w_p_text(th_2, bold=True)}</w:tc>"
+        f"<w:tc><w:tcPr><w:tcW w:w=\"9698\" w:type=\"dxa\"/><w:shd w:val=\"clear\" w:fill=\"F2F2F2\"/></w:tcPr>{_w_p_text(th_3, bold=True)}</w:tc>"
         "</w:tr>"
     ]
 
     for idx, row in enumerate(rows, start=1):
-        shots: List[Path] = row.get("screenshots") or ([row["screenshot"]] if row.get("screenshot") else [])
-        valid_shots = [sp for sp in shots if sp and sp.is_file()]
-        if valid_shots:
-            left_ps = []
-            for sp in valid_shots:
+        disp_idx = str(row.get("display_idx") or idx)
+        ctx_tag = str(row.get("context_tag") or row.get("subtitle") or "")
+        labeled_shots: List[Tuple[str, Path]] = row.get("labeled_shots") or [
+            ("", sp) for sp in (row.get("screenshots") or []) if sp
+        ]
+        valid_labeled = [(lbl, sp) for lbl, sp in labeled_shots if sp and sp.is_file()]
+
+        if valid_labeled:
+            left_ps = [_w_p_text(ctx_tag, bold=True, size_half_pt=18, color="404040")]
+            for lbl, sp in valid_labeled:
+                if lbl:
+                    left_ps.append(_w_p_text(f"[{lbl}]", bold=False, size_half_pt=16, color="595959"))
                 doc_pr_seq += 1
-                left_ps.append(_w_p_img(sp, max_w_px=300, doc_pr_id=doc_pr_seq))
+                left_ps.append(_w_p_img(sp, max_w_px=295, doc_pr_id=doc_pr_seq))
             left_cell_xml = "".join(left_ps)
         else:
-            left_cell_xml = _w_p_text(str(row.get("subtitle") or "-"), bold=True, color="42526E")
+            left_cell_xml = _w_p_text(ctx_tag, bold=True, color="404040")
 
         right_ps: List[str] = [_w_p_text(str(row.get("heading") or row.get("subtitle") or ""), bold=True, size_half_pt=21)]
-        for b_line in row.get("bullets_plain") or []:
-            right_ps.append(_w_p_text(b_line, bold=False, size_half_pt=19))
-
-        sub_rows = row.get("sub_rows") or []
-        if sub_rows:
-            sub_trs = [
-                "<w:tr>"
-                f"<w:tc><w:tcPr><w:tcW w:w=\"3200\" w:type=\"dxa\"/><w:shd w:val=\"clear\" w:fill=\"F4F5F7\"/></w:tcPr>{_w_p_text(sub_th_1, bold=True, size_half_pt=18)}</w:tc>"
-                f"<w:tc><w:tcPr><w:tcW w:w=\"6200\" w:type=\"dxa\"/><w:shd w:val=\"clear\" w:fill=\"F4F5F7\"/></w:tcPr>{_w_p_text(sub_th_2, bold=True, size_half_pt=18)}</w:tc>"
-                "</w:tr>"
-            ]
-            for sr in sub_rows:
-                cshot: Optional[Path] = sr.get("shot")
-                if cshot and cshot.is_file():
-                    doc_pr_seq += 1
-                    sub_left = _w_p_img(cshot, max_w_px=195, doc_pr_id=doc_pr_seq)
-                else:
-                    sub_left = _w_p_text(str(sr.get("label") or "-"), bold=True, size_half_pt=18)
-                sub_right_ps = [
-                    _w_p_text(ln, bold=False, size_half_pt=18)
-                    for ln in str(sr.get("desc_plain") or "").splitlines()
-                    if ln.strip()
-                ] or [_w_p_text("-", size_half_pt=18)]
-                sub_trs.append(
-                    "<w:tr>"
-                    f"<w:tc><w:tcPr><w:tcW w:w=\"3200\" w:type=\"dxa\"/></w:tcPr>{sub_left}</w:tc>"
-                    f"<w:tc><w:tcPr><w:tcW w:w=\"6200\" w:type=\"dxa\"/></w:tcPr>{''.join(sub_right_ps)}</w:tc>"
-                    "</w:tr>"
+        for blk in row.get("docx_blocks") or []:
+            if blk.get("kind") == "table":
+                hdrs: List[str] = blk.get("headers") or []
+                d_rows: List[List[str]] = blk.get("rows") or []
+                col_n = max(1, len(hdrs))
+                col_w = int(9300 // col_n)
+                grid_xml = "".join(f'<w:gridCol w:w="{col_w}"/>' for _ in range(col_n))
+                th_cells = "".join(
+                    f'<w:tc><w:tcPr><w:tcW w:w="{col_w}" w:type="dxa"/><w:shd w:val="clear" w:fill="F5F5F5"/></w:tcPr>{_w_p_text(h, bold=True, size_half_pt=17)}</w:tc>'
+                    for h in hdrs
                 )
-            nested_tbl_xml = (
-                "<w:tbl>"
-                f"<w:tblPr><w:tblW w:w=\"9400\" w:type=\"dxa\"/>{tbl_borders}{cell_mar}</w:tblPr>"
-                "<w:tblGrid><w:gridCol w:w=\"3200\"/><w:gridCol w:w=\"6200\"/></w:tblGrid>"
-                f"{''.join(sub_trs)}"
-                "</w:tbl>"
-                "<w:p/>"  # Mandatory trailing paragraph after nested <w:tbl> inside <w:tc> per OOXML spec!
-            )
-            right_ps.append(nested_tbl_xml)
+                d_trs = [f"<w:tr><w:trPr><w:tblHeader/><w:cantSplit/></w:trPr>{th_cells}</w:tr>"]
+                for dr in d_rows:
+                    td_cells = "".join(
+                        f'<w:tc><w:tcPr><w:tcW w:w="{col_w}" w:type="dxa"/></w:tcPr>{_w_p_text(c, bold=False, size_half_pt=17)}</w:tc>'
+                        for c in dr
+                    )
+                    d_trs.append(f"<w:tr><w:trPr><w:cantSplit/></w:trPr>{td_cells}</w:tr>")
+                right_ps.append(
+                    "<w:tbl>"
+                    f"<w:tblPr><w:tblW w:w=\"{col_w * col_n}\" w:type=\"dxa\"/>{tbl_borders}{cell_mar}</w:tblPr>"
+                    f"<w:tblGrid>{grid_xml}</w:tblGrid>"
+                    f"{''.join(d_trs)}"
+                    "</w:tbl><w:p/>"
+                )
+            else:
+                right_ps.append(_w_p_text(str(blk.get("text") or ""), bold=bool(blk.get("bold")), size_half_pt=19))
 
         tr_xml_list.append(
             "<w:tr>"
-            f"<w:tc><w:tcPr><w:tcW w:w=\"800\" w:type=\"dxa\"/></w:tcPr>{_w_p_text(str(idx), bold=False)}</w:tc>"
-            f"<w:tc><w:tcPr><w:tcW w:w=\"4800\" w:type=\"dxa\"/></w:tcPr>{left_cell_xml}</w:tc>"
-            f"<w:tc><w:tcPr><w:tcW w:w=\"9798\" w:type=\"dxa\"/></w:tcPr>{''.join(right_ps)}</w:tc>"
+            f"<w:tc><w:tcPr><w:tcW w:w=\"900\" w:type=\"dxa\"/></w:tcPr>{_w_p_text(disp_idx, bold=True)}</w:tc>"
+            f"<w:tc><w:tcPr><w:tcW w:w=\"4800\" w:type=\"dxa\"/><w:shd w:val=\"clear\" w:fill=\"FAFAFA\"/></w:tcPr>{left_cell_xml}</w:tc>"
+            f"<w:tc><w:tcPr><w:tcW w:w=\"9698\" w:type=\"dxa\"/></w:tcPr>{''.join(right_ps)}</w:tc>"
             "</w:tr>"
         )
 
@@ -951,10 +1117,10 @@ def write_fig2_docx(
         "xmlns:wp=\"http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing\">"
         "<w:body>"
         f"{_w_p_text(title + ' · ' + sec_hd, bold=True, size_half_pt=28)}"
-        f"{_w_p_text(proto_line, bold=False, size_half_pt=19, color='42526E')}"
+        f"{_w_p_text(proto_line, bold=False, size_half_pt=19, color='595959')}"
         "<w:tbl>"
         f"<w:tblPr><w:tblW w:w=\"15398\" w:type=\"dxa\"/>{tbl_borders}{cell_mar}</w:tblPr>"
-        "<w:tblGrid><w:gridCol w:w=\"800\"/><w:gridCol w:w=\"4800\"/><w:gridCol w:w=\"9798\"/></w:tblGrid>"
+        "<w:tblGrid><w:gridCol w:w=\"900\"/><w:gridCol w:w=\"4800\"/><w:gridCol w:w=\"9698\"/></w:tblGrid>"
         f"{''.join(tr_xml_list)}"
         "</w:tbl>"
         "<w:sectPr>"

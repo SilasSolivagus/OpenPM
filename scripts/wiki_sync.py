@@ -28,6 +28,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 from wiki_doc_builder import (
+    ScreenshotCaptureError,
     auto_capture_screenshots,
     build_fig2_rows,
     render_fig2_confluence_xml,
@@ -226,6 +227,14 @@ def parse_project_context(project_dir: Path) -> Dict[str, Any]:
                 ctx[k] = v_clean
 
     ctx.pop("_adapter_explicit", None)
+    # Fallback: also detect Markdown bullet format e.g. `- **Wiki / 交付模式**：\`wecom\`` when no YAML frontmatter was used
+    if ctx["wiki_adapter"] == "local-obsidian" and not blocks_to_scan:
+        for raw_line in text.splitlines():
+            if re.search(r"(wiki|交付模式|文档平台|知识库)", raw_line, re.IGNORECASE):
+                for cand in ("wecom", "confluence", "feishu", "local-obsidian"):
+                    if re.search(rf"\b{re.escape(cand)}\b", raw_line, re.IGNORECASE):
+                        ctx["wiki_adapter"] = cand
+                        break
     if ctx["wiki_adapter"] not in SUPPORTED_ADAPTERS:
         ctx["wiki_adapter"] = "local-obsidian"
     return ctx
@@ -1199,7 +1208,7 @@ def _render_confluence_storage_xml(
     return xml_doc
 
 
-def cmd_export(project_dir: Path) -> int:
+def cmd_export(project_dir: Path, allow_missing_screenshots: bool = False) -> int:
     if not project_dir.is_dir():
         print(f"ERROR: Project directory not found: {project_dir}", file=sys.stderr)
         return 1
@@ -1237,9 +1246,19 @@ def cmd_export(project_dir: Path) -> int:
             print(f"ERROR: Invalid spec.json in {project_dir}: {exc}", file=sys.stderr)
             return 1
 
-    # 3. Auto-render real grayscale prototype page & anchored component PNGs from walkthrough.html!
+    # 3. Auto-render 100% pure-grayscale prototype page & variant PNGs (fail-fast exit code 3 if sandbox blocks Chrome!)
     screenshots_src = project_dir / "screenshots"
-    auto_capture_screenshots(project_dir, wt_path, spec_data, screenshots_src)
+    try:
+        auto_capture_screenshots(
+            project_dir,
+            wt_path,
+            spec_data,
+            screenshots_src,
+            allow_missing=allow_missing_screenshots,
+        )
+    except ScreenshotCaptureError as shot_exc:
+        print(f"ERROR [SCREENSHOT_CAPTURE_FAILED]: {shot_exc}", file=sys.stderr)
+        return 3
 
     screenshots_dst = export_dir / "screenshots"
     screenshots_dst.mkdir(parents=True, exist_ok=True)
@@ -1310,10 +1329,24 @@ def _push_wecom_wedoc(
 
     Returns (docid, doc_url). Never uploads raw engineering files (.xml, project-context.md, etc.).
     """
-    corp_id = (env.get("WECOM_CORP_ID") or env.get("WECOM_BOT_ID") or "").strip()
+    explicit_corp_id = env.get("WECOM_CORP_ID", "").strip()
+    bot_id = env.get("WECOM_BOT_ID", "").strip()
+    if explicit_corp_id:
+        corp_id = explicit_corp_id
+    elif bot_id.startswith("ww"):
+        corp_id = bot_id
+    elif bot_id:
+        raise ValueError(
+            "当前配置的是企微智能机器人 WECOM_BOT_ID（非 ww 开头的企业 CorpID），"
+            "智能机器人凭证无法调用企微 wedoc 在线文档创建 API（会报 40013 invalid corpid）。"
+            "如需直连 API 创建企微文档需配置企业自建应用 WECOM_CORP_ID + WECOM_CORP_SECRET；"
+            "否则请直接将 wiki-export/ 下生成的 <项目名>-产品方案.docx 导入/上传企微，或打开 wiki-page.html 一键复制粘贴至企微文档。"
+        )
+    else:
+        corp_id = ""
     secret = (env.get("WECOM_CORP_SECRET") or env.get("WECOM_BOT_SECRET") or "").strip()
     if not (corp_id and secret):
-        raise ValueError("Missing WECOM_CORP_ID/WECOM_BOT_ID or WECOM_CORP_SECRET/WECOM_BOT_SECRET in .env.local")
+        raise ValueError("Missing WECOM_CORP_ID or WECOM_CORP_SECRET in .env.local")
 
     tok_url = (
         "https://qyapi.weixin.qq.com/cgi-bin/gettoken?"
@@ -1380,9 +1413,15 @@ def _push_wecom_wedoc(
     return docid, doc_url
 
 
-def cmd_push(project_dir: Path, force: bool = False, page_id_override: Optional[str] = None) -> int:
-    # Step 1: Always run export first
-    rc = cmd_export(project_dir)
+def cmd_push(
+    project_dir: Path,
+    force: bool = False,
+    page_id_override: Optional[str] = None,
+    allow_missing_screenshots: bool = False,
+    local_sim: bool = False,
+) -> int:
+    # Step 1: Always run export first (fails fast with exit code 3 if screenshots fail!)
+    rc = cmd_export(project_dir, allow_missing_screenshots=allow_missing_screenshots)
     if rc != 0:
         return rc
 
@@ -1528,9 +1567,10 @@ def cmd_push(project_dir: Path, force: bool = False, page_id_override: Optional[
                 )
                 return 1
 
-        # Mode 2: Enterprise WeChat (WeDoc API first; graceful fallback to 图2-style .docx / XML / HTML when Bot lacks wedoc API!)
+        # Mode 2: Enterprise WeChat (WeDoc API) — NEVER fake success when API fails!
         wecom_id = (env.get("WECOM_CORP_ID") or env.get("WECOM_BOT_ID") or "").strip()
         wecom_sec = (env.get("WECOM_CORP_SECRET") or env.get("WECOM_BOT_SECRET") or "").strip()
+        remote_fail_reason = ""
         if adapter == "wecom" and wecom_id and wecom_sec:
             try:
                 prd_body = (project_dir / "prd.md").read_text(encoding="utf-8")
@@ -1561,32 +1601,18 @@ def cmd_push(project_dir: Path, force: bool = False, page_id_override: Optional[
                         {"Content-Type": "application/json"},
                         payload={"msgtype": "markdown", "markdown": {"content": card_md}},
                     )
-                print(
-                    f"[wiki_sync] Published native WeCom online document: docid={docid} url={share_url}\n"
-                    f"[wiki_sync] TIP: For rich Left-Prototype/Right-Spec tables with embedded screenshots (图2同款), "
-                    f"import or upload ONLY the generated .docx in {export_dir} (or 1-click copy from wiki-page.html)."
-                )
+                print(f"[wiki_sync] Published native WeCom online document: docid={docid} url={share_url}")
                 return 0
             except Exception as wedoc_exc:
-                safe_w_err = redact_text(str(wedoc_exc), secrets)
-                docx_candidates = list(export_dir.glob("*.docx"))
-                docx_name = docx_candidates[0].name if docx_candidates else "产品方案.docx"
-                print(
-                    f"[wiki_sync] Note: Direct WeCom wedoc API unavailable ({safe_w_err}). "
-                    f"Falling back to Left-Prototype/Right-Spec bundle in {export_dir}:\n"
-                    f"  -> Upload/import ONLY '{docx_name}' into WeCom (opens natively as 图2-style online doc) "
-                    f"or open 'wiki-page.html' and click '一键复制左图右文全表' to paste into a WeCom Doc!\n"
-                    f"  -> NEVER upload project-context.md, raw prd.md, or spec.json to WeDrive."
-                )
+                remote_fail_reason = redact_text(str(wedoc_exc), secrets)
 
-        # Mode 2b: WeCom Webhook group card notification only (when no WeDoc API credentials)
-        if wecom_webhook and adapter == "wecom":
+        # Optional group Webhook notification (NOTE: sending a chat card does NOT mean the document file was uploaded!)
+        if wecom_webhook and adapter == "wecom" and not remote_fail_reason:
             card_md = (
-                f"### PRD 与交互走查交付通知\n"
+                f"### PRD 与交互走查本地导出完成通知\n"
                 f"> **项目**：{doc_title} (`{project_dir.name}`)\n"
-                f"> **推送时间**：`{_now_iso()}`\n"
-                f"> **原型指纹**：`{wt_sha256[:12]}`\n"
-                f"> **交付文件**：`wiki-export/wiki-page.html`、`wiki-export/walkthrough.html.zip`"
+                f"> **导出时间**：`{_now_iso()}`\n"
+                f"> **待导入文件**：`wiki-export/` 下的 `.docx` 或 `wiki-page.html`"
             )
             _http_json_request(
                 wecom_webhook,
@@ -1594,9 +1620,26 @@ def cmd_push(project_dir: Path, force: bool = False, page_id_override: Optional[
                 {"Content-Type": "application/json"},
                 payload={"msgtype": "markdown", "markdown": {"content": card_md}},
             )
-            print("[wiki_sync] Sent WeCom group notification card.")
+            print("[wiki_sync] Sent WeCom group Webhook notification card.")
 
-        # Mode 3: Local / simulated wiki-remote archive sync
+        # STRICT HONESTY GATE: If adapter expects a remote platform (`wecom`, `confluence`, `feishu`) and `--local-sim`
+        # was NOT requested, NEVER fall through to local archive sync with exit code 0!
+        if adapter in ("wecom", "confluence", "feishu") and not local_sim:
+            docx_candidates = list(export_dir.glob("*.docx"))
+            docx_path_str = str(docx_candidates[0]) if docx_candidates else str(export_dir / "产品方案.docx")
+            why = remote_fail_reason or f"缺少 {adapter} 远端文档直写 API 有效凭证（如 WECOM_CORP_ID+WECOM_CORP_SECRET / CONFLUENCE_PAT / FEISHU_APP_ID）"
+            print(
+                f"ERROR [REMOTE_PUSH_NOT_UPLOADED]: 文件尚未上传到 {adapter} 远端知识库！（原因：{why}）\n"
+                f"✅ 本地「左原型截图 + 右需求说明」交付包已在 {export_dir} 生成完毕：\n"
+                f"   1. Word/企微导入版：{docx_path_str}\n"
+                f"   2. 一键复制网页版：{html_path}\n"
+                f"   3. 离线走查压缩包：{zip_path}\n"
+                f"👉 请通过客户端已授权的企微/微盘 MCP 工具上传单篇 .docx，或如实告知 PM 直接导入 .docx / 打开 wiki-page.html 一键复制粘贴，严禁向 PM 误报“已自动推送到远端”！",
+                file=sys.stderr,
+            )
+            return 2
+
+        # Mode 3: Local archive sync (ONLY for `local-obsidian` adapter or explicit `--local-sim` offline test)
         wiki_remote_dir.mkdir(parents=True, exist_ok=True)
         next_ver = max(sim_remote_ver, recorded_ver or 0) + 1
         shutil.copy2(project_dir / "prd.md", wiki_remote_dir / f"{project_dir.name}-v{next_ver}.md")
@@ -1629,7 +1672,7 @@ def cmd_push(project_dir: Path, force: bool = False, page_id_override: Optional[
             }
         )
         save_manifest(project_dir, manifest)
-        print(f"[wiki_sync] Synced package ({adapter}, v{next_ver}) and updated _manifest.json")
+        print(f"[wiki_sync] Archived local package ({adapter}, v{next_ver}) and updated _manifest.json")
         return 0
 
     except Exception as exc:
@@ -1657,13 +1700,18 @@ def build_arg_parser() -> argparse.ArgumentParser:
 
     p_export = subparsers.add_parser(
         "export",
-        help="Build wiki-export/ package (walkthrough.html.zip, wiki-page.html, confluence-storage.xml).",
+        help="Build wiki-export/ package (.docx, wiki-page.html, confluence-storage.xml, walkthrough.html.zip).",
     )
     p_export.add_argument("project_dir", type=Path, help="Path to the project workspace directory.")
+    p_export.add_argument(
+        "--allow-missing-screenshots",
+        action="store_true",
+        help="Allow export without rendered PNG screenshots (only for headless CI servers without Chrome).",
+    )
 
     p_push = subparsers.add_parser(
         "push",
-        help="Export deliverables, check optimistic lock in _manifest.json, and push/archive to target Wiki.",
+        help="Export deliverables, check optimistic lock in _manifest.json, and push to target Wiki.",
     )
     p_push.add_argument("project_dir", type=Path, help="Path to the project workspace directory.")
     p_push.add_argument(
@@ -1672,6 +1720,16 @@ def build_arg_parser() -> argparse.ArgumentParser:
         help="Force push even when remote_version is newer than local _manifest.json.",
     )
     p_push.add_argument("--page-id", default=None, help="Optional remote Wiki/Confluence page ID override.")
+    p_push.add_argument(
+        "--allow-missing-screenshots",
+        action="store_true",
+        help="Allow push without rendered PNG screenshots (headless CI only).",
+    )
+    p_push.add_argument(
+        "--local-sim",
+        action="store_true",
+        help="Explicitly simulate remote push into local wiki-remote/ directory for offline testing.",
+    )
 
     return parser
 
@@ -1683,9 +1741,15 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     if args.command == "pull":
         return cmd_pull(args.project_dir, page_id_override=args.page_id)
     if args.command == "export":
-        return cmd_export(args.project_dir)
+        return cmd_export(args.project_dir, allow_missing_screenshots=args.allow_missing_screenshots)
     if args.command == "push":
-        return cmd_push(args.project_dir, force=args.force, page_id_override=args.page_id)
+        return cmd_push(
+            args.project_dir,
+            force=args.force,
+            page_id_override=args.page_id,
+            allow_missing_screenshots=args.allow_missing_screenshots,
+            local_sim=args.local_sim,
+        )
     return 1
 
 
