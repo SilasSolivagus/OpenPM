@@ -14,6 +14,9 @@ description: 根据 prd.md 与 pages/*.html 生成 flow.svg（连线带 data-fro
 - 契约参考：`specs/flow-topology-spec.md`、`specs/spec-v2.schema.json`
 
 ## 强制拓扑与色彩规范
+0. **强制纵向自上而下排版（Top-Down `TD` 竖向主干，严禁横版 `LR`）& 100% 正交折线**：
+   - 工作台左侧流程图栏是「窄而高」的独立纵向分栏，因此 `flow.svg` **必须采用自上而下（Top-Down）纵向主干布局**（`viewBox` 宽高比必须满足 `width / height ≤ 1.45`，主流程连线自上往下推进），**严禁画成从左往右（Left-to-Right）的扁长横版图**！
+   - 所有 `<polyline>` 连线的每一段**必须严格水平或垂直（100% 正交路由，`x1==x2` 或 `y1==y2`）**，严禁出现任何斜线连线！
 1. **`flow.svg` 节点与判断菱形属性**：
    - 每个流程节点包裹在 `<g data-node="<NODE_ID>">` 中。
    - **判断菱形（Decision）**：凡包含菱形 4 顶点 `<polygon>` 的节点 `<g>`，**必须**同时携带：
@@ -26,7 +29,7 @@ description: 根据 prd.md 与 pages/*.html 生成 flow.svg（连线带 data-fro
    - SVG 底图线条、节点框与文字一律保持**纯黑白灰阶**（`#111111` / `#666666` / `#E5E5E5` / `#FFFFFF`），严禁在 SVG 内硬编码红/绿/蓝业务色。
 3. **同步生成/更新 `spec.json` 的 `nodes` 与 `vars`**：
    - `nodes` 严格遵循 `spec-v2.schema.json#/nodeDef`：`{ page, title, isDecision?, branchVar?, state?, change?, anno? }`（**不设 `rules` 数组**，分支规则统一放入 `vars` 的 `kind: "branch"` 条目中）。
-   - **标注本期改动增量 `change`**：对比历史基线或本期 PRD 范围，将本期新增节点标记为 `"change": "new"`、本期修改节点标记为 `"change": "modified"`、存量未变节点标记为 `"change": "unchanged"`（工作台编译器将自动对 `new` / `modified` 节点渲染唯一工程标引色 **琥珀橙 `#D97706`**）。
+   - **标注本期改动增量 `change`（含 0 启动克制铁律）**：对比历史基线或本期 PRD 范围，将本期新增节点标记为 `"change": "new"`、本期修改节点标记为 `"change": "modified"`、存量未变节点标记为 `"change": "unchanged"`。**注意：即使是 0 启动的全新项目（`v1.0`），也严禁将全图 100% 节点全部标为 `"new"`**（满屏琥珀橙会导致失去重点！必须将入口页、基础跳转页、常规结果/兜底页保持 `"unchanged"` 黑白灰基线，仅将核心业务判断与关键创新节点标为 `"new"`，`new` + `modified` 节点数占比硬上限 **≤ 75%**）。
    - `vars` 中每个 `kind: "branch"` 变量必须包含 `diamond: "D_*"`、`nodes: [...]`、`default` 以及 `options: [{ id, label, target }]`。
 
 ## 输出

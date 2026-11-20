@@ -34,6 +34,8 @@
 ```
 
 **约束**：
+- **纵向自上而下排版（Top-Down `TD`）**：`flow.svg` 必须采用自上而下纵向主干布局（`viewBox` 满足 `width / height ≤ 1.45`），严禁使用从左往右（`LR`）横版宽画布。
+- **100% 正交折线（禁止斜线）**：`<polyline>` 的每一段折线必须严格水平或垂直（`x1 == x2` 或 `y1 == y2`），禁止出现斜线。
 - 任何用于表达业务流转的 `<polyline>` 禁止缺失 `data-from` 或 `data-to`；从 `D_*` 出发的连线禁止缺失 `data-branch`。
 - 装饰性辅助线不得使用裸 `<polyline>` 冒充流程连线（应使用 `<line>` 或 `<path class="bg-grid">`）。
 

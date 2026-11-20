@@ -643,6 +643,7 @@ class WalkthroughParser(HTMLParser):
         self.flow_polylines: List[Tuple[int, Dict[str, str], Tuple[float, float]]] = []
         self.flow_polygons: List[Tuple[int, Dict[str, str], List[Tuple[str, Dict[str, str], int]]]] = []
         self.flow_path_markers: List[Tuple[int, Dict[str, str]]] = []
+        self.flow_svg_viewboxes: List[Tuple[int, float, float]] = []
         self.flow_nodes: Dict[str, List[int]] = {}
         self.flow_node_types: Dict[str, str] = {}
         self.flow_node_bboxes: Dict[str, List[float]] = {}  # node_id -> [min_x, min_y, max_x, max_y]
@@ -860,6 +861,25 @@ class WalkthroughParser(HTMLParser):
 
         # Flow SVG topology & node bounding boxes (Check A & Check B)
         if in_flow_svg and not self._in_defs_or_marker():
+            if t == "svg":
+                vb_nums = re.findall(r"-?\d+(?:\.\d+)?", attr_dict.get("viewbox", ""))
+                if len(vb_nums) == 4:
+                    try:
+                        vbw = float(vb_nums[2])
+                        vbh = float(vb_nums[3])
+                        if vbw > 0 and vbh > 0:
+                            self.flow_svg_viewboxes.append((line, vbw, vbh))
+                    except ValueError:
+                        pass
+                else:
+                    try:
+                        vbw = float(attr_dict.get("width") or 0.0)
+                        vbh = float(attr_dict.get("height") or 0.0)
+                        if vbw > 0 and vbh > 0:
+                            self.flow_svg_viewboxes.append((line, vbw, vbh))
+                    except ValueError:
+                        pass
+
             if t == "g" and attr_dict.get("data-node", "").strip():
                 nid = attr_dict["data-node"].strip()
                 self.flow_nodes.setdefault(nid, []).append(line)
@@ -1147,6 +1167,18 @@ def run_preflight(html_path: Path) -> List[str]:
             )
             continue
 
+        # Check A - Orthogonal polyline routing (no diagonal segments)
+        for seg_idx in range(len(pts) - 1):
+            x1, y1 = pts[seg_idx]
+            x2, y2 = pts[seg_idx + 1]
+            if abs(x1 - x2) > 1.5 and abs(y1 - y2) > 1.5:
+                errors.append(
+                    f"[Check A - Orthogonal] Line {line}: <polyline> ({src}->{dst}) segment "
+                    f"({x1:.1f},{y1:.1f})->({x2:.1f},{y2:.1f}) is diagonal; "
+                    "all flow edges must use orthogonal horizontal/vertical routing"
+                )
+                break
+
         start_pt = (pts[0][0] + tx, pts[0][1] + ty)
         end_pt = (pts[-1][0] + tx, pts[-1][1] + ty)
         if src in parser.flow_node_bboxes:
@@ -1163,6 +1195,52 @@ def run_preflight(html_path: Path) -> List[str]:
                     f"[Check A - Geometry] Line {line}: <polyline> end {end_pt} is {dist_end:.1f}px "
                     f"(> 16px) away from target <g data-node=\"{dst}\"> bbox {parser.flow_node_bboxes[dst]}"
                 )
+
+    # Check A - Top-Down (TD) vertical orientation gate (ban landscape LR flowcharts)
+    for vb_line, vbw, vbh in parser.flow_svg_viewboxes:
+        if vbh > 0 and (vbw / vbh) > 1.45:
+            errors.append(
+                f"[Check A - Orientation] Line {vb_line}: Flow SVG viewBox ({vbw:.0f}x{vbh:.0f}, "
+                f"width/height={vbw / vbh:.2f} > 1.45) is horizontal/landscape; "
+                "flow.svg must use Top-Down (TD) vertical spine layout to fit the left column"
+            )
+
+    if len(parser.flow_node_bboxes) >= 4 and parser.flow_polylines:
+        horiz_hops = 0
+        down_hops = 0
+        for _, attrs, _ in parser.flow_polylines:
+            s_id = attrs.get("data-from", "").strip()
+            d_id = attrs.get("data-to", "").strip()
+            if s_id == d_id or s_id not in parser.flow_node_bboxes or d_id not in parser.flow_node_bboxes:
+                continue
+            sb = parser.flow_node_bboxes[s_id]
+            db = parser.flow_node_bboxes[d_id]
+            scx, scy = (sb[0] + sb[2]) / 2.0, (sb[1] + sb[3]) / 2.0
+            dcx, dcy = (db[0] + db[2]) / 2.0, (db[1] + db[3]) / 2.0
+            if (dcx - scx) > 60.0 and abs(dcy - scy) < abs(dcx - scx) * 0.75:
+                horiz_hops += 1
+            elif (dcy - scy) > 35.0:
+                down_hops += 1
+        if horiz_hops > down_hops and horiz_hops >= 3:
+            errors.append(
+                f"[Check A - Orientation] Flow SVG edges advance predominantly left-to-right "
+                f"({horiz_hops} horizontal vs {down_hops} downward hops); "
+                "flow.svg must use a Top-Down (TD) vertical spine layout"
+            )
+
+    # Check F - 5% Amber Delta Restraint (ban painting >75% of nodes as new/modified)
+    if nodes_obj is not None and len(nodes_obj) >= 5:
+        delta_nodes = [
+            nid for nid, ndef in nodes_obj.items()
+            if isinstance(ndef, dict) and ndef.get("change") in ("new", "modified")
+        ]
+        if len(delta_nodes) / len(nodes_obj) > 0.75:
+            errors.append(
+                f"[Check F - DeltaRatio] {len(delta_nodes)}/{len(nodes_obj)} "
+                f"({len(delta_nodes) / len(nodes_obj):.0%}) nodes are marked change='new'|'modified' (> 75% cap). "
+                "Even on 0-to-1 new projects, keep standard baseline/entry/result nodes as 'unchanged' "
+                "and highlight only core business rules & key branches in Amber #D97706"
+            )
 
     # --- Check B: 4-vertex <polygon> inside flow <svg> & D_* decision rules ---
     for line, attrs, ancestors in parser.flow_polygons:
@@ -1542,6 +1620,18 @@ def run_spec_preflight(spec_path: Path) -> List[str]:
                     f"[Spec - Nodes] Decision node \"{node_id}\" references branchVar={bvar!r}, which is not in vars"
                 )
 
+    if len(nodes) >= 5:
+        spec_delta_nodes = [
+            nid for nid, ndef in nodes.items()
+            if isinstance(ndef, dict) and ndef.get("change") in ("new", "modified")
+        ]
+        if len(spec_delta_nodes) / len(nodes) > 0.75:
+            errors.append(
+                f"[Spec - DeltaRatio] {len(spec_delta_nodes)}/{len(nodes)} "
+                f"({len(spec_delta_nodes) / len(nodes):.0%}) nodes are marked change='new'|'modified' (> 75% cap). "
+                "Keep standard entry/list/result baseline nodes as 'unchanged' and only mark core rules/branches"
+            )
+
     # 4. Validate vars[].kind, vars[].default in options, diamond, target, and when
     for idx, v in enumerate(vars_list):
         if not isinstance(v, dict):
@@ -1768,6 +1858,119 @@ def run_spec_preflight(spec_path: Path) -> List[str]:
                                 f"[Spec - Memos] Valid memo \"{mid}\" targets[{t_idx}] references unknown page=\"{tgt['page']}\""
                             )
 
+    # 7. If sibling flow.svg exists next to spec.json, validate SVG geometry/orientation early
+    sibling_svg = spec_path.parent / "flow.svg"
+    if sibling_svg.is_file():
+        svg_errors = run_svg_preflight(sibling_svg, nodes_obj=nodes, vars_arr=vars_list)
+        errors.extend(svg_errors)
+
+    return errors
+
+
+def run_svg_preflight(
+    svg_path: Path,
+    nodes_obj: Optional[Dict[str, Any]] = None,
+    vars_arr: Optional[List[Any]] = None,
+) -> List[str]:
+    """Validate standalone flow.svg topology, orthogonal routing, and Top-Down orientation."""
+    svg_text = svg_path.read_text(encoding="utf-8")
+    wrapped = f"<!doctype html><html><body><div class='flow-svg'>{svg_text}</div></body></html>"
+    parser = WalkthroughParser()
+    parser.feed(wrapped)
+    parser.close()
+
+    errors: List[str] = []
+    decision_node_ids: Set[str] = set()
+    for nid, ntype in parser.flow_node_types.items():
+        if ntype == "decision" or nid.startswith("D_"):
+            decision_node_ids.add(nid)
+    if nodes_obj is not None:
+        for nid, ndef in nodes_obj.items():
+            if isinstance(ndef, dict) and (ndef.get("isDecision") is True or ndef.get("type") == "decision"):
+                decision_node_ids.add(nid)
+
+    vars_by_id: Dict[str, Dict[str, Any]] = {}
+    if vars_arr is not None:
+        for v in vars_arr:
+            if isinstance(v, dict) and isinstance(v.get("id"), str):
+                vars_by_id[v["id"]] = v
+
+    for line, _ in parser.flow_path_markers:
+        errors.append(
+            f"[flow.svg - PathEdge] Line {line}: Flow SVG must not use <path marker-end> for edges; "
+            "use <polyline data-from=\"...\" data-to=\"...\">"
+        )
+
+    if nodes_obj is not None and parser.flow_nodes:
+        svg_keys = set(parser.flow_nodes.keys())
+        js_keys = set(nodes_obj.keys())
+        for m_svg in sorted(js_keys - svg_keys):
+            errors.append(f"[flow.svg - NodeParity] Node \"{m_svg}\" in spec.json missing <g data-node=\"{m_svg}\"> in flow.svg")
+        for m_js in sorted(svg_keys - js_keys):
+            errors.append(f"[flow.svg - NodeParity] <g data-node=\"{m_js}\"> in flow.svg not registered in spec.json nodes")
+
+    for line, attrs, (tx, ty) in parser.flow_polylines:
+        src = attrs.get("data-from", "").strip()
+        dst = attrs.get("data-to", "").strip()
+        if not src or not dst:
+            errors.append(f"[flow.svg - Polyline] Line {line}: <polyline> missing data-from or data-to")
+            continue
+        if src in decision_node_ids and not attrs.get("data-branch", "").strip():
+            errors.append(f"[flow.svg - Decision] Line {line}: Outgoing <polyline> from \"{src}\" missing data-branch")
+
+        pts = _parse_points(attrs.get("points", ""))
+        if len(pts) < 2:
+            errors.append(f"[flow.svg - Geometry] Line {line}: <polyline> must contain >= 2 points")
+            continue
+        for seg_idx in range(len(pts) - 1):
+            x1, y1 = pts[seg_idx]
+            x2, y2 = pts[seg_idx + 1]
+            if abs(x1 - x2) > 1.5 and abs(y1 - y2) > 1.5:
+                errors.append(
+                    f"[flow.svg - Orthogonal] Line {line}: <polyline> ({src}->{dst}) segment "
+                    f"({x1:.1f},{y1:.1f})->({x2:.1f},{y2:.1f}) is diagonal; use horizontal/vertical routing"
+                )
+                break
+        start_pt = (pts[0][0] + tx, pts[0][1] + ty)
+        end_pt = (pts[-1][0] + tx, pts[-1][1] + ty)
+        if src in parser.flow_node_bboxes:
+            ds = _point_to_bbox_distance(start_pt[0], start_pt[1], parser.flow_node_bboxes[src])
+            if ds > 16.0:
+                errors.append(f"[flow.svg - Geometry] Line {line}: start {start_pt} is {ds:.1f}px (>16px) from \"{src}\"")
+        if dst in parser.flow_node_bboxes:
+            de = _point_to_bbox_distance(end_pt[0], end_pt[1], parser.flow_node_bboxes[dst])
+            if de > 16.0:
+                errors.append(f"[flow.svg - Geometry] Line {line}: end {end_pt} is {de:.1f}px (>16px) from \"{dst}\"")
+
+    for vb_line, vbw, vbh in parser.flow_svg_viewboxes:
+        if vbh > 0 and (vbw / vbh) > 1.45:
+            errors.append(
+                f"[flow.svg - Orientation] Line {vb_line}: viewBox ({vbw:.0f}x{vbh:.0f}, width/height={vbw / vbh:.2f} > 1.45) "
+                "is horizontal/landscape; flow.svg must use Top-Down (TD) vertical spine layout"
+            )
+
+    if len(parser.flow_node_bboxes) >= 4 and parser.flow_polylines:
+        horiz_hops = 0
+        down_hops = 0
+        for _, attrs, _ in parser.flow_polylines:
+            s_id = attrs.get("data-from", "").strip()
+            d_id = attrs.get("data-to", "").strip()
+            if s_id == d_id or s_id not in parser.flow_node_bboxes or d_id not in parser.flow_node_bboxes:
+                continue
+            sb = parser.flow_node_bboxes[s_id]
+            db = parser.flow_node_bboxes[d_id]
+            scx, scy = (sb[0] + sb[2]) / 2.0, (sb[1] + sb[3]) / 2.0
+            dcx, dcy = (db[0] + db[2]) / 2.0, (db[1] + db[3]) / 2.0
+            if (dcx - scx) > 60.0 and abs(dcy - scy) < abs(dcx - scx) * 0.75:
+                horiz_hops += 1
+            elif (dcy - scy) > 35.0:
+                down_hops += 1
+        if horiz_hops > down_hops and horiz_hops >= 3:
+            errors.append(
+                f"[flow.svg - Orientation] Edges advance predominantly left-to-right "
+                f"({horiz_hops} horizontal vs {down_hops} downward hops); use Top-Down (TD) vertical layout"
+            )
+
     return errors
 
 
@@ -1806,6 +2009,8 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     if target_path.suffix.lower() == ".json":
         errors = run_spec_preflight(target_path)
+    elif target_path.suffix.lower() == ".svg":
+        errors = run_svg_preflight(target_path)
     else:
         errors = run_preflight(target_path)
 

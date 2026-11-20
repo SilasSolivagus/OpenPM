@@ -51,10 +51,11 @@
    - 所有存量背景与业务组件（含主次按钮、弹窗、驳回/错误态）一律 **100% 纯黑白灰阶 `wt-*`**，严禁使用品牌蓝、成功绿、危险红等业务语义色；
    - 全系统只允许唯一一种工程标引色 **琥珀橙 `#D97706`**，且严格仅限客观的两处：**① 本期改动增量（Delta：`SPEC_CARDS` 锚点组件与 `change: "new" | "modified"` 流程节点）** 与 **② 当前走查/点选焦点（Focus）**。
 2. **契约与门禁优先**：
-   - 流程图 `flow.svg` 遵循 `specs/flow-topology-spec.md`（连线带 `data-from`/`data-to`，菱形判断节点带 `data-node="D_*"` 和 `data-node-type="decision"`，菱形出边必填 `data-branch`）；
+   - 流程图 `flow.svg` 遵循 `specs/flow-topology-spec.md`：**必须采用自上而下（Top-Down `TD`）纵向主干排版（严禁横版 `LR`）且 100% 正交水平/垂直折线（严禁斜线）**；连线带 `data-from`/`data-to`，菱形判断节点带 `data-node="D_*"` 和 `data-node-type="decision"`，菱形出边必填 `data-branch`；0 启动全新项目也必须保留常规入口/结果页为 `"unchanged"` 黑白灰基线，`change: "new"|"modified"` 节点占比硬上限 `≤ 75%`（严禁满屏 100% 涂橙）；
    - 原型页面 `pages/<page_id>.html` 遵循 `specs/anchor-schema.md`（根容器为 `<div class="page" id="<page_id>" data-page="<page_id>" data-page-id="<page_id>">`，交互元素带同页唯一的点分小写 `data-comp-id` 和 `data-comp-name`）；
    - 编译前后自行在后台静默运行 `scripts/preflight_check.py`（先检 `spec.json`，再检 `walkthrough.html`），修完所有报错再把干净的 `walkthrough.html` 交给 PM。
 3. **局部精准回写**：收到导出的 `review-feedback.md` / `.jsonl` 时，只修改受影响的 PRD 章节和对应 `pages/*.html` 片段，严禁全量重写未提及的页面。
+4. **已有工作区无损升级**：当用户要求“升级/更新 OpenPM”时，优先运行 `python3 scripts/upgrade_openpm.py`（若本地尚无该脚本，先执行 `git fetch origin main && git checkout origin/main -- AGENTS.md CLAUDE.md WORKBUDDY.md .cursorrules scripts skills specs adapters templates && python3 scripts/upgrade_openpm.py`），100% 保留用户的 `.env.local` 与 `projects/*` 现有业务目录，并将检测出的旧项目门禁问题自动修复重编。
 
 ---
 

@@ -18,6 +18,8 @@
 
 ## 1. SVG 拓扑检查（P0）
 
+- [ ] **纵向自上而下排版（Top-Down `TD`）**：`flow.svg` 的 `viewBox` 宽高比 `width / height ≤ 1.45`，主干流向自上而下，禁止扁长横版（`LR`）流程图。
+- [ ] **100% 正交折线（禁止斜线）**：每条 `<polyline>` 的所有折线段均严格水平或垂直（无斜线）。
 - [ ] **连线属性完备**：所有流程连线 `<polyline>` 均携带非空的 `data-from` 和 `data-to` 属性。
 - [ ] **起止节点存在**：每条 `<polyline>` 的 `data-from` 和 `data-to` 值均能在当前 SVG 的 `[data-node]` 元素及 `NODES` 字典中找到对应节点。
 - [ ] **菱形分支连线标注**：从 `data-node-type="decision"`（`D_*`）节点出发的所有 `<polyline>` 均携带非空 `data-branch` 属性，且其值与 `VARS` 中对应 `branchVar`（`kind: "branch"`）的 `options[].id` 一一对应。

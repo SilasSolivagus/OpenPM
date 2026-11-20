@@ -76,20 +76,19 @@ button.primary, button.primary:hover:not(:disabled) {
   background: var(--wt-accent); color: var(--wt-white); border-color: var(--wt-accent);
 }
 
-/* Workbench Stage & Flow Canvas */
+/* Workbench Stage & Flow Canvas (True Side-by-Side Split, Zero Occlusion) */
 .wb-stage { position: relative; width: 100vw; height: calc(100vh - 50px); display: flex; overflow: hidden; }
-.flow-panel { flex: 1; min-width: 0; height: 100%; position: relative; overflow: hidden; display: flex; flex-direction: column; }
+.flow-panel { flex: 1; min-width: 0; height: 100%; position: relative; overflow: hidden; display: flex; flex-direction: row; background: var(--wt-white); }
 .flow-panel.fs .inspector-drawer { display: none !important; }
 .flow-svg {
-  flex: 1; width: 100%; height: 100%; overflow: hidden; background: var(--wt-bg);
+  flex: 1; min-width: 280px; height: 100%; overflow: hidden; background: var(--wt-white);
   cursor: grab; touch-action: none; user-select: none; position: relative;
 }
 .flow-svg:active { cursor: grabbing; }
-.flow-canvas-inner { transform-origin: 0 0; will-change: transform; }
+.flow-canvas-inner { position: absolute; left: 0; top: 0; transform-origin: 0 0; will-change: transform; }
 .flow-canvas-inner.smooth { transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1); }
 .flow-svg svg {
-  width: 100%; height: auto; display: block; background: var(--wt-white);
-  border: 1px solid var(--wt-border-light); border-radius: 8px;
+  display: block; background: transparent; border: none; border-radius: 0;
 }
 .flow-svg g[data-node] { cursor: pointer; }
 .flow-svg g[data-node]:hover rect,
@@ -113,14 +112,13 @@ body.show-delta .wt-delta-target {
   box-shadow: 0 0 0 3px var(--wt-spot-bg);
 }
 
-/* Inspector Drawer & Device Frames */
+/* Inspector Drawer & Device Frames (Docked Right Column, Non-Overlapping) */
 .inspector-drawer {
-  position: absolute; top: 12px; right: 12px; bottom: 12px; width: 706px;
-  max-width: calc(100% - 24px); z-index: 90; background: var(--wt-white);
-  border: 1px solid var(--wt-border); border-radius: 10px;
+  position: relative; flex-shrink: 0; width: min(706px, 58vw); height: 100%;
+  z-index: 90; background: var(--wt-white); border-left: 1px solid var(--wt-border);
   display: flex; flex-direction: column; overflow: hidden;
 }
-.inspector-drawer.wide-mode { width: min(1040px, calc(100% - 24px)); }
+.inspector-drawer.wide-mode { width: min(1000px, 64vw); }
 .insp-head {
   height: 46px; padding: 0 14px; border-bottom: 1px solid var(--wt-border-light);
   background: var(--wt-bg); display: flex; align-items: center; gap: 8px; flex-shrink: 0;
@@ -135,17 +133,17 @@ body.show-delta .wt-delta-target {
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .insp-body {
-  flex: 1; min-height: 0; display: flex; gap: 16px; padding: 14px;
+  flex: 1; min-height: 0; display: flex; gap: 14px; padding: 14px;
   background: var(--wt-bg); overflow: hidden; justify-content: center;
 }
-.stage { flex-shrink: 0; display: flex; flex-direction: column; align-items: center; min-height: 0; max-height: 100%; }
+.stage { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; min-height: 0; max-height: 100%; }
 .frame-phone {
-  width: 375px; min-height: 660px; max-height: 100%; overflow-y: auto;
+  width: 375px; max-width: 100%; min-height: 660px; max-height: 100%; overflow-y: auto;
   background: var(--wt-white); border: 1px solid var(--wt-border); border-radius: 14px; position: relative;
 }
 .frame-phone::-webkit-scrollbar { width: 0; }
 .frame-wide {
-  width: 690px; max-height: 100%; overflow-y: auto;
+  width: 100%; max-width: 690px; max-height: 100%; overflow-y: auto;
   background: var(--wt-white); border: 1px solid var(--wt-border); border-radius: 8px; position: relative;
 }
 .pick-mode-on { outline: 2px solid var(--wt-spot); outline-offset: 2px; cursor: crosshair !important; }
@@ -154,7 +152,7 @@ body.show-delta .wt-delta-target {
 .page.active { display: block; }
 
 /* Right Rule & Variable Panel */
-.anno-panel { width: 286px; flex-shrink: 0; max-height: 100%; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+.anno-panel { width: 272px; flex-shrink: 0; max-height: 100%; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
 .anno-card { padding: 11px 12px; border: 1px solid var(--wt-border-light); border-radius: 8px; background: var(--wt-white); }
 .anno-card-title {
   font-size: 12px; font-weight: 700; color: var(--wt-text);
@@ -1365,9 +1363,11 @@ function showPage(pageId) {
   if (phoneEl) phoneEl.classList.toggle("hidden", frame !== "phone");
   if (wideEl) wideEl.classList.toggle("hidden", frame !== "wide");
   var drawer = document.getElementById("inspector-drawer");
-  if (drawer) drawer.classList.toggle("wide-mode", frame === "wide");
+  var prevWide = drawer ? drawer.classList.contains("wide-mode") : null;
+  var nextWide = frame === "wide";
+  if (drawer) drawer.classList.toggle("wide-mode", nextWide);
   var specWs = document.getElementById("spec-ws");
-  if (specWs) specWs.classList.toggle("wide-spec", frame === "wide");
+  if (specWs) specWs.classList.toggle("wide-spec", nextWide);
   document.querySelectorAll(".page").forEach(function (p) {
     p.classList.toggle("active", p.id === pageId);
   });
@@ -1375,6 +1375,9 @@ function showPage(pageId) {
   var memoForm = document.getElementById("memo-form");
   if (memoForm && !memoForm.classList.contains("hidden") && typeof updateMemoFormCtx === "function") {
     updateMemoFormCtx();
+  }
+  if (prevWide !== null && prevWide !== nextWide && typeof hasBootFitted !== "undefined" && hasBootFitted) {
+    fitBootZoom();
   }
   scheduleOverlaySync();
 }
@@ -1453,33 +1456,61 @@ function setViewByNode(nodeId) {
 window.goNode = setViewByNode;
 
 // =========================================================================
-// SVG Canvas Pan & Zoom (Drag, Wheel, Pinch, zoomAt, fitBootZoom, SafeCenter)
+// SVG Canvas Pan & Zoom (Intrinsic viewBox Scale, True Non-Overlapping Split)
 // =========================================================================
 var zoomPct = 100;
 var panX = 0;
 var panY = 0;
+var hasBootFitted = false;
 var flowSvgEl = document.getElementById("flow-svg");
 var flowInnerEl = document.getElementById("flow-canvas-inner");
 var movedFlag = false;
 
+function getSvgIntrinsicSize() {
+  var svg = document.querySelector("#flow-svg svg");
+  if (!svg) return { w: 820, h: 920 };
+  var vb = svg.viewBox && svg.viewBox.baseVal;
+  if (vb && vb.width > 0 && vb.height > 0) {
+    return { w: vb.width, h: vb.height };
+  }
+  var wAttr = parseFloat(svg.getAttribute("width")) || 0;
+  var hAttr = parseFloat(svg.getAttribute("height")) || 0;
+  if (wAttr > 0 && hAttr > 0) return { w: wAttr, h: hAttr };
+  try {
+    var bb = svg.getBBox();
+    if (bb.width > 0 && bb.height > 0) {
+      return { w: Math.max(320, bb.x + bb.width + 40), h: Math.max(320, bb.y + bb.height + 40) };
+    }
+  } catch (e) {}
+  return { w: 820, h: 920 };
+}
+
+function ensureSvgIntrinsicBox() {
+  var svg = document.querySelector("#flow-svg svg");
+  if (!svg) return;
+  var sz = getSvgIntrinsicSize();
+  svg.style.width = sz.w + "px";
+  svg.style.height = sz.h + "px";
+}
+
 function applyPan(smooth) {
   if (!flowInnerEl) return;
   flowInnerEl.classList.toggle("smooth", !!smooth);
-  flowInnerEl.style.transform = "translate(" + panX + "px," + panY + "px)";
+  var s = zoomPct / 100;
+  flowInnerEl.style.transform = "translate(" + panX.toFixed(1) + "px," + panY.toFixed(1) + "px) scale(" + s.toFixed(4) + ")";
 }
 
 function applyZoomPct(pct) {
-  zoomPct = Math.min(300, Math.max(30, Math.round(pct)));
-  var svg = document.querySelector("#flow-svg svg");
-  if (svg) svg.style.width = zoomPct + "%";
+  zoomPct = Math.min(300, Math.max(18, Math.round(pct)));
   var zv = document.getElementById("zv");
   if (zv) zv.textContent = zoomPct + "%";
 }
 
 function zoomAt(value, clientX, clientY) {
   if (!flowSvgEl) return;
+  ensureSvgIntrinsicBox();
   var oldZoom = zoomPct;
-  var newZoom = Math.min(300, Math.max(30, value));
+  var newZoom = Math.min(300, Math.max(18, Math.round(value)));
   if (newZoom === oldZoom) return;
   var rect = flowSvgEl.getBoundingClientRect();
   var cx = clientX !== undefined ? clientX : (rect.left + rect.width / 2);
@@ -1498,7 +1529,7 @@ function setZoom(dir) {
     fitBootZoom();
     return;
   }
-  var step = dir > 0 ? 25 : -25;
+  var step = dir > 0 ? 20 : -20;
   var rect = flowSvgEl ? flowSvgEl.getBoundingClientRect() : null;
   var cx = rect ? rect.left + rect.width / 2 : undefined;
   var cy = rect ? rect.top + rect.height / 2 : undefined;
@@ -1507,29 +1538,31 @@ function setZoom(dir) {
 
 function fitBootZoom() {
   if (!flowSvgEl) return;
-  var cw = flowSvgEl.clientWidth || 1200;
-  var panel = document.querySelector(".flow-panel");
-  var drawer = document.getElementById("inspector-drawer");
-  var dw = (panel && !panel.classList.contains("fs") && drawer) ? (drawer.offsetWidth + 32) : 0;
-  var availW = Math.max(280, cw - dw - 24);
-  var targetPct = Math.max(40, Math.min(100, Math.round((availW / cw) * 100)));
+  ensureSvgIntrinsicBox();
+  var sz = getSvgIntrinsicSize();
+  var cw = flowSvgEl.clientWidth || 480;
+  var ch = flowSvgEl.clientHeight || 720;
+  var pad = 24;
+  var fitScale = Math.min(
+    Math.max(120, cw - pad * 2) / sz.w,
+    Math.max(120, ch - pad * 2) / sz.h
+  );
+  var targetPct = Math.min(115, Math.max(18, Math.round(fitScale * 100)));
   applyZoomPct(targetPct);
-  panX = 12;
-  panY = 12;
+  var actualScale = zoomPct / 100;
+  panX = (cw - sz.w * actualScale) / 2;
+  panY = (ch - sz.h * actualScale) / 2;
   applyPan(false);
+  hasBootFitted = true;
 }
 
 function panNodeToSafeLeft(target) {
-  if (!target || !flowSvgEl) return;
-  var panel = document.querySelector(".flow-panel");
-  var drawer = document.getElementById("inspector-drawer");
+  if (!target || !flowSvgEl || !hasBootFitted) return;
   var flowRect = flowSvgEl.getBoundingClientRect();
   if (!flowRect.width || !flowRect.height) return;
-  var dw = (panel && !panel.classList.contains("fs") && drawer) ? (drawer.offsetWidth + 16) : 0;
-  var safeW = Math.max(160, flowRect.width - dw);
-  var pad = 28;
+  var pad = 24;
   var safeLeft = flowRect.left + pad;
-  var safeRight = flowRect.left + safeW - pad;
+  var safeRight = flowRect.right - pad;
   var safeTop = flowRect.top + pad;
   var safeBottom = flowRect.bottom - pad;
   var tr = target.getBoundingClientRect();
@@ -1538,7 +1571,7 @@ function panNodeToSafeLeft(target) {
   var dx = 0;
   var dy = 0;
   if (tr.left < safeLeft || tr.right > safeRight) {
-    dx = (flowRect.left + safeW / 2) - (tr.left + tr.width / 2);
+    dx = (flowRect.left + flowRect.width / 2) - (tr.left + tr.width / 2);
   }
   if (tr.top < safeTop || tr.bottom > safeBottom) {
     dy = (flowRect.top + flowRect.height / 2) - (tr.top + tr.height / 2);
@@ -1558,6 +1591,7 @@ function toggleFs(force) {
   p.classList.toggle("fs", on);
   var btn = document.getElementById("fs-btn");
   if (btn) btn.textContent = on ? "显示详情" : "全屏画布";
+  fitBootZoom();
 }
 
 if (flowSvgEl) {
@@ -2655,8 +2689,8 @@ window.addEventListener("hashchange", applyHashState);
 initDeltaHighlights();
 initSpecMode();
 renderMemos();
-fitBootZoom();
 applyHashState();
+fitBootZoom();
 
 </script>
 </body>

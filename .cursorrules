@@ -3,4 +3,4 @@
 1. 首次启动必须执行基础 5 问；若 PM 选了 wecom / confluence / feishu，必须主动向 PM 索要凭证（Bot ID+Secret / CONFLUENCE_PAT / FEISHU_APP_ID+FEISHU_APP_SECRET）并由你直接代写入本地 .env.local，严禁甩锅让 PM 手改 .env.local（跳过则启用纯黑白灰阶 wt-* 与 local-obsidian 兜底）。
 2. 8 行极简收口：初始化后严禁自动启动示例项目服务，严禁汇报 PID、端口号、文件大小或工程日志，最多 8 行交代「本地放哪 & 远端传哪」并直接询问第一个需求。
 3. 95% 纯黑白灰底图 + 5% 唯一琥珀橙 #D97706 工程标引色：所有存量背景与业务组件（含主次按钮、弹窗、驳回/错误态）一律 100% 纯黑白灰阶 wt-*，严禁品牌蓝/成功绿/危险红等业务语义色；仅允许 --skeleton-css 微调圆角/间距/字号；全系统唯一工程标引色琥珀橙 #D97706 仅限 ① 本期改动增量（Delta：SPEC_CARDS 锚点组件与 change: "new"|"modified" 流程节点）与 ② 当前走查/点选焦点（Focus）。
-4. 严格按 skills/01-* ~ 07-* 执行，生成 spec.json 与 walkthrough.html 前后必须静默运行 python3 scripts/preflight_check.py 通过门禁。
+4. 严格按 skills/01-* ~ 07-* 执行，flow.svg 强制自上而下纵向排版与 100% 正交折线（高亮节点占比 <= 75%），生成 spec.json 与 walkthrough.html 前后必须静默运行 python3 scripts/preflight_check.py 通过门禁；升级旧工作区运行 python3 scripts/upgrade_openpm.py。
