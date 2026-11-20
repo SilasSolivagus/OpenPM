@@ -27,9 +27,18 @@ description: 读取 project-context.md 与 history/ 基线，编写或按 review
    - **严禁把彩色皮肤写入需求**：遵循「学骨架不学配色」铁律，只定义文案、布局层级与交互反馈，严禁将“主按钮改成品牌蓝色 / 驳回弹窗改成红色”当作产品需求写入 PRD。
 4. **角色权限与数据约束**：多角色操作矩阵、字段校验规则与频控阈值。
 
-## 局部精准回写模式（收到 `review-feedback.md` / `.jsonl` 时）
-1. **校验批注状态**：逐条解析批注中的 `status`、`node`、`page`、`vars` 与 `targets: [{ page, comp_id, comp_name, fallback_selector }]`：
-   - 仅自动回写 `status: "valid"` 的批注；
+## 多人评审聚合与局部精准回写模式（收到 1 份或多份 `review-feedback*.md` / `.jsonl` 时）
+0. **多人评审自动合并与冲突检测（`merge_feedback.py`）**：
+   - 当收到多位同事（如前端、后端、测试）导出的多份评审文件，或项目目录下存在多份 `review-feedback-*.jsonl/.md` 时，**必须先运行**：
+     ```bash
+     python3 scripts/merge_feedback.py <project_dir> [file1 file2 ...]
+     ```
+   - 脚本自动生成 `<project_dir>/review-merged.md` 与 `review-merged.jsonl`，将所有意见分为三类：
+     1. **`AUTO_APPLY`（无冲突且锚点有效）**：直接进入下方局部精准回写；
+     2. **`CONFLICTS`（≥2 位评审人对同一 `page::comp_id` 提出不同修改意见）**：**严禁 AI 擅自二选一覆盖！** 必须先调用 `AskUserQuestion` 将冲突双方的原话并列展示给 PM 裁决，拿到拍板结论后再修改；
+     3. **`INVALID_ANCHORS`（落点已失效）**：向 PM 指出并请人工确认。
+1. **校验单文件批注状态**：逐条解析批注中的 `author`、`status`、`node`、`page`、`vars` 与 `targets: [{ page, comp_id, comp_name, fallback_selector }]`：
+   - 仅自动回写 `status: "valid"` 且无多人冲突的批注；
    - 若存在 `status: "invalid"`（落点已失效或 `version_hash` 不匹配），必须向 PM 指出并请人工确认，严禁盲目猜测修改。
 2. **局部增量修改**：只修改受影响的 `F-xx` 章节，**严禁全篇重写未提及的功能点**，保持既有编号与未变更段落完全稳定，并同步告知下游 `03` / `04` 仅重绘对应页面与节点。
 3. **静默记录业务决策与通用错题（`eval_tracker.py`）**：

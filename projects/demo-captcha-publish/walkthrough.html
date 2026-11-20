@@ -75,6 +75,12 @@ button.primary, button.primary:hover:not(:disabled) {
 .memo-toggle.active, .memo-toggle.active:hover {
   background: var(--wt-accent); color: var(--wt-white); border-color: var(--wt-accent);
 }
+.wb-brand-link {
+  display: inline-flex; align-items: center; gap: 3px; padding: 3px 8px;
+  border: 1px solid var(--wt-border-light); border-radius: 4px; font-size: 11px;
+  color: var(--wt-dim); text-decoration: none; white-space: nowrap; flex-shrink: 0;
+}
+.wb-brand-link:hover { border-color: var(--wt-spot); color: var(--wt-spot); background: var(--wt-spot-bg); }
 
 /* Workbench Stage & Flow Canvas (True Side-by-Side Split, Zero Occlusion) */
 .wb-stage { position: relative; width: 100vw; height: calc(100vh - 50px); display: flex; overflow: hidden; }
@@ -232,6 +238,24 @@ body.show-delta .wt-delta-target {
   height: 46px; padding: 0 14px; border-bottom: 1px solid var(--wt-border-light);
   background: var(--wt-bg); display: flex; align-items: center; justify-content: space-between;
   flex-shrink: 0; gap: 6px;
+}
+.memo-reviewer-bar {
+  display: flex; align-items: center; gap: 8px; padding: 7px 12px;
+  border-bottom: 1px solid var(--wt-border-light); background: var(--wt-white);
+  font-size: 11.5px; color: var(--wt-dim); flex-shrink: 0;
+}
+.memo-reviewer-bar input {
+  flex: 1; min-width: 0; border: 1px solid var(--wt-border-light); border-radius: 4px;
+  padding: 3px 8px; font-size: 11.5px; color: var(--wt-text); background: var(--wt-bg);
+}
+.memo-reviewer-bar input:focus { outline: none; border-color: var(--wt-accent); background: var(--wt-white); }
+.memo-conflict-badge {
+  font-size: 10px; font-weight: 600; color: var(--wt-spot); background: var(--wt-spot-bg);
+  border: 1px solid var(--wt-spot-border); padding: 1px 6px; border-radius: 3px; flex-shrink: 0;
+}
+.memo-author-pill {
+  display: inline-block; font-size: 10.5px; font-weight: 600; color: var(--wt-text);
+  background: var(--wt-fill); border-radius: 3px; padding: 0 5px; margin-right: 4px;
 }
 .memo-form { padding: 12px; border-bottom: 1px solid var(--wt-border-light); flex-shrink: 0; background: #fafafa; }
 .memo-ctx {
@@ -469,6 +493,7 @@ body.show-delta .wt-delta-target {
   </div>
   <button type="button" class="zb active" id="delta-toggle-btn" onclick="toggleDeltaHighlight()">改动高亮</button>
   <button type="button" class="memo-toggle" id="memo-toggle-btn" onclick="toggleMemo()">评审备注 (0)</button>
+  <a class="wb-brand-link" href="https://github.com/SilasSolivagus/OpenPM" target="_blank" rel="noopener" title="由 OpenPM 开源工作台生成 · 点击前往 GitHub 点亮 Star">OpenPM &#9733;</a>
 </header>
 
 <div class="wb-stage">
@@ -1754,7 +1779,15 @@ body.show-delta .wt-delta-target {
   <aside class="memo-drawer hidden" id="memo-drawer">
     <div class="memo-hd">
       <b>评审备注</b>
-      <button type="button" onclick="openMemoForCurrent()">+ 新增</button>
+      <div style="display:flex;gap:6px">
+        <button type="button" onclick="document.getElementById('memo-import-file').click()" title="导入合并多位同事导出的 .jsonl 或 .md 评审文件">导入合并</button>
+        <button type="button" onclick="openMemoForCurrent()">+ 新增</button>
+      </div>
+    </div>
+    <div class="memo-reviewer-bar">
+      <span>评审人</span>
+      <input id="memo-reviewer-input" type="text" placeholder="选填署名（如：前端-王工 / 测试-小李）" oninput="saveReviewerName(this.value)" />
+      <input id="memo-import-file" type="file" multiple accept=".jsonl,.md,.json" class="hidden" onchange="importFeedbackFiles(this.files)" />
     </div>
     <div class="memo-form hidden" id="memo-form">
       <div class="memo-ctx" id="memo-ctx"></div>
@@ -1843,6 +1876,17 @@ function computeDocVersionHash() {
 var DOC_VERSION_HASH = computeDocVersionHash();
 var PROJECT_SLUG = (typeof META === "object" && META && META.project) ? String(META.project) : "default";
 var MEMO_STORAGE_KEY = "wt_memos_" + PROJECT_SLUG;
+var REVIEWER_STORAGE_KEY = "wt_reviewer_name";
+
+function getReviewerName() {
+  var el = document.getElementById("memo-reviewer-input");
+  if (el && el.value.trim()) return el.value.trim();
+  try { return (localStorage.getItem(REVIEWER_STORAGE_KEY) || "").trim(); } catch (e) { return ""; }
+}
+
+window.saveReviewerName = function (val) {
+  try { localStorage.setItem(REVIEWER_STORAGE_KEY, String(val || "").trim()); } catch (e) {}
+};
 
 function escapeHtml(str) {
   return String(str || "")
@@ -3191,14 +3235,28 @@ function renderMemos() {
     listEl.innerHTML = '<div class="memo-empty">暂无评审备注。<br>点击「+ 新增」后，可直接点选原型组件添加 @ 胶囊。</div>';
     return;
   }
+  var compTouchMap = {};
+  memos.forEach(function (m) {
+    getMemoTargets(m).forEach(function (t) {
+      if (!t.comp_id) return;
+      var k = (t.page || m.page || "") + "::" + t.comp_id;
+      compTouchMap[k] = (compTouchMap[k] || 0) + 1;
+    });
+  });
   listEl.innerHTML = memos.map(function (m, i) {
     var isValid = validateMemoAnchor(m);
     var targets = getMemoTargets(m);
+    var hasMultiTouch = targets.some(function (t) {
+      return t.comp_id && compTouchMap[(t.page || m.page || "") + "::" + t.comp_id] > 1;
+    });
     var compNameLabel = targets.length
       ? targets.map(function (t) { return "@[" + (t.comp_name || t.comp_id) + "]"; }).join(" ")
       : (m.page || m.node || "-");
     var titleLabel = "[" + (m.node || m.page || "-") + "] " + compNameLabel;
-    var badgeHtml = isValid ? "" : '<span class="memo-invalid-badge">落点已失效</span>';
+    var badgeHtml = isValid
+      ? (hasMultiTouch ? '<span class="memo-conflict-badge" title="多条备注指向同一组件">同组件多方意见</span>' : "")
+      : '<span class="memo-invalid-badge">落点已失效</span>';
+    var authorHtml = m.author ? '<span class="memo-author-pill">' + escapeHtml(m.author) + '</span>' : "";
     var tagsHtml = "";
     if (targets.length > 0) {
       tagsHtml = '<div class="memo-item-tags">' + targets.map(function (t) {
@@ -3211,13 +3269,13 @@ function renderMemos() {
       : ("page · " + (m.page || "-"));
     return '<div class="memo-item' + (isValid ? "" : " invalid") + '">' +
       '<div class="memo-item-hd">' +
-        '<div class="memo-item-ctx" onclick="jumpToMemo(' + i + ')" title="点击定位">' + escapeHtml(titleLabel) + '</div>' +
+        '<div class="memo-item-ctx" onclick="jumpToMemo(' + i + ')" title="点击定位">' + authorHtml + escapeHtml(titleLabel) + '</div>' +
         badgeHtml +
       '</div>' +
       tagsHtml +
       '<div class="memo-item-meta">' + escapeHtml(metaText) + '</div>' +
       '<div class="memo-item-txt">' + escapeHtml(m.text) + '</div>' +
-      '<div class="memo-item-ft"><span>' + escapeHtml(m.time || "") + '</span>' +
+      '<div class="memo-item-ft"><span>' + escapeHtml((m.author ? m.author + " · " : "") + (m.time || "")) + '</span>' +
         '<button type="button" class="memo-del-btn" onclick="deleteMemoItem(' + i + ')">删除</button></div>' +
     '</div>';
   }).join("");
@@ -3299,9 +3357,11 @@ window.saveMemoItem = function () {
 
   var now = new Date();
   var timeStr = now.toTimeString().slice(0, 5);
+  var reviewer = getReviewerName();
 
   memos.unshift({
-    id: "m_" + Date.now(),
+    id: "m_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6),
+    author: reviewer,
     version_hash: DOC_VERSION_HASH,
     view: wbView,
     node: currentNode || "",
@@ -3379,9 +3439,11 @@ if (memoInputEl) {
 function buildMemosMarkdown(items) {
   var validCount = items.filter(function (m) { return validateMemoAnchor(m); }).length;
   var invalidCount = items.length - validCount;
+  var reviewer = getReviewerName();
   var lines = [
     "---",
     "project: " + PROJECT_SLUG,
+    "reviewer: " + (reviewer || "anonymous"),
     "version_hash: " + DOC_VERSION_HASH,
     "exported_at: " + new Date().toISOString(),
     "total_comments: " + items.length,
@@ -3403,6 +3465,7 @@ function buildMemosMarkdown(items) {
     var compIdStr = targets.map(function (t) { return t.comp_id; }).filter(Boolean).join(", ");
     var compNameStr = targets.map(function (t) { return t.comp_name; }).filter(Boolean).join(", ");
     var fbStr = targets.map(function (t) { return t.fallback_selector; }).filter(Boolean).join(", ");
+    var itemAuthor = m.author || reviewer || "anonymous";
 
     lines.push("## [FB-" + String(idx + 1).padStart(3, "0") + "] " + targetHeading + "（" + statusStr + "）");
     if (!valid) {
@@ -3411,6 +3474,8 @@ function buildMemosMarkdown(items) {
       lines.push("> 该条批注的 `targets` 中存在未命中当前原型的落点（命中数为 0），请人工核对后再修改。");
     }
     lines.push("");
+    lines.push("- **id**: `" + (m.id || ("fb_" + (idx + 1))) + "`");
+    lines.push("- **author**: `" + itemAuthor + "`");
     lines.push("- **version_hash**: `" + (m.version_hash || m.versionHash || DOC_VERSION_HASH) + "`");
     lines.push("- **status**: `" + statusStr + "`");
     lines.push("- **view**: `" + (m.view || "flow") + "`");
@@ -3433,6 +3498,7 @@ function buildMemosMarkdown(items) {
 }
 
 function buildMemosJsonl(items) {
+  var reviewer = getReviewerName();
   return items.map(function (m) {
     var valid = validateMemoAnchor(m);
     var targets = getMemoTargets(m);
@@ -3441,6 +3507,8 @@ function buildMemosJsonl(items) {
     var compNameStr = targets.map(function (t) { return t.comp_name; }).filter(Boolean).join(", ");
     var fbStr = targets.map(function (t) { return t.fallback_selector; }).filter(Boolean).join(", ");
     return JSON.stringify({
+      id: m.id || "",
+      author: m.author || reviewer || "anonymous",
       version_hash: m.version_hash || m.versionHash || DOC_VERSION_HASH,
       status: valid ? "valid" : "invalid",
       view: m.view || "flow",
@@ -3524,8 +3592,10 @@ function fallbackCopyText(text) {
 }
 
 function executeExport(actionType, items) {
+  var reviewer = getReviewerName().replace(/[^\w\u4e00-\u9fa5-]+/g, "-").replace(/^-+|-+$/g, "");
+  var suffix = reviewer ? ("-" + reviewer) : "";
   if (actionType === "download_jsonl") {
-    triggerDownload(buildMemosJsonl(items), "application/x-ndjson;charset=utf-8", "review-feedback.jsonl");
+    triggerDownload(buildMemosJsonl(items), "application/x-ndjson;charset=utf-8", "review-feedback" + suffix + ".jsonl");
     return;
   }
   var md = buildMemosMarkdown(items);
@@ -3545,9 +3615,83 @@ function executeExport(actionType, items) {
       done();
     }
   } else if (actionType === "download") {
-    triggerDownload(md, "text/markdown;charset=utf-8", "review-feedback.md");
+    triggerDownload(md, "text/markdown;charset=utf-8", "review-feedback" + suffix + ".md");
   }
 }
+
+window.importFeedbackFiles = function (fileList) {
+  if (!fileList || !fileList.length) return;
+  var existingSig = {};
+  memos.forEach(function (m) {
+    var sig = (m.id || "") + "|" + (m.author || "") + "|" + (m.page || "") + "|" + (m.comp_id || "") + "|" + (m.text || "");
+    existingSig[sig] = true;
+  });
+  var added = 0;
+  var remaining = fileList.length;
+  Array.prototype.forEach.call(fileList, function (file) {
+    var reader = new FileReader();
+    reader.onload = function (ev) {
+      var raw = String(ev.target.result || "");
+      var parsedItems = [];
+      if (/\.jsonl$/i.test(file.name) || raw.trim().charAt(0) === "{") {
+        raw.split(/\r?\n/).forEach(function (line) {
+          var s = line.trim();
+          if (!s) return;
+          try { parsedItems.push(JSON.parse(s)); } catch (e) {}
+        });
+      } else {
+        var blocks = raw.split(/^##\s+\[/m);
+        var fmAuthor = (raw.match(/^reviewer:\s*(.+)$/m) || [])[1] || "";
+        for (var bi = 1; bi < blocks.length; bi++) {
+          var blk = blocks[bi];
+          var getField = function (k) {
+            var m = blk.match(new RegExp("^-\\s+\\*\\*" + k + "\\*\\*:\\s*`([^`]*)`", "m"));
+            return m ? m[1] : "";
+          };
+          var targetsJson = getField("targets");
+          var tgts = [];
+          try { if (targetsJson) tgts = JSON.parse(targetsJson); } catch (e) {}
+          var varsJson = getField("vars");
+          var vobj = {};
+          try { if (varsJson) vobj = JSON.parse(varsJson); } catch (e) {}
+          var txtMatch = blk.split("**修改意见**：");
+          var bodyTxt = txtMatch.length > 1 ? txtMatch[1].split(/^---$/m)[0].trim() : "";
+          parsedItems.push({
+            id: getField("id") || ("imp_" + Date.now() + "_" + bi),
+            author: getField("author") || fmAuthor.trim() || file.name.replace(/\.(md|jsonl)$/i, ""),
+            version_hash: getField("version_hash"),
+            view: getField("view") || "flow",
+            node: getField("node"),
+            page: getField("page"),
+            vars: vobj,
+            comp_id: getField("comp_id"),
+            comp_name: getField("comp_name"),
+            targets: tgts,
+            text: bodyTxt,
+            time: "导入"
+          });
+        }
+      }
+      parsedItems.forEach(function (item) {
+        if (!item || !item.text) return;
+        var sig = (item.id || "") + "|" + (item.author || "") + "|" + (item.page || "") + "|" + (item.comp_id || "") + "|" + (item.text || "");
+        if (!existingSig[sig]) {
+          existingSig[sig] = true;
+          memos.push(item);
+          added++;
+        }
+      });
+      remaining--;
+      if (remaining === 0) {
+        persistMemos();
+        renderMemos();
+        var inp = document.getElementById("memo-import-file");
+        if (inp) inp.value = "";
+      }
+    };
+    reader.readAsText(file, "utf-8");
+  });
+};
 
 window.copyMemosMd = function () { runWithExportGuard("copy"); };
 window.downloadMemosMd = function () { runWithExportGuard("download"); };
@@ -3572,6 +3716,10 @@ window.addEventListener("hashchange", applyHashState);
 
 initDeltaHighlights();
 initSpecMode();
+(function initReviewerInput() {
+  var ri = document.getElementById("memo-reviewer-input");
+  if (ri) ri.value = getReviewerName();
+})();
 renderMemos();
 applyHashState();
 fitBootZoom();

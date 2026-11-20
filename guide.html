@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>OpenPM 新手使用指南 · 产品经理速查手册</title>
+<style>
+:root {
+  --bg: #f7f7f7; --card: #ffffff; --border: #dcdcdc; --border-light: #ebebeb;
+  --text: #1f1f1f; --muted: #666666; --accent: #262626;
+  --spot: #d97706; --spot-bg: rgba(217, 119, 6, 0.08); --spot-border: rgba(217, 119, 6, 0.45);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg); color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+  line-height: 1.65; padding: 36px 20px 64px;
+}
+.wrap { max-width: 920px; margin: 0 auto; }
+.top-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+.pill {
+  display: inline-block; font-size: 12px; font-weight: 600; color: var(--spot);
+  background: var(--spot-bg); border: 1px solid var(--spot-border);
+  padding: 3px 11px; border-radius: 999px;
+}
+.star-btn {
+  display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px;
+  border-radius: 7px; border: 1px solid var(--border); background: var(--card);
+  color: var(--text); font-size: 12.5px; font-weight: 600; text-decoration: none;
+}
+.star-btn:hover { border-color: var(--spot); color: var(--spot); background: var(--spot-bg); }
+h1 { font-size: 30px; letter-spacing: -0.5px; margin-bottom: 8px; }
+.lead { font-size: 15px; color: var(--muted); margin-bottom: 26px; }
+.section {
+  background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+  padding: 22px 24px; margin-bottom: 18px;
+}
+.section h2 { font-size: 17px; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+.step-num {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px; border-radius: 5px; background: var(--accent);
+  color: #ffffff; font-size: 12px; font-weight: 700;
+}
+.cmd-list { display: flex; flex-direction: column; gap: 10px; }
+.cmd-card {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 12px 14px; border: 1px solid var(--border-light); border-radius: 8px; background: #fafafa;
+}
+.cmd-meta { flex: 1; min-width: 0; }
+.cmd-label { font-size: 12px; font-weight: 700; color: var(--spot); margin-bottom: 2px; }
+.cmd-text { font-size: 13.5px; color: var(--text); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; word-break: break-all; }
+.copy-btn {
+  flex-shrink: 0; padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border);
+  background: var(--card); color: var(--text); font-size: 12px; font-weight: 600; cursor: pointer;
+}
+.copy-btn:hover { background: var(--accent); color: #ffffff; border-color: var(--accent); }
+.grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+.info-box { padding: 14px; border: 1px solid var(--border-light); border-radius: 8px; background: #fafafa; font-size: 13px; }
+.info-box strong { display: block; font-size: 13.5px; margin-bottom: 4px; color: var(--text); }
+.info-box p { color: var(--muted); }
+code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px;
+  background: #efefef; padding: 1px 5px; border-radius: 4px;
+}
+.ft { margin-top: 24px; text-align: center; font-size: 12.5px; color: var(--muted); }
+.ft a { color: var(--text); font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top-row">
+    <span class="pill">OpenPM 新手速查手册 · 离线单文件随时可查</span>
+    <a class="star-btn" href="https://github.com/SilasSolivagus/OpenPM" target="_blank" rel="noopener">&#9733; 觉得好用？去 GitHub 点颗 Star</a>
+  </div>
+  <h1>欢迎使用 OpenPM 产品经理工作台</h1>
+  <p class="lead">你不需要记任何复杂命令。平时就像和产品助理聊天一样，复制下面这几句大白话发给你的 AI 工具即可。</p>
+
+  <div class="section">
+    <h2><span class="step-num">1</span> 日常最常用的 5 句大白话（点右侧按钮一键复制）</h2>
+    <div class="cmd-list">
+      <div class="cmd-card">
+        <div class="cmd-meta">
+          <div class="cmd-label">场景 A · 从 0 到 1 做全新需求（Wiki 是空的也能直接跑）</div>
+          <div class="cmd-text" id="c1">我要做一个【填写你的新功能想法】需求，先帮我出结构化 PRD 和可点选交互原型</div>
+        </div>
+        <button class="copy-btn" onclick="copyCmd('c1', this)">复制口令</button>
+      </div>
+      <div class="cmd-card">
+        <div class="cmd-meta">
+          <div class="cmd-label">场景 B · 改线上已有老功能（自动标出 5% 琥珀橙研发增量）</div>
+          <div class="cmd-text" id="c2">这是旧版文档/链接，本期要增加【填写改动点】，先拉取对比再出新版原型</div>
+        </div>
+        <button class="copy-btn" onclick="copyCmd('c2', this)">复制口令</button>
+      </div>
+      <div class="cmd-card">
+        <div class="cmd-meta">
+          <div class="cmd-label">场景 C · 开完多人评审会（汇总多位同事导出的备注并检测冲突）</div>
+          <div class="cmd-text" id="c3">我把前端、后端和测试导出的评审文件放进项目目录了，帮我合并检查有没有冲突，确认后精准回写</div>
+        </div>
+        <button class="copy-btn" onclick="copyCmd('c3', this)">复制口令</button>
+      </div>
+      <div class="cmd-card">
+        <div class="cmd-meta">
+          <div class="cmd-label">场景 D · 确认定稿推送公司平台（企微 / Confluence / 飞书 / 本地归档）</div>
+          <div class="cmd-text" id="c4">这版定稿了，帮我打包左图右文对照表推到 Wiki / 企业微信</div>
+        </div>
+        <button class="copy-btn" onclick="copyCmd('c4', this)">复制口令</button>
+      </div>
+      <div class="cmd-card">
+        <div class="cmd-meta">
+          <div class="cmd-label">场景 E · 一句话无损升级最新版 OpenPM（不丢密钥、不覆盖现有需求）</div>
+          <div class="cmd-text" id="c5">帮我运行 python3 scripts/upgrade_openpm.py 无损升级 OpenPM 并重编当前项目</div>
+        </div>
+        <button class="copy-btn" onclick="copyCmd('c5', this)">复制口令</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2><span class="step-num">2</span> 怎么开多人需求评审会？（所见即所得点选批注）</h2>
+    <div class="grid-2">
+      <div class="info-box">
+        <strong>① 把单文件 HTML 丢进群里</strong>
+        <p>每个需求生成的 <code>walkthrough.html</code> 是纯离线单文件，直接发给前端、后端、测试，双击就能在浏览器打开。</p>
+      </div>
+      <div class="info-box">
+        <strong>② 填署名 + 点按钮插 @组件</strong>
+        <p>同事点右上角「+ 记备注」，填上自己的名字（如 <code>前端-王工</code>），直接点界面上的按钮自动插入 <code>@[组件名]</code> 写意见，点「导出 .jsonl」发回给你。</p>
+      </div>
+      <div class="info-box">
+        <strong>③ 多人意见合并与冲突保护</strong>
+        <p>你可以在网页抽屉点「导入合并」一键汇总所有人的备注；也可以直接丢给 AI，遇到两个人改同一个按钮且意见相反时，AI 会先弹窗让你拍板，绝不乱改。</p>
+      </div>
+      <div class="info-box">
+        <strong>④ 自动攒经验越用越懂你</strong>
+        <p>每次改稿和定稿会在本地自动记分、记错题；每满 3 个需求提醒你一键「复盘优化」，把你的个人品味永久写进 <code>evals/taste-profile.md</code>。</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2><span class="step-num">3</span> 你的文件存在哪？安全吗？（100% 零遥测承诺）</h2>
+    <div class="grid-2">
+      <div class="info-box">
+        <strong>本地业务目录：<code>projects/&lt;产品名&gt;/</code></strong>
+        <p>所有 PRD、线框原型、流程图和历史快照都在本地文件夹里，你可以直接用 <strong>Obsidian</strong> 打开管理。</p>
+      </div>
+      <div class="info-box">
+        <strong>密钥隔离与零遥测隐私保护</strong>
+        <p>平台密钥只保存在你本机的 <code>.env.local</code>（已被 Git 严格屏蔽）；OpenPM <strong>零后台数据上报、零遥测服务器</strong>，未点推送前绝不联网外传。</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="ft">
+    OpenPM 基于 MIT 协议开源（源于 <a href="https://github.com/roxorlt" target="_blank" rel="noopener">@roxorlt</a> 的灵感创意与 <a href="https://github.com/roxorlt/UEmaster" target="_blank" rel="noopener">UEmaster</a> 项目） ·
+    <a href="https://github.com/SilasSolivagus/OpenPM" target="_blank" rel="noopener">前往 GitHub 仓库主页 &#9733;</a>
+  </div>
+</div>
+<script>
+function copyCmd(id, btn) {
+  var txt = document.getElementById(id).textContent;
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(txt);
+  } else {
+    var ta = document.createElement("textarea");
+    ta.value = txt; document.body.appendChild(ta); ta.select();
+    try { document.execCommand("copy"); } catch (e) {}
+    document.body.removeChild(ta);
+  }
+  var old = btn.textContent;
+  btn.textContent = "已复制";
+  setTimeout(function () { btn.textContent = old; }, 1400);
+}
+</script>
+</body>
+</html>

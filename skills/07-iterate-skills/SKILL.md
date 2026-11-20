@@ -31,15 +31,19 @@ python3 scripts/eval_tracker.py digest
 ```
 查看近期定稿平均得分、平均返工修改率（%）以及所有 `status: "open"` 的通用错题（`evals/datasets/skill-defects.jsonl`）。
 
-### 第 2 步：拟定候选改进并执行双盲 A/B 回归门禁
-针对高频 `open` 错题拟定 `evals/taste-profile.md` 或 `skills/01-* ~ 06-*` 的改进规则，禁止仅凭主观感觉直接合入：
-1. **抽取盲测用例**：从 `evals/test-cases/` 或脱敏历史项目中抽取代表性样本，对比改进前后产物（匿名标记为方案 A / 方案 B）。
-2. **硬门禁先行**：候选产物必须 100% 通过 `python3 scripts/preflight_check.py`（`spec.json` + `walkthrough.html` 退出码均为 `0`）。
-3. **双盲独立裁判打分（10 分制）**：按以下维度盲评方案 A vs B：
-   - 需求逻辑闭环与异常兜底覆盖度；
-   - 原型骨架贴合度及**「95% 纯黑白灰 `wt-*` 底图 + 5% 琥珀橙 `#D97706` 增量/焦点标引（节点高亮 ≤ 75%）」**遵守度；
-   - 流程图自上而下（Top-Down）正交美观度与左右真分栏零遮挡；
-   - **北极星指标**：预估「上 Wiki 前 PM 需手动删改重排的比例（%）」。
+### 第 2 步：拟定候选改进并执行随机双盲 A/B 对比实验与 Confluence XML 验证（`ab_eval_harness.py`）
+针对高频 `open` 错题修改 `evals/taste-profile.md` 或 `skills/01-* ~ 06-*` 时，禁止仅凭主观感觉合入，必须执行全链路双盲实验：
+1. **剔除训练集并随机盲标（`prepare`）**：
+   - **严格剔除提炼本次规则的来源项目**（防止拿训练集考自己过拟合），选择 ≥ 3 个独立测试项目生成旧规范（Baseline）与新规范（Candidate）全套产物（含 `wiki_sync.py export` 产出的三列左图右文稿）；
+   - 运行 `python3 scripts/ab_eval_harness.py prepare --pairs-json <pairs.json> --exp-dir <exp_dir> --exclude-train <来源项目>`，由加密随机数将新旧方案随机打乱命名为 `plan_A` / `plan_B`，真身密钥锁入 `.blind_key.json`。
+2. **程序化嵌套表格与 Confluence XML 严格解析校验（`verify-table-xml`）**：
+   - 运行 `python3 scripts/ab_eval_harness.py verify-table-xml <wiki-page.md...>` 与 `preflight_check.py`：
+   - 确保外层三列表格 **`0 破表`**、单元格内单行紧凑 HTML `<table>` 100% 平衡还原、且转 `Confluence 7.4+ Storage XML` 通过 Python `ElementTree` 严格闭合解析（`N/N 通过`）。
+3. **独立裁判 Subagent 盲评打分（`evals/judge-rubric.md`）**：
+   - 启动一个**全新的独立 Subagent**（严禁读取 `.blind_key.json`），仅输入 `blind_cases_for_judge.json` 与 `evals/judge-rubric.md`；
+   - 逐项目对 `plan_A` / `plan_B` 输出 **10 分制综合总分 `score_10`**（精确到小数点后两位）、**北极星指标 `estimated_wiki_rewrite_pct`（预估上 Wiki 前需手动删改重排的比例 %）** 以及额外抓出的微调瑕疵（如轻微过度表格化等）。
+4. **自动揭盲生成 `ab_validation_report.md`（`unblind`）**：
+   - 运行 `python3 scripts/ab_eval_harness.py unblind --exp-dir <exp_dir> --verdicts <judge_verdicts.json>`，自动揭盲输出胜负票数（如 `3:0 全票胜出`）、均分提升（如 `3.17 → 9.33 / 10`）、手动删改率下降（如 `67.0% → 10.7%`）及 XML 解析通过率证据报告。
 
 ### 第 3 步：人机协同拍板（`AskUserQuestion`）
 用大白话向 PM 简明呈现（控制在 10 行内）：

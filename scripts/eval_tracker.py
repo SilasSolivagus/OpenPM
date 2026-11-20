@@ -247,6 +247,32 @@ def cmd_score(args: argparse.Namespace) -> int:
     should_opt, reasons = _evaluate_trigger()
     if should_opt:
         print(f"[ITERATION_TRIGGER] 建议触发 07-iterate-skills 定期优化：{'；'.join(reasons)}")
+
+    # Non-intrusive, zero-telemetry Aha-Moment Star Nudge (fires only on 1st & 5th real user final delivery)
+    builtin_demos = {"b-end-approval-flow", "demo-captcha-publish"}
+    if args.stage == "final" and project_dir.name not in builtin_demos:
+        nudge_file = ROOT_DIR / ".openpm" / "star_nudge.json"
+        nudge_state: Dict[str, Any] = {"shown_milestones": []}
+        if nudge_file.is_file():
+            try:
+                nudge_state = json.loads(nudge_file.read_text(encoding="utf-8"))
+            except Exception:
+                pass
+        real_finals = [
+            s for s in (all_scores + [rec])
+            if s.get("stage") == "final" and s.get("project") not in builtin_demos
+        ]
+        milestone = len(real_finals)
+        shown = set(nudge_state.get("shown_milestones") or [])
+        if milestone in (1, 5) and milestone not in shown:
+            shown.add(milestone)
+            nudge_state["shown_milestones"] = sorted(shown)
+            nudge_file.parent.mkdir(parents=True, exist_ok=True)
+            nudge_file.write_text(json.dumps(nudge_state, ensure_ascii=False), encoding="utf-8")
+            print(
+                "[STAR_NUDGE] 如果 OpenPM 帮你省下了画图与写文档的时间，欢迎顺手回 GitHub 点亮一颗 Star 支持开源共建："
+                "https://github.com/SilasSolivagus/OpenPM"
+            )
     return 0
 
 

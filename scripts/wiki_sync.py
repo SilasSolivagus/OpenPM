@@ -634,14 +634,43 @@ def _xml_escape(text: Any) -> str:
     )
 
 
+SAFE_INLINE_TABLE_TAGS = {"table", "thead", "tbody", "tr", "th", "td", "strong", "b", "code", "br", "span"}
+
+
+def _sanitize_inline_table_xhtml(raw_table: str) -> Optional[str]:
+    """Return normalized well-formed XHTML if raw_table is a safe inline <table>, else None."""
+    normalized = re.sub(r"<br\s*/?>", "<br />", raw_table, flags=re.IGNORECASE)
+    try:
+        elem = ET.fromstring(normalized)
+    except ET.ParseError:
+        return None
+    for node in elem.iter():
+        if node.tag.lower() not in SAFE_INLINE_TABLE_TAGS:
+            return None
+        for attr_k in list(node.attrib.keys()):
+            if attr_k.lower().startswith("on") or attr_k.lower() == "style":
+                del node.attrib[attr_k]
+    return ET.tostring(elem, encoding="unicode", method="xml")
+
+
 def _format_inline_xhtml(text: str) -> str:
-    """Convert inline Markdown (`code`, **bold**) to strictly well-formed XHTML."""
-    tokens = re.split(r"(`[^`]+`|\*\*[^*]+\*\*)", text)
+    """Convert inline Markdown (`code`, **bold**, <br>, and well-formed single-line <table>) to strict XHTML."""
+    tokens = re.split(
+        r"(<table\b[^>]*>.*?</table>|<br\s*/?>|`[^`]+`|\*\*[^*]+\*\*)",
+        text,
+        flags=re.IGNORECASE,
+    )
     parts: List[str] = []
     for tok in tokens:
         if not tok:
             continue
-        if len(tok) >= 2 and tok.startswith("`") and tok.endswith("`"):
+        low = tok.lower()
+        if low.startswith("<table") and low.endswith("</table>"):
+            safe_tbl = _sanitize_inline_table_xhtml(tok)
+            parts.append(safe_tbl if safe_tbl is not None else _xml_escape(tok))
+        elif re.fullmatch(r"<br\s*/?>", tok, flags=re.IGNORECASE):
+            parts.append("<br />")
+        elif len(tok) >= 2 and tok.startswith("`") and tok.endswith("`"):
             parts.append(f"<code>{_xml_escape(tok[1:-1])}</code>")
         elif len(tok) >= 4 and tok.startswith("**") and tok.endswith("**"):
             parts.append(f"<strong>{_xml_escape(tok[2:-2])}</strong>")

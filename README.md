@@ -8,14 +8,17 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-d97706.svg)](./LICENSE)
 [![Zero Dependencies](https://img.shields.io/badge/Runtime-Python_3_Stdlib_Only-262626.svg)](#)
-[![Offline Single HTML](https://img.shields.io/badge/Output-Single_Offline_HTML-262626.svg)](#)
+[![Zero Telemetry](https://img.shields.io/badge/Privacy-100%25_Local_%26_Zero_Telemetry-262626.svg)](#)
 [![Obsidian Ready](https://img.shields.io/badge/Workspace-Obsidian_Ready-525252.svg)](#)
 [![Multi-Agent](https://img.shields.io/badge/Agents-Claude_Code_%7C_Cursor_%7C_Antigravity_%7C_WorkBuddy_%7C_dsh-171717.svg)](./AGENTS.md)
+
+> 💡 **项目缘起**：本项目源于核心合作者 **[@roxorlt](https://github.com/roxorlt)** 的灵感、交互创意及其开源项目 **[roxorlt/UEmaster](https://github.com/roxorlt/UEmaster)**。
 
 <p>
   <a href="https://silassolivagus.github.io/OpenPM/"><strong>🌐 免安装在线体验门户</strong></a> ·
   <a href="https://silassolivagus.github.io/OpenPM/projects/b-end-approval-flow/walkthrough.html"><strong>💼 B 端采购审批流 Demo</strong></a> ·
-  <a href="https://silassolivagus.github.io/OpenPM/projects/demo-captcha-publish/walkthrough.html"><strong>📱 C 端双端安全验证 Demo</strong></a>
+  <a href="https://silassolivagus.github.io/OpenPM/projects/demo-captcha-publish/walkthrough.html"><strong>📱 C 端双端安全验证 Demo</strong></a> ·
+  <a href="https://silassolivagus.github.io/OpenPM/guide.html"><strong>📖 新手交互使用指南</strong></a>
 </p>
 
 <img src="./assets/hero-demo.gif" alt="OpenPM 三栏联动与点选评审演示" width="100%" />
@@ -31,8 +34,8 @@
 | 真实痛点 | 传统 AI 对话写需求 | OpenPM 标准工作台 |
 | :--- | :--- | :--- |
 | **研发看不清重点** | 几千字纯文字盲盒，存量功能与本期改动混成一锅粥 | **95% 纯黑白灰底图 + 5% 琥珀橙 `#D97706` 增量标引**，1 秒看清本期改了哪几个节点和控件 |
-| **评审意见难对齐** | 会议室里口头指认“右上角第二个按钮下面那行字” | **开会点哪改哪**：点击界面控件自动插入 `@[提交采购申请按钮]` 胶囊，支持多行备注 |
-| **AI 改稿越改越乱** | 改一句话重写整份文档，旧细节悄悄丢失 | **局部精准回写**：导出 `.md / .jsonl` 评审单喂回 AI，只改被 `@` 点名的章节与组件 |
+| **评审意见难对齐** | 会议室里口头指认“右上角第二个按钮下面那行字”，多人意见打架 | **多人点选 `@[组件名]` + 冲突检测**：支持评审人署名、一键导入合并多人 `.jsonl/.md`，多人改同一按钮意见冲突自动提醒 PM 拍板 |
+| **AI 改稿越改越乱** | 改一句话重写整份文档，旧细节悄悄丢失 | **局部精准回写 + 双盲自进化**：只改被 `@` 点名的章节与组件；独立裁判双盲打分 + Confluence XML 零破表验证，持续压低手动改稿率 |
 | **交付脱节难归档** | 聊天记录散落在对话框，还要手工贴图搬去公司 Wiki | **单文件 HTML 离线双击即开**，定稿一句话自动组装「左图右文」推到**企业微信 / Confluence / 飞书 / Obsidian** |
 
 ---
@@ -117,8 +120,9 @@ flowchart LR
 > 2. **执行两步交互配置（详见 [AGENTS.md](./AGENTS.md)）**：
 >    - 先调用 `AskUserQuestion` 发起基础 5 问（公司/业务/产品/端形态/参考与 Wiki 平台）；
 >    - 若 PM 选择了企业微信（`wecom`）、`confluence` 或飞书（`feishu`），**必须立即开口向 PM 索要 `Bot ID` + `Secret`、`CONFLUENCE_PAT` 或 `FEISHU_APP_ID` + `FEISHU_APP_SECRET`，拿到后由你直接代写入本地 `.env.local`**，严禁甩锅让 PM 自己去手动改文件！（若 PM 选择暂不提供或跳过，则启用本地离线兜底）。
-> 3. **极简收口并进入首个需求（最多 8 行）**：
->    - 用两句话向 PM 交代清楚 **「东西在本地放哪（`projects/<产品名>/` 与 `.env.local`）、什么时候才会往远端传（仅定稿执行 `06-push-wiki` 时）」**；
+> 3. **极简收口、发《新手使用指南》并进入首个需求（最多 10 行）**：
+>    - 用两句话向 PM 交代清楚 **「东西在本地放哪（`projects/<产品名>/` 与 `.env.local`，100% 零后台遥测）、什么时候才会往远端传（仅定稿执行 `06-push-wiki` 时）」**；
+>    - 将本仓库内置的交互式新手手册 **[guide.html](./guide.html)**（及 [QUICKSTART.md](./QUICKSTART.md)）路径链接直接发给 PM 留存备查；
 >    - 立即开口问 PM：**“现在一切就绪！请告诉我你要做的第一个需求是什么？”**，直接进入 `01-pull-wiki` 或 `02-draft-prd` 环节。
 
 </details>
@@ -163,7 +167,8 @@ python3 scripts/version_manager.py rollback projects/b-end-approval-flow v1
 
 ---
 
-## 开源许可与致谢
+## 🌟 灵感缘起、核心合作者与开源许可
 
-- 本项目基于 [MIT License](./LICENSE) 开源（Copyright © 2026 SilasSolivagus）。
-- 本项目在流程图拓扑联动与契约思想上深受 [roxorlt/UEmaster](https://github.com/roxorlt/UEmaster) 启发，并在其基础上补全了 `spec-v2` 真相源、95% 灰阶 + 5% 琥珀橙增量标引、菱形分支可寻址、内联 `@组件` 胶囊回写、静态门禁校验、多端入口引导与跨公司 Wiki 交付闭环。
+- **灵感与创意致谢**：本项目源于核心合作者 **[@roxorlt](https://github.com/roxorlt)** 的灵感、交互创意及其开创性的开源项目 **[roxorlt/UEmaster](https://github.com/roxorlt/UEmaster)**。OpenPM 在其「正交拓扑流程图 + 线框原型实时联动走查」核心创意的基础上，进一步扩展构建了 `spec-v2` 契约体系、95% 纯黑白灰 + 5% 琥珀橙增量标引、多人 `@组件` 点选合并与冲突检测回写、跨公司 Wiki 交付适配器以及随机双盲 A/B 独立裁判自进化闭环，并由 [@SilasSolivagus](https://github.com/SilasSolivagus) 与 [@roxorlt](https://github.com/roxorlt) 共同协作演进。
+- **100% 零后台遥测承诺**：OpenPM 纯本地离线运行，不包含任何后台统计上报或追踪代码，全力守护产品经理的内部未公开业务数据安全。如果本项目对你的日常工作有帮助，欢迎在右上角点亮一颗 **Star ★** 支持开源共建！
+- **开源协议**：基于 [MIT License](./LICENSE) 开源（Copyright © 2026 SilasSolivagus & Contributors）。

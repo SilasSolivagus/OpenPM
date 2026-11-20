@@ -26,6 +26,8 @@ CORE_PATHS = [
     ".cursorrules",
     ".gitignore",
     "README.md",
+    "QUICKSTART.md",
+    "guide.html",
     "index.html",
     "scripts",
     "skills",
