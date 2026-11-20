@@ -17,6 +17,18 @@
   --spot-bg: rgba(217, 119, 6, 0.08);
   --spot-border: rgba(217, 119, 6, 0.45);
 }
+html[data-theme="dark"] {
+  --bg: #0b0b0d;
+  --card: #131316;
+  --border: #27272d;
+  --border-light: #232329;
+  --text: #fafafa;
+  --muted: #a1a1aa;
+  --accent: #fafafa;
+  --spot: #d97706;
+  --spot-bg: rgba(217, 119, 6, 0.14);
+  --spot-border: rgba(217, 119, 6, 0.5);
+}
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body {
   background-color: var(--bg);
@@ -103,7 +115,36 @@ code {
 [data-lang] { display: none; }
 html[data-active-lang="en"] [data-lang="en"] { display: revert; }
 html[data-active-lang="zh"] [data-lang="zh"] { display: revert; }
+.theme-btn {
+  display: inline-flex; align-items: center; gap: 5px; padding: 6px 11px;
+  border-radius: 8px; border: 1px solid var(--border); background: var(--card);
+  color: var(--text); font-size: 12.5px; font-weight: 600; cursor: pointer;
+}
+.theme-btn:hover { border-color: var(--spot); color: var(--spot); background: var(--spot-bg); }
+html[data-theme="dark"] body { background-image: radial-gradient(#242429 1px, transparent 1px); }
+html[data-theme="dark"] .pill { color: #fbbf24; background: rgba(217, 119, 6, 0.14); }
+html[data-theme="dark"] .lang-switch { border-color: #36363f; }
+html[data-theme="dark"] .lang-btn.active { background: #fafafa; color: #111114; }
+html[data-theme="dark"] .step-num,
+html[data-theme="dark"] .copy-btn:hover { background: var(--spot); color: #ffffff; border-color: var(--spot); }
+html[data-theme="dark"] .cmd-card,
+html[data-theme="dark"] .info-box { background: #18181c; }
+html[data-theme="dark"] .cmd-label { color: #fbbf24; }
+html[data-theme="dark"] code { background: #232329; color: #f4f4f5; }
 </style>
+<script>
+(function () {
+  var t = "light";
+  try {
+    var q = new URLSearchParams(window.location.search).get("theme");
+    var s = localStorage.getItem("openpm_theme");
+    if (q === "dark" || q === "light") t = q;
+    else if (s === "dark" || s === "light") t = s;
+    else if (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) t = "dark";
+  } catch (e) {}
+  document.documentElement.setAttribute("data-theme", t);
+})();
+</script>
 </head>
 <body>
 <div class="wrap">
@@ -122,6 +163,7 @@ html[data-active-lang="zh"] [data-lang="zh"] { display: revert; }
         <span data-lang="en">&#9733; Star on GitHub</span>
         <span data-lang="zh">&#9733; 去 GitHub 点颗 Star</span>
       </a>
+      <button type="button" class="theme-btn" id="theme-toggle-btn" onclick="toggleSiteTheme()"></button>
       <div class="lang-switch" role="group" aria-label="Language toggle">
         <button type="button" class="lang-btn" id="btn-en" onclick="setLang('en')">EN</button>
         <button type="button" class="lang-btn" id="btn-zh" onclick="setLang('zh')">中文</button>
@@ -320,7 +362,41 @@ function setLang(lang) {
   document.getElementById("btn-en").className = "lang-btn" + (active === "en" ? " active" : "");
   document.getElementById("btn-zh").className = "lang-btn" + (active === "zh" ? " active" : "");
   try { localStorage.setItem("openpm_lang", active); } catch (e) {}
+  syncThemeBtnLabel();
 }
+
+function syncThemeBtnLabel() {
+  var btn = document.getElementById("theme-toggle-btn");
+  if (!btn) return;
+  var isDark = document.documentElement.getAttribute("data-theme") === "dark";
+  var lang = document.documentElement.getAttribute("data-active-lang") || "en";
+  if (lang === "zh") {
+    btn.textContent = isDark ? "\u25d1 浅色" : "\u25d0 深色";
+  } else {
+    btn.textContent = isDark ? "\u25d1 Light" : "\u25d0 Dark";
+  }
+}
+
+function toggleSiteTheme() {
+  var cur = document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light";
+  var next = cur === "dark" ? "light" : "dark";
+  document.documentElement.setAttribute("data-theme", next);
+  try { localStorage.setItem("openpm_theme", next); } catch (e) {}
+  syncThemeBtnLabel();
+}
+
+try {
+  if (window.matchMedia) {
+    var mq = window.matchMedia("(prefers-color-scheme: dark)");
+    var onMq = function (ev) {
+      try { if (localStorage.getItem("openpm_theme")) return; } catch (e) {}
+      document.documentElement.setAttribute("data-theme", ev.matches ? "dark" : "light");
+      syncThemeBtnLabel();
+    };
+    if (mq.addEventListener) mq.addEventListener("change", onMq);
+    else if (mq.addListener) mq.addListener(onMq);
+  }
+} catch (e) {}
 
 function copyByLang(prefix, btn) {
   var lang = document.documentElement.getAttribute("data-active-lang") || "en";

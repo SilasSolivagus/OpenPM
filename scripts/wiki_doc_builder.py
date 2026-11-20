@@ -282,6 +282,8 @@ def auto_capture_screenshots(
             _eval(
                 """
                 (() => {
+                  if (window.setWbTheme) window.setWbTheme('light', false);
+                  document.body.classList.remove('wb-dark');
                   if (window.toggleDeltaHighlight) window.toggleDeltaHighlight(false);
                   const st = document.createElement('style');
                   st.id = '__openpm_wiki_grayscale_enforce';

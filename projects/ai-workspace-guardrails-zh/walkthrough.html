@@ -13,6 +13,13 @@
   --wt-spot: #d97706; --wt-spot-bg: rgba(217, 119, 6, 0.08); --wt-spot-border: rgba(217, 119, 6, 0.55);
   --wt-danger: #dc2626;
 }
+body.wb-dark {
+  --wt-bg: #111111; --wt-white: #1a1a1a;
+  --wt-border: #333333; --wt-border-light: #272727;
+  --wt-text: #ececec; --wt-dim: #a0a0a0; --wt-light: #757575;
+  --wt-fill: #242424; --wt-fill-dark: #303030; --wt-accent: #e4e4e4;
+  --wt-spot: #d97706; --wt-spot-bg: rgba(217, 119, 6, 0.15); --wt-spot-border: rgba(217, 119, 6, 0.65);
+}
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html, body {
   height: 100%; background: var(--wt-bg); color: var(--wt-text);
@@ -34,10 +41,13 @@ button.primary, button.primary:hover:not(:disabled) {
 /* Workbench Topbar */
 .wb-topbar {
   height: 50px; background: var(--wt-white); border-bottom: 1px solid var(--wt-border);
-  display: flex; align-items: center; padding: 0 16px; gap: 12px;
+  display: flex; align-items: center; padding: 0 12px; gap: 8px;
   position: relative; z-index: 200; user-select: none;
 }
-.fp-title { font-size: 15px; font-weight: 700; white-space: nowrap; }
+.fp-title {
+  font-size: 14.5px; font-weight: 700; white-space: nowrap;
+  min-width: 80px; max-width: 280px; overflow: hidden; text-overflow: ellipsis;
+}
 .seg-group {
   display: inline-flex; align-items: center; background: var(--wt-bg);
   border: 1px solid var(--wt-border); border-radius: 6px; padding: 2px; gap: 2px; flex-shrink: 0;
@@ -54,7 +64,7 @@ button.primary, button.primary:hover:not(:disabled) {
 .wb-gvar { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--wt-dim); white-space: nowrap; }
 .topbar-spacer { flex: 1; min-width: 8px; }
 #flow-node-ref {
-  font-size: 12px; color: var(--wt-dim); max-width: 240px;
+  font-size: 12px; color: var(--wt-dim); min-width: 0; max-width: 200px; flex-shrink: 1;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .fp-bar {
@@ -87,7 +97,10 @@ button.primary, button.primary:hover:not(:disabled) {
 .flow-panel { flex: 1; min-width: 0; height: 100%; position: relative; overflow: hidden; display: flex; flex-direction: row; background: var(--wt-white); }
 .flow-panel.fs .inspector-drawer { display: none !important; }
 .flow-svg {
-  flex: 1; min-width: 280px; height: 100%; overflow: hidden; background: var(--wt-white);
+  flex: 1; min-width: 280px; height: 100%; overflow: hidden;
+  background-color: var(--wt-white);
+  background-image: radial-gradient(#e6e6e6 1px, transparent 1px);
+  background-size: 22px 22px;
   cursor: grab; touch-action: none; user-select: none; position: relative;
 }
 .flow-svg:active { cursor: grabbing; }
@@ -257,7 +270,7 @@ body.show-delta .wt-delta-target {
   display: inline-block; font-size: 10.5px; font-weight: 600; color: var(--wt-text);
   background: var(--wt-fill); border-radius: 3px; padding: 0 5px; margin-right: 4px;
 }
-.memo-form { padding: 12px; border-bottom: 1px solid var(--wt-border-light); flex-shrink: 0; background: #fafafa; }
+.memo-form { padding: 12px; border-bottom: 1px solid var(--wt-border-light); flex-shrink: 0; background: var(--wt-bg); }
 .memo-ctx {
   display: block; font-size: 11px; color: var(--wt-dim); background: var(--wt-white);
   border: 1px solid var(--wt-border-light); border-radius: 4px; padding: 4px 8px;
@@ -273,7 +286,7 @@ body.show-delta .wt-delta-target {
 .memo-editor:empty::before { content: attr(data-placeholder); color: var(--wt-light); pointer-events: none; }
 .memo-form-hint {
   font-size: 11.5px; font-weight: 600; color: var(--wt-text);
-  background: #f0f0f0; border: 1px solid var(--wt-accent);
+  background: var(--wt-fill); border: 1px solid var(--wt-accent);
   border-radius: 4px; padding: 4px 8px; margin-bottom: 6px;
 }
 .memo-at-chip {
@@ -297,7 +310,7 @@ body.show-delta .wt-delta-target {
 }
 .memo-item-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 5px; }
 .memo-item-tag {
-  font-size: 10.5px; color: var(--wt-text); background: #f0f0f0; border: 1px solid var(--wt-accent);
+  font-size: 10.5px; color: var(--wt-text); background: var(--wt-fill); border: 1px solid var(--wt-accent);
   font-weight: 600; border-radius: 999px; padding: 1px 6px;
 }
 .memo-item-meta {
@@ -338,6 +351,42 @@ body.show-delta .wt-delta-target {
 .guard-modal h3 { font-size: 15px; margin-bottom: 8px; color: var(--wt-danger); }
 .guard-modal p { font-size: 12.5px; line-height: 1.6; color: var(--wt-text); margin-bottom: 14px; }
 .guard-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 8px; }
+
+/* Figma-Mode Dark Studio Shell (Dark Workbench + Crisp Paper-White Wireframe Artboards) */
+body.wb-dark .flow-svg {
+  background-color: #111111;
+  background-image: radial-gradient(#262626 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+body.wb-dark .flow-svg svg > rect:not(#sel-ring) { fill: transparent; }
+body.wb-dark .flow-svg svg marker path { fill: #9a9a9a; }
+body.wb-dark .flow-svg svg polyline { stroke: #787878; }
+body.wb-dark .flow-svg svg polyline.branch-active { stroke: #f2f2f2 !important; stroke-width: 2.8px !important; }
+body.wb-dark .flow-svg svg > text { fill: #b0b0b0; }
+body.wb-dark .flow-svg g[data-node] rect { fill: #1c1c1c; stroke: #626262; }
+body.wb-dark .flow-svg g[data-node] polygon { fill: #242424; stroke: #707070; }
+body.wb-dark .flow-svg g[data-node] text { fill: #f0f0f0; }
+body.wb-dark .flow-svg g[data-node] text + text { fill: #969696; }
+body.wb-dark .flow-svg g[data-node]:hover rect,
+body.wb-dark .flow-svg g[data-node]:hover polygon { stroke: #e4e4e4; stroke-width: 2.5px; }
+body.wb-dark.show-delta .flow-svg g.wt-delta-node rect,
+body.wb-dark.show-delta .flow-svg g.wt-delta-node polygon { stroke: var(--wt-spot); stroke-width: 2px; }
+body.wb-dark .flow-svg #sel-ring { fill: rgba(217, 119, 6, 0.14); stroke: #f59e0b; }
+body.wb-dark .frame-phone,
+body.wb-dark .frame-wide {
+  --wt-bg: #f7f7f7; --wt-white: #ffffff;
+  --wt-border: #c0c0c0; --wt-border-light: #e0e0e0;
+  --wt-text: #333333; --wt-dim: #888888; --wt-light: #aaaaaa;
+  --wt-fill: #e8e8e8; --wt-fill-dark: #d0d0d0; --wt-accent: #555555;
+  --wt-spot-bg: rgba(217, 119, 6, 0.08); --wt-spot-border: rgba(217, 119, 6, 0.55);
+  color: var(--wt-text);
+  border-color: #383838;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.48);
+}
+body.wb-dark .memo-item.invalid {
+  border-color: var(--wt-danger);
+  background: rgba(220, 38, 38, 0.14);
+}
 
 /* Neutral Wireframe Component Library (wt-* · 100% Grayscale) */
 .wt-stack { display: flex; flex-direction: column; gap: 10px; }
@@ -541,6 +590,7 @@ body.show-delta .wt-delta-target {
     <span class="zb" id="fs-btn" onclick="toggleFs()">全屏画布</span>
   </div>
   <button type="button" class="zb active" id="delta-toggle-btn" onclick="toggleDeltaHighlight()">改动高亮</button>
+  <button type="button" class="zb" id="theme-toggle-btn" onclick="toggleWbTheme()" title="切换深色 / 浅色工作台外壳（中间业务原型保持白底）">&#9680; 深色</button>
   <button type="button" class="memo-toggle" id="memo-toggle-btn" onclick="toggleMemo()">评审备注 (0)</button>
   <a class="wb-brand-link" href="https://github.com/SilasSolivagus/OpenPM" target="_blank" rel="noopener" title="由 OpenPM 开源工作台生成 · 点击前往 GitHub 点亮 Star">OpenPM &#9733;</a>
 </header>
@@ -2049,7 +2099,9 @@ var UI_TEXT = IS_EN ? {
   delBtn: "Delete",
   emptyHint: "Please write your comment after the @component chip.",
   copied: "Copied",
-  noMemosAlert: "No review comments to export."
+  noMemosAlert: "No review comments to export.",
+  themeDark: "◐ Dark",
+  themeLight: "◑ Light"
 } : {
   branchTag: "分支条件",
   localTag: "局部组件",
@@ -2068,10 +2120,55 @@ var UI_TEXT = IS_EN ? {
   delBtn: "删除",
   emptyHint: "请输入具体修改意见（仅选择 @组件 无法保存）",
   copied: "已复制",
-  noMemosAlert: "当前没有可导出的评审备注。"
+  noMemosAlert: "当前没有可导出的评审备注。",
+  themeDark: "◐ 深色",
+  themeLight: "◑ 浅色"
 };
 var MEMO_STORAGE_KEY = "wt_memos_" + PROJECT_SLUG;
 var REVIEWER_STORAGE_KEY = "wt_reviewer_name";
+var THEME_STORAGE_KEY = "openpm_theme";
+
+function detectInitialWbTheme() {
+  try {
+    var q = new URLSearchParams(window.location.search).get("theme");
+    if (q === "dark" || q === "light") return q;
+    var saved = localStorage.getItem(THEME_STORAGE_KEY);
+    if (saved === "dark" || saved === "light") return saved;
+  } catch (e) {}
+  try {
+    if (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) return "dark";
+  } catch (e) {}
+  return "light";
+}
+
+window.setWbTheme = function (mode, persist) {
+  var isDark = mode === "dark";
+  document.body.classList.toggle("wb-dark", isDark);
+  var btn = document.getElementById("theme-toggle-btn");
+  if (btn) {
+    btn.textContent = isDark ? UI_TEXT.themeLight : UI_TEXT.themeDark;
+  }
+  if (persist) {
+    try { localStorage.setItem(THEME_STORAGE_KEY, isDark ? "dark" : "light"); } catch (e) {}
+  }
+};
+
+window.toggleWbTheme = function () {
+  var next = document.body.classList.contains("wb-dark") ? "light" : "dark";
+  window.setWbTheme(next, true);
+};
+
+try {
+  if (window.matchMedia) {
+    var mq = window.matchMedia("(prefers-color-scheme: dark)");
+    var onMq = function (ev) {
+      try { if (localStorage.getItem(THEME_STORAGE_KEY)) return; } catch (e) {}
+      window.setWbTheme(ev.matches ? "dark" : "light", false);
+    };
+    if (mq.addEventListener) mq.addEventListener("change", onMq);
+    else if (mq.addListener) mq.addListener(onMq);
+  }
+} catch (e) {}
 
 function getReviewerName() {
   var el = document.getElementById("memo-reviewer-input");
@@ -3091,7 +3188,7 @@ function insertMentionChipInEditor(targetObj) {
   chip.setAttribute("data-comp-name", targetObj.comp_name || "");
   chip.setAttribute("data-fallback", targetObj.fallback_selector || "");
   if (targetObj.page) chip.setAttribute("data-page", targetObj.page);
-  chip.textContent = "@[" + (targetObj.comp_name || targetObj.comp_id || "组件") + "]";
+  chip.textContent = "@[" + (targetObj.comp_name || targetObj.comp_id || (IS_EN ? "Component" : "组件")) + "]";
   var spaceNode = document.createTextNode(" ");
 
   var sel = window.getSelection();
@@ -3724,7 +3821,7 @@ function buildMemosJsonl(items) {
 var pendingExportAction = null;
 function runWithExportGuard(actionType) {
   if (!memos.length) {
-    alert("当前没有可导出的评审备注。");
+    alert(UI_TEXT.noMemosAlert);
     return;
   }
   renderMemos();
@@ -3732,11 +3829,12 @@ function runWithExportGuard(actionType) {
   var validCount = memos.length - invalidCount;
   if (invalidCount > 0) {
     pendingExportAction = actionType;
-    document.getElementById("export-guard-msg").textContent =
-      "检测到 " + invalidCount + " 条备注的原型落点已失效（可能因页面或组件结构变更），共 " + validCount + " 条有效备注。请选择处理方式：";
+    document.getElementById("export-guard-msg").textContent = IS_EN
+      ? (invalidCount + " comment(s) point to stale anchors (" + validCount + " valid). Choose how to export:")
+      : ("检测到 " + invalidCount + " 条备注的原型落点已失效（可能因页面或组件结构变更），共 " + validCount + " 条有效备注。请选择处理方式：");
     var validBtn = document.getElementById("export-valid-only-btn");
     validBtn.disabled = validCount === 0;
-    validBtn.textContent = "仅导出有效备注 (" + validCount + " 条)";
+    validBtn.textContent = IS_EN ? ("Export Valid Only (" + validCount + ")") : ("仅导出有效备注 (" + validCount + " 条)");
     document.getElementById("export-guard-modal").classList.remove("hidden");
     return;
   }
@@ -3799,7 +3897,7 @@ function executeExport(actionType, items) {
     var done = function () {
       if (btn) {
         var orig = btn.textContent;
-        btn.textContent = "已复制";
+        btn.textContent = UI_TEXT.copied;
         setTimeout(function () { btn.textContent = orig; }, 1500);
       }
     };
@@ -3910,6 +4008,7 @@ function applyHashState() {
 window.addEventListener("hashchange", applyHashState);
 
 initDeltaHighlights();
+window.setWbTheme(detectInitialWbTheme(), false);
 initSpecMode();
 (function initReviewerInput() {
   var ri = document.getElementById("memo-reviewer-input");

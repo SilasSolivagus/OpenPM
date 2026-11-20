@@ -35,6 +35,7 @@ CORE_PATHS = [
     "QUICKSTART.md",
     "guide.html",
     "index.html",
+    "sponsor.html",
     "assets",
     "scripts",
     "skills",
