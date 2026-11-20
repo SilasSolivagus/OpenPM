@@ -1,33 +1,81 @@
+<div align="center">
+
 # OpenPM
 
-> **开源、跨公司、可落地的 AI 产品需求生产与交互评审闭环工作区**  
-> *From Wiki & Ideas to Living Specs, Wireframes, Flowcharts, and Click-to-Comment Walkthroughs.*
+**把一句话想法，变成「可点选评审、可精准回写、可推企微/Wiki」的活原型工作台**
 
-OpenPM 不是一组零散的写 PRD 提示词，而是一套**「契约驱动 + 确定性编译 + 所见即所得点选评审 + 局部精准回写」**的产品经理标准工作区。  
-兼容 **Antigravity（反重力）、Claude Code、Cursor、WorkBuddy、deepseek-harness、Codex** 等主流 AI Agent 客户端，同时支持用 **Obsidian** 直接打开管理。
+*开源、零第三方依赖、任何公司任何产品经理拿去即用的 AI 需求生产闭环*
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-d97706.svg)](./LICENSE)
+[![Zero Dependencies](https://img.shields.io/badge/Runtime-Python_3_Stdlib_Only-262626.svg)](#)
+[![Offline Single HTML](https://img.shields.io/badge/Output-Single_Offline_HTML-262626.svg)](#)
+[![Obsidian Ready](https://img.shields.io/badge/Workspace-Obsidian_Ready-525252.svg)](#)
+[![Multi-Agent](https://img.shields.io/badge/Agents-Claude_Code_%7C_Cursor_%7C_Antigravity_%7C_WorkBuddy_%7C_dsh-171717.svg)](./AGENTS.md)
+
+<p>
+  <a href="https://silassolivagus.github.io/OpenPM/"><strong>🌐 免安装在线体验门户</strong></a> ·
+  <a href="https://silassolivagus.github.io/OpenPM/projects/b-end-approval-flow/walkthrough.html"><strong>💼 B 端采购审批流 Demo</strong></a> ·
+  <a href="https://silassolivagus.github.io/OpenPM/projects/demo-captcha-publish/walkthrough.html"><strong>📱 C 端双端安全验证 Demo</strong></a>
+</p>
+
+<img src="./assets/hero-demo.gif" alt="OpenPM 三栏联动与点选评审演示" width="100%" />
+
+</div>
 
 ---
 
-## ⚡ 30 秒一键安装与启动（复制这一句发给任意 AI Agent 即可）
+## 为什么不用普通提示词写 PRD？
 
-无论你用的是 **`dsh`（deepseek-harness）、Antigravity（反重力）、Claude Code、Cursor 还是 WorkBuddy**，直接复制下面这一句话发给 Agent：
+大多数人用 AI 写需求，卡死在**「生成长篇废话 → 没法对着界面开评审会 → 让 AI 改一处结果把别的页面全改崩」**。OpenPM 用工程化契约彻底解决这 4 个痛点：
+
+| 真实痛点 | 传统 AI 对话写需求 | OpenPM 标准工作台 |
+| :--- | :--- | :--- |
+| **研发看不清重点** | 几千字纯文字盲盒，存量功能与本期改动混成一锅粥 | **95% 纯黑白灰底图 + 5% 琥珀橙 `#D97706` 增量标引**，1 秒看清本期改了哪几个节点和控件 |
+| **评审意见难对齐** | 会议室里口头指认“右上角第二个按钮下面那行字” | **开会点哪改哪**：点击界面控件自动插入 `@[提交采购申请按钮]` 胶囊，支持多行备注 |
+| **AI 改稿越改越乱** | 改一句话重写整份文档，旧细节悄悄丢失 | **局部精准回写**：导出 `.md / .jsonl` 评审单喂回 AI，只改被 `@` 点名的章节与组件 |
+| **交付脱节难归档** | 聊天记录散落在对话框，还要手工贴图搬去公司 Wiki | **单文件 HTML 离线双击即开**，定稿一句话自动组装「左图右文」推到**企业微信 / Confluence / 飞书 / Obsidian** |
+
+---
+
+## ⚡ 30 秒极速上手（小白零门槛）
+
+### 第 1 步：复制这一句话发给你的 AI 工具
+
+无论你用的是 **Antigravity（反重力）、Claude Code、Cursor、WorkBuddy 还是 `dsh`（deepseek-harness）**，不需要敲任何命令行，直接复制下面这句话发给它：
 
 ```text
 帮我安装并启动 https://github.com/SilasSolivagus/OpenPM
 ```
 
+> AI 会自动完成下载、问你 5 个基础业务背景问题（1 分钟答完，不答也能跑），帮你把密钥存进本机隔离文件，然后直接问你要做什么需求。
+
+### 第 2 步：装好之后，日常只需要会说这 4 句大白话
+
+| 你在什么阶段 | 直接对 AI 说这句大白话 | AI 在后台替你干什么 |
+| :--- | :--- | :--- |
+| **1. 做全新功能** | *“我要做一个【大文件上传断点续传】需求，先帮我出 PRD 和交互原型”* | 写结构化 `prd.md` → 画纯黑白灰原型 → 画拓扑流程图 → 自动做门禁体检 → 给你单文件 `walkthrough.html` |
+| **2. 改线上老功能** | *“这是旧版 Wiki 链接/文档，本期要增加【超 5 万加签财务复核】”* | 先拉取旧文档做差异对比 → 用**琥珀橙 `#D97706`** 精准标出新增分支与改动控件 |
+| **3. 开完评审会改稿** | *“这是刚才评审导出的 `review-feedback.md`，按里面的 `@组件` 备注改一下”* | 精准定位被 `@` 的控件与对应 PRD 段落做局部微调，绝不乱改其他页面，并自动存历史快照 |
+| **4. 定稿发团队群/Wiki** | *“定稿了，帮我推到企业微信 / Confluence / 飞书”* | 自动打包「左图右文」对照表 + 交互 HTML 压缩包上传目标平台，并在群里发通知 |
+
 ---
 
-## 🤖 Agent 自动安装与启动规范（For AI Agents）
+## ✨ 三大核心交互亮点
 
-> **注意（写给读取本 README 的 AI Agent）**：当用户向你发送上述仓库链接或要求安装/启动 `OpenPM` 时，请**静默完成安装并严格按以下流程交互，严禁输出冗长的工程安装报告、PID 或自动启动无关示例项目的本地服务**：
-> 1. **静默克隆与挂载**：克隆本仓库，复制 `templates/.env.local.example` 为 `.env.local`（若不存在）；若在 `dsh` 环境，将 `skills/01-*` ~ `07-*` 软链至 `~/.dsh/skills/`。
-> 2. **执行两步交互配置（见 [AGENTS.md](./AGENTS.md)）**：
->    - 先调用 `AskUserQuestion` 发起基础 5 问（公司/业务/产品/端形态/参考与 Wiki 平台）；
->    - 若 PM 选择了企业微信（`wecom`）、`confluence` 或飞书（`feishu`），**必须立即开口向 PM 索要 `Bot ID` + `Secret`、`CONFLUENCE_PAT` 或 `FEISHU_APP_ID` + `FEISHU_APP_SECRET`，拿到后由你直接代写入本地 `.env.local`**，严禁甩锅让 PM 自己去手动改文件！（若 PM 选择暂不提供或跳过，则启用本地离线兜底）。
-> 3. **极简收口并进入首个需求（最多 8 行）**：
->    - 用两句话向 PM 交代清楚 **「东西在本地放哪（`projects/<产品名>/` 与 `.env.local`）、什么时候才会往远端传（仅定稿执行 `06-push-wiki` 时）」**；
->    - 立即开口问 PM：**“现在一切就绪！请告诉我你要做的第一个需求是什么？”**，直接进入 `01-pull-wiki` 或 `02-draft-prd` 环节。
+### 1. 95% 纯黑白灰骨架 + 5% 琥珀橙增量高亮，三栏实时联动
+左侧拓扑流程图（支持菱形条件分支点击切换）、中间高保真纯灰阶线框原型、右侧分支条件与节点规则实时同步；右上角一键开关**「改动高亮」**，存量背景退后，本期新增/修改的节点与控件一目了然：
+
+![三栏联动与琥珀橙增量标引](./assets/shot-flow-delta.png)
+
+### 2. 单页改点模式：需求规则卡与界面控件贝塞尔曲线直连
+切换到顶部**「单页改点」**视图，点击右侧任意需求改点卡片，画布自动切到对应页面并用琥珀橙虚线直连目标输入框或按钮，研发再也不用猜“这条规则对应页面哪个字段”：
+
+![单页改点贝塞尔曲线直连](./assets/shot-spec-tether.png)
+
+### 3. 原型点选 `@[组件名]` 胶囊批注，零损耗回写 AI
+点击**「+ 记备注」**后直接点选原型上的任意按钮、输入框或弹窗，自动向输入框插入 `@[组件名]` 胶囊（`Backspace` 一键整颗删除，支持换行分条与多组件同时 `@`），评审结束一键导出 `.md` 或 `.jsonl` 喂回 AI：
+
+![内联组件胶囊点选批注](./assets/shot-inline-mention.png)
 
 ---
 
@@ -35,45 +83,50 @@ OpenPM 不是一组零散的写 PRD 提示词，而是一套**「契约驱动 + 
 
 ```mermaid
 flowchart LR
-  W1["01 Pull Wiki<br/>history/ 基线拉取对比"] --> P["02 Draft PRD<br/>结构化 prd.md"]
-  P --> W2["03 Wireframe<br/>pages/*.html 纯灰阶原型"]
-  P --> F["04 Flow Canvas<br/>flow.svg + spec.json 节点"]
+  W1["01 Pull Wiki<br/>旧文档基线拉取对比"] --> P["02 Draft PRD<br/>结构化 prd.md"]
+  P --> W2["03 Wireframe<br/>纯黑白灰原型 pages/*.html"]
+  P --> F["04 Flow Canvas<br/>拓扑流程图 flow.svg"]
   W2 --> C["05 Build Walkthrough<br/>确定性编译 walkthrough.html"]
   F --> C
-  C --> G{"Preflight Gate<br/>spec.json + HTML 门禁"}
-  G -- 通过 --> R["团队离线评审<br/>输入框内联 @组件 批注"]
+  C --> G{"Preflight Gate<br/>静态门禁体检"}
+  G -- 零报错通过 --> R["团队离线点选评审<br/>内联 @组件名 胶囊批注"]
   R -- 导出 .md / .jsonl --> P
-  P --> V["Version Manager<br/>快照 · Diff · 回滚"]
-  V --> W3["06 Push Wiki<br/>图文对照表 + 交互附件交付"]
-  R -. 双盲评分 & Taste 沉淀 .-> I["07 Iterate Skills<br/>回归测试 & 自我迭代"]
+  P --> V["Version Manager<br/>快照 · Diff · 一键回滚"]
+  V --> W3["06 Push Wiki<br/>企微 / Confluence / 飞书 / Obsidian"]
+  R -. 双盲评分 & 品味沉淀 .-> I["07 Iterate Skills<br/>越用越懂你的业务"]
 ```
 
 ---
 
-## 核心设计原则
+<details>
+<summary><strong>🤖 Agent 自动安装与启动规范（写给 AI Agent 读取，人类用户无需展开）</strong></summary>
 
-- **95% 纯黑白灰底图 + 5% 唯一琥珀橙 `#D97706` 工程标引色（学骨架不学配色）**：
-  - 即使提供了公司参考截图或规范，也**只学习页面间距、圆角、导航形态、卡片/弹窗结构与文案习惯**（如需注入骨架微调，仅限 `--skeleton-css` 调整圆角/间距/字号）；
-  - 所有存量背景与业务组件（含主次按钮、弹窗、驳回/错误态）一律 **100% 纯黑白灰阶 `wt-*`**，严禁品牌蓝、成功绿、危险红等业务语义色；
-  - 全系统唯一工程标引色 **琥珀橙 `#D97706`** 严格仅限客观的 **① 本期改动增量（Delta：`SPEC_CARDS` 锚点组件与 `change: "new"|"modified"` 流程节点）** 与 **② 当前走查/点选焦点（Focus）**，让团队一眼看清“改了哪、正在看哪”。
-- **极简内联 `@[组件名]` 评审**：点击「+ 记备注」自动激活原型点选；点击组件直接在输入框内插入可用 `Backspace` 退格键一键删除的 `@[组件名]` 胶囊，一条备注支持 `@` 多个组件；加载与导出双时机回查 `DOC_VERSION_HASH` 与 `targets` 落点，失效当场拦截。
-- **跨公司 Wiki 适配器 & `.env.local` 安全隔离**：
-  - **企业微信（`wecom`）**：支持智能机器人 API 模式（`Bot ID` + `Secret`，免域名直通文档/微盘/消息）及群机器人 Webhook；
-  - **Confluence（`confluence`）& 飞书（`feishu`）**：通过 `scripts/wiki_sync.py` 统一交付「左图右文」对照表、页面截图与 `walkthrough.html.zip`，并回写 `_manifest.json` 防多人覆盖；
-  - **纯本地 / Obsidian（`local-obsidian`）**：零配置即开即用；所有密钥统一由 Agent 代写入 `.env.local`（已被 `.gitignore` 隔离）。
-- **双盲 A/B 评分与 Taste 沉淀**：`07-iterate-skills` 通过历史样本双盲对比、独立裁判打分及「上 Wiki 前手动改写率」度量，越用越懂你的业务与品味。
+<br/>
 
----
+> **注意（写给读取本 README 的 AI Agent）**：当用户向你发送上述仓库链接或要求安装/启动 `OpenPM` 时，请**静默完成安装并严格按以下流程交互，严禁输出冗长的工程安装报告、PID 或自动启动无关示例项目的本地服务**：
+> 1. **静默克隆与挂载**：克隆本仓库，复制 `templates/.env.local.example` 为 `.env.local`（若不存在）；若在 `dsh` 环境，将 `skills/01-*` ~ `07-*` 软链至 `~/.dsh/skills/`。
+> 2. **执行两步交互配置（详见 [AGENTS.md](./AGENTS.md)）**：
+>    - 先调用 `AskUserQuestion` 发起基础 5 问（公司/业务/产品/端形态/参考与 Wiki 平台）；
+>    - 若 PM 选择了企业微信（`wecom`）、`confluence` 或飞书（`feishu`），**必须立即开口向 PM 索要 `Bot ID` + `Secret`、`CONFLUENCE_PAT` 或 `FEISHU_APP_ID` + `FEISHU_APP_SECRET`，拿到后由你直接代写入本地 `.env.local`**，严禁甩锅让 PM 自己去手动改文件！（若 PM 选择暂不提供或跳过，则启用本地离线兜底）。
+> 3. **极简收口并进入首个需求（最多 8 行）**：
+>    - 用两句话向 PM 交代清楚 **「东西在本地放哪（`projects/<产品名>/` 与 `.env.local`）、什么时候才会往远端传（仅定稿执行 `06-push-wiki` 时）」**；
+>    - 立即开口问 PM：**“现在一切就绪！请告诉我你要做的第一个需求是什么？”**，直接进入 `01-pull-wiki` 或 `02-draft-prd` 环节。
 
-## 内置示例（双击即可在浏览器体验）
+</details>
 
-- **B 端企业管理后台（纯黑白灰 `wt-*` 底图 + `#D97706` 增量标引）**：`projects/b-end-approval-flow/walkthrough.html`
-- **C 端多状态强交互（App/PC 双端 + 随机题型）**：`templates/walkthrough-sample-v2.html`
+<details>
+<summary><strong>🛠️ 底层目录结构与命令行工具参考（通常由 AI 自动调用，无需手敲）</strong></summary>
 
----
+<br/>
 
-## 常用命令行工具（通常由 Agent 自动调用）
+### 仓库核心目录
+- `AGENTS.md` / `CLAUDE.md` / `WORKBUDDY.md` / `.cursorrules`：跨客户端统一智能体行为与交互规范
+- `skills/01-*` ~ `07-*`：从拉取旧文档、写 PRD、画灰阶线框、画拓扑图、编译走查台到推送 Wiki 与自我迭代的 6+1 标准技能包
+- `specs/`：`spec-v2` JSON Schema、组件锚点契约、正交流程图规范与静态门禁清单
+- `adapters/`：企业微信（`wecom`）、Confluence（`confluence`）、飞书（`feishu`）与本地 Obsidian（`local-obsidian`）交付适配器
+- `projects/`：各产品需求独立工作区（内置 `b-end-approval-flow` 与 `demo-captcha-publish` 两个完整可运行样板）
 
+### 常用脚本命令
 ```bash
 # 1. 交付前静态门禁校验（先校验 spec.json，编译后再校验 walkthrough.html）
 python3 scripts/preflight_check.py projects/b-end-approval-flow/spec.json
@@ -97,9 +150,11 @@ python3 scripts/version_manager.py diff projects/b-end-approval-flow v1 v2
 python3 scripts/version_manager.py rollback projects/b-end-approval-flow v1
 ```
 
+</details>
+
 ---
 
 ## 开源许可与致谢
 
-- 本项目基于 [MIT License](./LICENSE) 开源（Copyright (c) 2026 SilasSolivagus）。
-- 本项目在流程图拓扑联动与契约思想上深受 [roxorlt/UEmaster](https://github.com/roxorlt/UEmaster) 启发，并在其基础上补全了 `spec-v2` 真相源、菱形可寻址、内联 `@组件` 点选回写、门禁校验、多端入口引导与跨公司可插拔工作区闭环。
+- 本项目基于 [MIT License](./LICENSE) 开源（Copyright © 2026 SilasSolivagus）。
+- 本项目在流程图拓扑联动与契约思想上深受 [roxorlt/UEmaster](https://github.com/roxorlt/UEmaster) 启发，并在其基础上补全了 `spec-v2` 真相源、95% 灰阶 + 5% 琥珀橙增量标引、菱形分支可寻址、内联 `@组件` 胶囊回写、静态门禁校验、多端入口引导与跨公司 Wiki 交付闭环。
