@@ -20,10 +20,14 @@ OpenPM 不是一组零散的写 PRD 提示词，而是一套**「契约驱动 + 
 
 ## 🤖 Agent 自动安装与启动规范（For AI Agents）
 
-> **注意（写给读取本 README 的 AI Agent）**：当用户向你发送上述仓库链接或要求安装/启动 `OpenPM` 时，请**自动连续完成以下 3 步，无需用户额外指令**：
-> 1. **克隆工作区**：若当前不在 `OpenPM` 目录内，执行 `git clone https://github.com/SilasSolivagus/OpenPM.git` 并进入该目录；同时将 `templates/.env.local.example` 复制为 `.env.local`（若尚未存在）。
-> 2. **挂载 Skills**：若当前运行在 `dsh`（deepseek-harness）环境，将 `skills/01-*` ~ `07-*` 复制或软链至 `~/.dsh/skills/`；其他客户端按各自工作区规则直接加载本仓库。
-> 3. **立即发起首次启动 5 问（Onboarding Gate）**：安装完成后**不要停留在“安装成功”**，必须立即读取根目录 [AGENTS.md](./AGENTS.md)，调用 `AskUserQuestion`（或结构化提问）向 PM 发起**初始化 5 问**（① 公司/团队 ② 业务领域 ③ 产品名称 ④ 覆盖端形态 ⑤ 页面参考结构 & Wiki 平台）以及对应 Wiki 的最小凭证清单（企业微信智能机器人 `Bot ID`/`Secret`、Confluence `PAT` 或纯本地 `local-obsidian`）。若 PM 选择跳过或不回答，立即启用纯黑白灰阶 `wt-*` + `local-obsidian` 默认兜底并继续。
+> **注意（写给读取本 README 的 AI Agent）**：当用户向你发送上述仓库链接或要求安装/启动 `OpenPM` 时，请**静默完成安装并严格按以下流程交互，严禁输出冗长的工程安装报告、PID 或自动启动无关示例项目的本地服务**：
+> 1. **静默克隆与挂载**：克隆本仓库，复制 `templates/.env.local.example` 为 `.env.local`（若不存在）；若在 `dsh` 环境，将 `skills/01-*` ~ `07-*` 软链至 `~/.dsh/skills/`。
+> 2. **执行两步交互配置（见 [AGENTS.md](./AGENTS.md)）**：
+>    - 先调用 `AskUserQuestion` 发起基础 5 问（公司/业务/产品/端形态/参考与 Wiki 平台）；
+>    - 若 PM 选择了企业微信（`wecom`）或 `confluence`，**必须立即开口向 PM 索要 `Bot ID` + `Secret`（或 `CONFLUENCE_PAT`），拿到后由你直接代写入本地 `.env.local`**，严禁甩锅让 PM 自己去手动改文件！（若 PM 选择暂不提供或跳过，则启用本地离线兜底）。
+> 3. **极简收口并进入首个需求（最多 8 行）**：
+>    - 用两句话向 PM 交代清楚 **「东西在本地放哪（`projects/<产品名>/` 与 `.env.local`）、什么时候才会往远端传（仅定稿执行 `06-push-wiki` 时）」**；
+>    - 立即开口问 PM：**“现在一切就绪！请告诉我你要做的第一个需求是什么？”**，直接进入 `01-pull-wiki` 或 `02-draft-prd` 环节。
 
 ---
 

@@ -1,5 +1,5 @@
 ---
-name: iterate-skills
+name: 07-iterate-skills
 description: 运行回归测试集，通过双盲 A/B 对比实验与独立裁判打分量化 Skill 改进收益，并通过 AskUserQuestion 沉淀个人 Taste 与公司偏好数据集。
 ---
 

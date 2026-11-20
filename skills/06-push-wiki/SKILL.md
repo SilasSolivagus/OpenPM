@@ -1,5 +1,5 @@
 ---
-name: push-wiki
+name: 06-push-wiki
 description: 将定稿的图文对照 PRD、原型截图及可交互 walkthrough.html.zip 交付到目标 Wiki（Confluence / 企业微信 / 飞书 / 本地 Obsidian），并维护防覆盖 _manifest.json 与版本快照。
 ---
 
