@@ -19,7 +19,8 @@
   <a href="https://silassolivagus.github.io/OpenPM/"><strong>🌐 免安装在线体验门户</strong></a> ·
   <a href="https://silassolivagus.github.io/OpenPM/projects/ai-workspace-guardrails-zh/walkthrough.html"><strong>🔥 旗舰中文 Demo（AI 团队额度风控工作台）</strong></a> ·
   <a href="https://silassolivagus.github.io/OpenPM/projects/ai-workspace-guardrails/walkthrough.html"><strong>🌍 Flagship EN Demo（AI Workspace Spend Guardrails）</strong></a> ·
-  <a href="https://silassolivagus.github.io/OpenPM/guide.html"><strong>📖 新手速查手册</strong></a>
+  <a href="https://silassolivagus.github.io/OpenPM/guide.html"><strong>📖 新手速查手册</strong></a> ·
+  <a href="https://silassolivagus.github.io/OpenPM/sponsor.html"><strong>☕ 赞赏支持</strong></a>
 </p>
 
 </div>
@@ -180,6 +181,18 @@ python3 scripts/upgrade_openpm.py
 ```
 
 </details>
+
+---
+
+## ☕ 赞赏支持（Buy Silas an Iced Coffee）
+
+OpenPM 完全基于 MIT 协议免费开源、零外部依赖、零后台遥测。如果它帮你省下了画原型、对齐评审与整理 Wiki 的繁琐时间，欢迎扫码请作者喝杯冰美式，支持持续迭代：
+
+<div align="center">
+  <a href="https://silassolivagus.github.io/OpenPM/sponsor.html">
+    <img src="./assets/sponsor-card.png" alt="赞赏支持 OpenPM · 请作者喝杯冰美式" width="760" />
+  </a>
+</div>
 
 ---
 

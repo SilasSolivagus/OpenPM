@@ -1,0 +1,19 @@
+name: Feature Request / 功能建议
+description: Suggest an improvement to OpenPM skills, UI components, or Wiki adapters (提出新技能、原型组件或平台适配建议)
+title: "[Feat]: "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: scenario
+    attributes:
+      label: PM Workflow Pain Point / 遇到的产品工作流痛点
+      placeholder: What manual step or review friction are you trying to eliminate? (你在写 PRD、画原型或评审交付时遇到了什么卡点？)
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed Solution / 期望效果
+      placeholder: How should OpenPM handle this?
+    validations:
+      required: true

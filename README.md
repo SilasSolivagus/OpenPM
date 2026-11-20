@@ -19,7 +19,8 @@
   <a href="https://silassolivagus.github.io/OpenPM/"><strong>Live Playground Portal</strong></a> ·
   <a href="https://silassolivagus.github.io/OpenPM/projects/ai-workspace-guardrails/walkthrough.html"><strong>Flagship Demo (EN)</strong></a> ·
   <a href="https://silassolivagus.github.io/OpenPM/projects/ai-workspace-guardrails-zh/walkthrough.html"><strong>Flagship Demo (ZH)</strong></a> ·
-  <a href="https://silassolivagus.github.io/OpenPM/guide.html"><strong>Quickstart Manual</strong></a>
+  <a href="https://silassolivagus.github.io/OpenPM/guide.html"><strong>Quickstart Manual</strong></a> ·
+  <a href="https://silassolivagus.github.io/OpenPM/sponsor.html"><strong>Sponsor</strong></a>
 </p>
 
 </div>
@@ -180,6 +181,18 @@ python3 scripts/upgrade_openpm.py
 ```
 
 </details>
+
+---
+
+## Sponsor OpenPM
+
+If OpenPM saves your team hours of wireframe rework, noisy spec reviews, and manual Wiki formatting, consider buying the author an iced coffee to fuel ongoing open-source releases:
+
+<div align="center">
+  <a href="https://silassolivagus.github.io/OpenPM/sponsor.html">
+    <img src="./assets/sponsor-card.png" alt="Sponsor OpenPM - Buy Silas an Iced Coffee" width="760" />
+  </a>
+</div>
 
 ---
 

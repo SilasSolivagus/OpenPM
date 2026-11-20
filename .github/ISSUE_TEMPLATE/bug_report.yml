@@ -1,0 +1,52 @@
+name: Bug Report / 问题反馈
+description: Report a compiler, preflight gate, walkthrough UI, or Wiki export issue (提交编译器、门禁校验、走查工作台或 Wiki 导出问题)
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting an issue! Feel free to write in **English** or **中文**.
+  - type: dropdown
+    id: agent_client
+    attributes:
+      label: AI Agent Client / 使用的客户端
+      options:
+        - Claude Code
+        - Codex
+        - Cursor
+        - Antigravity
+        - WorkBuddy
+        - CLI / Other
+    validations:
+      required: true
+  - type: dropdown
+    id: stage
+    attributes:
+      label: Pipeline Stage / 所属环节
+      options:
+        - "00 Onboarding & .env.local"
+        - "01 Pull Wiki"
+        - "02 Draft PRD"
+        - "03 Grayscale Wireframe Prototype"
+        - "04 Top-Down Flow SVG"
+        - "05 Walkthrough Compiler & Preflight Gate"
+        - "06 Push / Export Wiki (WeCom / Confluence / Feishu)"
+        - "07 Evals & Self-Iteration"
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: What happened? / 问题描述
+      placeholder: Describe what happened vs. what you expected (附上报错信息或截图更佳)...
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to Reproduce / 复现步骤
+      placeholder: |
+        1. Run `python3 scripts/...`
+        2. Open `walkthrough.html` / `wiki-page.html`
+        3. See error...

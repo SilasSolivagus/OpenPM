@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Live Interactive Playground / 在线体验游乐场
+    url: https://silassolivagus.github.io/OpenPM/
+    about: Preview the English & Chinese flagship walkthrough workbenches directly in your browser.
+  - name: Quickstart Manual / 新手速查指南
+    url: https://silassolivagus.github.io/OpenPM/guide.html
+    about: Copy-pasteable daily prompts for Claude Code, Cursor, Codex, and Antigravity.
