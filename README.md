@@ -17,8 +17,8 @@
 
 <p>
   <a href="https://silassolivagus.github.io/OpenPM/"><strong>Live Playground Portal</strong></a> ·
-  <a href="https://silassolivagus.github.io/OpenPM/projects/ai-workspace-guardrails/walkthrough.html"><strong>Flagship EN Demo (AI Workspace Spend Guardrails)</strong></a> ·
-  <a href="https://silassolivagus.github.io/OpenPM/projects/ai-workspace-guardrails-zh/walkthrough.html"><strong>Flagship ZH Demo (AI 团队额度风控工作台)</strong></a> ·
+  <a href="https://silassolivagus.github.io/OpenPM/projects/ai-workspace-guardrails/walkthrough.html"><strong>Flagship Demo (EN)</strong></a> ·
+  <a href="https://silassolivagus.github.io/OpenPM/projects/ai-workspace-guardrails-zh/walkthrough.html"><strong>Flagship Demo (ZH)</strong></a> ·
   <a href="https://silassolivagus.github.io/OpenPM/guide.html"><strong>Quickstart Manual</strong></a>
 </p>
 

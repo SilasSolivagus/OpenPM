@@ -1833,12 +1833,12 @@ body.show-delta .wt-delta-target {
 
 <div class="guard-mask hidden" id="export-guard-modal">
   <div class="guard-modal">
-    <h3>存在落点已失效的备注</h3>
+    <h3>Stale Component Anchors Detected</h3>
     <p id="export-guard-msg"></p>
     <div class="guard-actions">
-      <button type="button" onclick="closeExportGuard()">取消（去处理）</button>
-      <button type="button" id="export-all-with-invalid-btn" onclick="confirmExportAllWithInvalid()">仍导出全部（含失效标记）</button>
-      <button type="button" class="primary" id="export-valid-only-btn" onclick="confirmExportValidOnly()">仅导出有效备注</button>
+      <button type="button" onclick="closeExportGuard()">Cancel (Review)</button>
+      <button type="button" id="export-all-with-invalid-btn" onclick="confirmExportAllWithInvalid()">Export All (Mark Stale)</button>
+      <button type="button" class="primary" id="export-valid-only-btn" onclick="confirmExportValidOnly()">Export Valid Only</button>
     </div>
   </div>
 </div>
@@ -2957,7 +2957,7 @@ function insertMentionChipInEditor(targetObj) {
   chip.setAttribute("data-comp-name", targetObj.comp_name || "");
   chip.setAttribute("data-fallback", targetObj.fallback_selector || "");
   if (targetObj.page) chip.setAttribute("data-page", targetObj.page);
-  chip.textContent = "@[" + (targetObj.comp_name || targetObj.comp_id || "组件") + "]";
+  chip.textContent = "@[" + (targetObj.comp_name || targetObj.comp_id || (IS_EN ? "Component" : "组件")) + "]";
   var spaceNode = document.createTextNode(" ");
 
   var sel = window.getSelection();
@@ -3590,7 +3590,7 @@ function buildMemosJsonl(items) {
 var pendingExportAction = null;
 function runWithExportGuard(actionType) {
   if (!memos.length) {
-    alert("当前没有可导出的评审备注。");
+    alert(UI_TEXT.noMemosAlert);
     return;
   }
   renderMemos();
@@ -3598,11 +3598,12 @@ function runWithExportGuard(actionType) {
   var validCount = memos.length - invalidCount;
   if (invalidCount > 0) {
     pendingExportAction = actionType;
-    document.getElementById("export-guard-msg").textContent =
-      "检测到 " + invalidCount + " 条备注的原型落点已失效（可能因页面或组件结构变更），共 " + validCount + " 条有效备注。请选择处理方式：";
+    document.getElementById("export-guard-msg").textContent = IS_EN
+      ? (invalidCount + " comment(s) point to stale anchors (" + validCount + " valid). Choose how to export:")
+      : ("检测到 " + invalidCount + " 条备注的原型落点已失效（可能因页面或组件结构变更），共 " + validCount + " 条有效备注。请选择处理方式：");
     var validBtn = document.getElementById("export-valid-only-btn");
     validBtn.disabled = validCount === 0;
-    validBtn.textContent = "仅导出有效备注 (" + validCount + " 条)";
+    validBtn.textContent = IS_EN ? ("Export Valid Only (" + validCount + ")") : ("仅导出有效备注 (" + validCount + " 条)");
     document.getElementById("export-guard-modal").classList.remove("hidden");
     return;
   }
@@ -3665,7 +3666,7 @@ function executeExport(actionType, items) {
     var done = function () {
       if (btn) {
         var orig = btn.textContent;
-        btn.textContent = "已复制";
+        btn.textContent = UI_TEXT.copied;
         setTimeout(function () { btn.textContent = orig; }, 1500);
       }
     };
