@@ -9,6 +9,7 @@ description: 根据 prd.md 与 project-context.md 生成 pages/<page_id>.html �
 将 `<project_dir>/prd.md` 与 `<project_dir>/project-context.md` 转化为保存在 `<project_dir>/pages/<page_id>.html` 的纯黑白灰阶 `wt-*` 线框原型片段，严格打上标准根容器属性与点分小写组件语义锚点，实现内联 `@[组件名]` 点选评审与增量改点标引。
 
 ## 输入
+- **`evals/taste-profile.md`（开工前必读）**：绘制或修改页面前先读取已固化的组件排版品味与避坑规则
 - `<project_dir>/prd.md`
 - `<project_dir>/project-context.md`（读取端形态 `phone` / `wide` 及 `ui_kit` 骨架配置）
 - 契约参考：`specs/anchor-schema.md`、`specs/spec-v2-schema.md`

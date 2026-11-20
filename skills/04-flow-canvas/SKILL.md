@@ -9,6 +9,7 @@ description: 根据 prd.md 与 pages/*.html 生成 flow.svg（连线带 data-fro
 根据 `<project_dir>/prd.md` 的主流程与异常分支，以及 `<project_dir>/pages/<page_id>.html` 的页面清单，生成拓扑严谨的 `<project_dir>/flow.svg`，并同步生成/更新 `<project_dir>/spec.json` 中的 `nodes`（标注本期变更节点的 `change: "new" | "modified"`）与 `vars`（含 `kind: "branch"` 分支规则）。
 
 ## 输入
+- **`evals/taste-profile.md`（开工前必读）**：绘图前先读取已固化的拓扑方向、正交连线与增量比例避坑规则
 - `<project_dir>/prd.md`
 - `<project_dir>/pages/*.html`（获取真实存在的 `<page_id>` 集合）
 - 契约参考：`specs/flow-topology-spec.md`、`specs/spec-v2.schema.json`

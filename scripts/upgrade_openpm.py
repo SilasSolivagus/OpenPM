@@ -32,7 +32,7 @@ CORE_PATHS = [
     "specs",
     "adapters",
     "templates",
-    "evals",
+    "evals/test-cases",
 ]
 
 
@@ -99,7 +99,11 @@ def upgrade_workspace(root: Path, recompile_projects: bool = True) -> int:
         return 1
 
     print("[upgrade_openpm] Core engine, skills, specs, and preflight gates updated successfully.")
-    print("[upgrade_openpm] Preserved .env.local and all custom directories under projects/.")
+    print("[upgrade_openpm] Preserved .env.local, evals/datasets/*, evals/taste-profile.md, and all projects/*.")
+    # Seed evals/taste-profile.md from upstream only if local workspace doesn't have one yet
+    taste_file = root / "evals" / "taste-profile.md"
+    if not taste_file.is_file():
+        _run(["git", "checkout", f"{remote_name}/main", "--", "evals/taste-profile.md"], root, check=False)
     _sync_skill_symlinks(root)
 
     if not recompile_projects:

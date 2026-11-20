@@ -54,7 +54,11 @@
    - 流程图 `flow.svg` 遵循 `specs/flow-topology-spec.md`：**必须采用自上而下（Top-Down `TD`）纵向主干排版（严禁横版 `LR`）且 100% 正交水平/垂直折线（严禁斜线）**；连线带 `data-from`/`data-to`，菱形判断节点带 `data-node="D_*"` 和 `data-node-type="decision"`，菱形出边必填 `data-branch`；0 启动全新项目也必须保留常规入口/结果页为 `"unchanged"` 黑白灰基线，`change: "new"|"modified"` 节点占比硬上限 `≤ 75%`（严禁满屏 100% 涂橙）；
    - 原型页面 `pages/<page_id>.html` 遵循 `specs/anchor-schema.md`（根容器为 `<div class="page" id="<page_id>" data-page="<page_id>" data-page-id="<page_id>">`，交互元素带同页唯一的点分小写 `data-comp-id` 和 `data-comp-name`）；
    - 编译前后自行在后台静默运行 `scripts/preflight_check.py`（先检 `spec.json`，再检 `walkthrough.html`），修完所有报错再把干净的 `walkthrough.html` 交给 PM。
-3. **局部精准回写**：收到导出的 `review-feedback.md` / `.jsonl` 时，只修改受影响的 PRD 章节和对应 `pages/*.html` 片段，严禁全量重写未提及的页面。
+3. **局部精准回写与无感错题/品味沉淀**：
+   - 每次执行 `02` / `03` / `04` 开工前，**必须先读取 `evals/taste-profile.md`**（及同项目的 `evals/datasets/project-decisions.jsonl`），把历史避坑规则与 PM 品味直接落实到初稿中；
+   - `05` 首版编译通过门禁时，若无 `versions/v1` 则静默执行 `python3 scripts/version_manager.py snapshot <project_dir> --note "v1 初稿基线"`；
+   - 收到 `review-feedback.md` / `.jsonl` 或 PM 纠偏时，只修改受影响的 PRD 章节和对应 `pages/*.html` 片段（严禁全量重写无关页面），同时静默调用 `python3 scripts/eval_tracker.py log-decision`（单项目业务规则）或 `log-defect`（通用缺陷/个人品味）；
+   - 定稿执行 `06`（或本地确认定稿）时，静默调用 `python3 scripts/eval_tracker.py score <project_dir> --stage final` 自动记分；若输出含 `[ITERATION_TRIGGER]`（攒满 3 个需求或 3 条错题），收尾附带 1 句话提醒 PM 可说“复盘优化”触发 `07-iterate-skills`。
 4. **已有工作区无损升级**：当用户要求“升级/更新 OpenPM”时，优先运行 `python3 scripts/upgrade_openpm.py`（若本地尚无该脚本，先执行 `git fetch origin main && git checkout origin/main -- AGENTS.md CLAUDE.md WORKBUDDY.md .cursorrules scripts skills specs adapters templates && python3 scripts/upgrade_openpm.py`），100% 保留用户的 `.env.local` 与 `projects/*` 现有业务目录，并将检测出的旧项目门禁问题自动修复重编。
 
 ---

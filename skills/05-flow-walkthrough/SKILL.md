@@ -44,11 +44,12 @@ python3 scripts/build_walkthrough.py \
 - 如项目配置了 `<project_dir>/skeleton.css`，可追加 `--skeleton-css <project_dir>/skeleton.css`（仅限微调圆角、间距、字号；**严禁**注入任何品牌蓝/红/绿彩色皮肤）。
 - 编译产物自带：95% 纯黑白灰 `wt-*` 底图 + 5% `#D97706` 琥珀橙增量/焦点标引、`flow | spec` 双视图切换、输入框内联 `@[组件名]` 胶囊（支持 `Backspace` 退格一键删除）及 `DOC_VERSION_HASH` 双时机回查导出（`.md` / `.jsonl`）。
 
-### 第 4 步：编译后门禁校验 `walkthrough.html`
+### 第 4 步：编译后门禁校验 `walkthrough.html` 与 `v1` 初稿基线快照
 ```bash
 python3 scripts/preflight_check.py <project_dir>/walkthrough.html
 ```
 - 仅当退出码为 `0` 时，才可将干净的 `<project_dir>/walkthrough.html` 交付给 PM（**严禁向 PM 倾倒门禁校验日志、文件字节数或后台命令流水账**）。
+- **自动留存初稿基线**：若 `<project_dir>/versions/v1` 尚不存在，编译通过门禁后立即在后台静默运行 `python3 scripts/version_manager.py snapshot <project_dir> --note "v1 初稿基线"`（供定稿时 `eval_tracker.py score` 自动对比计算真实的初稿→定稿返工修改率）。
 
 ## 输出
 - `<project_dir>/spec.json`（通过 `spec-v2` 门禁）

@@ -31,6 +31,13 @@ description: 调用 scripts/wiki_sync.py 将「左图右文」对照 PRD、纯�
    python3 scripts/version_manager.py snapshot <project_dir> --note "push-wiki 定稿交付"
    ```
 
+3. **自动计算定稿质量分与定期优化检测（`eval_tracker.py`）**：
+   ```bash
+   python3 scripts/eval_tracker.py score <project_dir> --stage final --note "push-wiki 定稿交付"
+   ```
+   - 自动对比 `versions/v1` 初稿与当前定稿，计算客观得分（10 分制）与北极星指标「初稿→定稿返工修改率（%）」，记入 `evals/datasets/run-scores.jsonl`；
+   - **若输出包含 `[ITERATION_TRIGGER]`**（即累计满 3 个需求交付、或未消化通用错题 ≥ 3 条、或本轮返工偏高），在交付收尾时向 PM 附带 **1 句简明提醒**：*“顺便提醒：最近已攒够几条高频改稿经验，有空对我说一句『复盘优化』，我花 1 分钟帮你固化进专属品味库。”*
+
 ## 输出
 - 远端已更新的 Wiki / 企微 / 飞书页面（或本地 `<project_dir>/wiki-export/` 离线交付包）
 - `<project_dir>/_manifest.json`
