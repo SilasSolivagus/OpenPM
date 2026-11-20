@@ -6,3 +6,9 @@ __pycache__/
 .obsidian/workspace-mobile.json
 .tmp/
 *.log
+.env
+.env.local
+*.env
+!.env.local.example
+.openpm/
+*_manifest.secret.json

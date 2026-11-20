@@ -1,34 +1,31 @@
 ---
-name: 06-push-wiki
-description: 通过 adapters/ 将更新后的 PRD 文字版、原型图及可交互 HTML 附件写回内网 Wiki（或本地/Obsidian），并调用 scripts/version_manager.py 打版本快照。
+name: push-wiki
+description: 将定稿的图文对照 PRD、原型截图及可交互 walkthrough.html.zip 交付到目标 Wiki（Confluence / 企业微信 / 飞书 / 本地 Obsidian），并维护防覆盖 _manifest.json 与版本快照。
 ---
 
-# 06 - Push Wiki（回写 Wiki 与版本快照）
-
-## 目标
-将通过门禁检查并完成评审定稿的 `prd.md`、原型切片/说明以及可交互的 `walkthrough.html` 附件，通过 `adapters/` 安全写回内网 Wiki 或本地 Obsidian/Markdown 仓库，并调用版本管理脚本打上不可变快照，形成完整的版本闭环。
+# 06 · Push Wiki（交付与归档）
 
 ## 输入
-- `<project_dir>/project-context.md`（目标 Wiki 页面 ID 或本地导出路径）
-- `<project_dir>/prd.md`
-- `<project_dir>/walkthrough.html`（必须已通过 `scripts/preflight_check.py`）
-- 可选：`--note "<本次发布说明>"`
+- `projects/<project>/prd.md`（结构化文字版 PRD）
+- `projects/<project>/walkthrough.html`（已通过 `preflight_check.py` 门禁）
+- `projects/<project>/project-context.md`（读取 `wiki_adapter` 与目标位置）
+- 本地 `.env.local`（仅存放凭证，如 `WECOM_BOT_ID`/`WECOM_BOT_SECRET`、`CONFLUENCE_PAT` 等，**严禁进 Git**）
 
-## 执行步骤
-1. **前置门禁复核**：
-   - 确认 `<project_dir>/walkthrough.html` 存在且通过 `python3 scripts/preflight_check.py <project_dir>/walkthrough.html`。
-2. **打本地版本快照（强制）**：
-   - 在写回远端前，先调用版本管理脚本生成新版本快照并追加 `changelog.md`：
-     ```bash
-     python3 scripts/version_manager.py snapshot <project_dir> --note "<发布说明>"
-     ```
-3. **调用 Adapter 写回目标文档库**：
-   - 通过 `adapters/` 将 `prd.md` 正文更新至目标页面，并将 `walkthrough.html` 及关键原型截图作为附件上传/关联。
-   - 若写入目标为本地 Obsidian / Markdown 仓库，则同步更新目标文档及附件引用路径。
-4. **记录回写回执**：
-   - 将远端版本号、更新时间与访问链接记录到 `<project_dir>/versions/changelog.md` 对应版本条目下（或输出到终端摘要）。
+## 核心交付标准（图文对照表 + 附件 + 防覆盖）
 
-## 验收标准
-- 本地已生成新的 `vN` 快照目录且 `versions/changelog.md` 已更新。
-- 远端 Wiki 或本地目标仓库已同步最新 PRD 正文与 `walkthrough.html` 附件。
-- 若远端写入失败，本地快照仍保持完整，且不虚报推送成功。
+1. **自动截图与打包**：
+   - 对 `walkthrough.html` 中的关键业务节点页面自动截取纯灰阶线框图至 `projects/<project>/screenshots/*.png`；
+   - 将 `walkthrough.html` 打包为 `walkthrough.html.zip` 作为可下载交互附件。
+
+2. **组装「左图右文」对照交付文档**：
+   - 顶部放置交互原型下载链接：`交互原型：walkthrough.html.zip（点击下载）`；
+   - 正文采用结构化三列表格：**`序号 | 页面截图（左） | 需求说明（右，支持单元格内嵌套子表）`**，确保不打开 HTML 附件的研发/测试也能直接在 Wiki 阅读完整逻辑；
+   - 若目标为 Confluence 7.x，需校验转换后的 Storage XML 严格合法（避免破表）。
+
+3. **按 Adapter 推送与防误覆盖保护**：
+   - **Confluence / 企业微信智能机器人**：先上传 `screenshots/*.png` 与 `walkthrough.html.zip` 附件，再更新/创建正文页面；
+   - **回写 `_manifest.json`**：每次推送后在项目目录写入/更新 `_manifest.json`（记录 `adapter`、`remote_page_id`、`remote_version`、`pushed_at`、`walkthrough_hash`）。下次推送前先比对远端版本号，防止多人编辑时误覆盖；
+   - **零权限兜底**：若无外连权限，在 `projects/<project>/wiki-export/` 下生成完整的离线交付包（图文对照 HTML/XML + `screenshots/` + `.zip`），供 PM 5 秒粘贴上传。
+
+4. **版本快照**：
+   - 调用 `python3 scripts/version_manager.py snapshot projects/<project> --note "push-wiki 交付"` 打快照留痕。

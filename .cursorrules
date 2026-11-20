@@ -1,0 +1,5 @@
+# Cursor 入口规范
+请完整阅读并严格遵守根目录 AGENTS.md 中的所有规范：
+1. 首次启动必须执行 Onboarding 5 问与 Wiki 最小凭证清单引导（用户不回答则启用纯黑白灰阶 wt-* 与 local-obsidian 兜底）。
+2. 学骨架不学配色：参考截图仅学习页面结构与交互惯例，原型与流程图永远保持纯黑白灰阶 wt-*。
+3. 严格按 skills/01 ~ 07 执行，生成 spec.json 与 walkthrough.html 后必须运行 python3 scripts/preflight_check.py 通过门禁。
