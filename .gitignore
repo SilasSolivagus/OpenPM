@@ -1,0 +1,8 @@
+.DS_Store
+__pycache__/
+*.py[cod]
+*$py.class
+.obsidian/workspace.json
+.obsidian/workspace-mobile.json
+.tmp/
+*.log

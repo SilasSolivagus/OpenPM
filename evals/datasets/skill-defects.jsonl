@@ -1,0 +1,1 @@
+{"id": "SD-001", "timestamp": "2026-11-20T14:05:00Z", "skill": "04-flow-canvas", "severity": "high", "symptom": "生成的 SVG 菱形判断节点仅设置了 data-node=\"D_RISK\"，遗漏了 data-node-type=\"decision\"，导致 preflight_check.py 门禁失败。", "root_cause": "Prompt 中未对所有 4 顶点 polygon 的父级 <g> 属性做强约束校验提醒。", "status": "open"}

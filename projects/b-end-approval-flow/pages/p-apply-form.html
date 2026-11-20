@@ -1,0 +1,39 @@
+<div id="p-apply-form" class="page" data-page="p-apply-form" data-page-id="p-apply-form">
+  <div class="wt-navbar">
+    <div class="wt-breadcrumb">
+      <span>采购管理</span><span>/</span><span>采购申请列表</span><span>/</span><strong>新建 / 编辑采购申请单</strong>
+    </div>
+    <button class="wt-btn wt-btn-sm" data-comp-id="form.back.btn" data-comp-name="返回采购列表按钮">返回列表</button>
+  </div>
+
+  <div class="wt-stack" style="padding:14px;">
+    <div class="wt-alert">
+      <strong>审批路由规则提示：</strong>采购金额 ≤ 50,000 元由直属主管单级审批；金额 &gt; 50,000 元需加签「财务总监复核」。
+    </div>
+
+    <div class="wt-card">
+      <div class="wt-card-hd">
+        <span>采购单基础信息</span>
+        <span class="wt-badge">单据编号：PO-20261120-02</span>
+      </div>
+      <div class="wt-card-bd">
+        <div class="wt-form">
+          <div class="wt-field">
+            <label class="wt-label">采购金额（元） *</label>
+            <input class="wt-input" type="number" value="65000" placeholder="请输入采购总金额（人民币）" data-comp-id="form.amount.input" data-comp-name="采购金额输入框" />
+            <span class="wt-help">单位：人民币元，支持小数点后两位；系统将根据金额自动判断是否触发财务总监复核（阈值：50,000 元）。</span>
+          </div>
+
+          <div class="wt-field">
+            <label class="wt-label">采购事由与明细说明 *</label>
+            <textarea class="wt-textarea" placeholder="请填写采购用途、供应商报价摘要及预期交付时间" data-comp-id="form.reason.input" data-comp-name="采购事由输入框">Q4 核心业务集群GPU算力扩容采购（3台节点，含年度维保服务）</textarea>
+          </div>
+        </div>
+      </div>
+      <div class="wt-card-ft wt-between">
+        <button class="wt-btn" data-comp-id="form.draft.btn" data-comp-name="保存草稿按钮">保存草稿</button>
+        <button class="wt-btn wt-btn-primary" data-comp-id="form.submit.btn" data-comp-name="提交采购申请按钮">确认发起审批</button>
+      </div>
+    </div>
+  </div>
+</div>

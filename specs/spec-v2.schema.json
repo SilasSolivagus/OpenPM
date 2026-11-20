@@ -1,0 +1,260 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://antigravity.local/specs/spec-v2.schema.json",
+  "title": "Walkthrough Spec v2",
+  "description": "Single source of truth schema (spec-v2) for flow-walkthrough projects.",
+  "type": "object",
+  "required": ["version", "meta", "vars", "nodes", "pages"],
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "type": "string",
+      "const": "spec-v2"
+    },
+    "meta": {
+      "type": "object",
+      "required": ["project", "title"],
+      "properties": {
+        "project": { "type": "string", "minLength": 1 },
+        "title": { "type": "string", "minLength": 1 },
+        "doc_version": { "type": "string" },
+        "platform_default": { "type": "string" },
+        "entry_node": { "type": "string" },
+        "prd_source": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "vars": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/varDef"
+      }
+    },
+    "nodes": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "$ref": "#/$defs/nodeDef"
+      }
+    },
+    "pages": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "$ref": "#/$defs/pageDef"
+      }
+    },
+    "state_groups": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/stateGroupDef"
+      }
+    },
+    "spec_cards": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/specCardDef"
+      }
+    },
+    "memos": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/memoDef"
+      }
+    }
+  },
+  "$defs": {
+    "varOption": {
+      "type": "object",
+      "required": ["id", "label"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "label": { "type": "string", "minLength": 1 },
+        "target": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "varDef": {
+      "type": "object",
+      "required": ["id", "label", "kind", "default", "options"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "label": { "type": "string", "minLength": 1 },
+        "kind": { "type": "string", "enum": ["global", "local", "branch"] },
+        "default": { "type": "string", "minLength": 1 },
+        "diamond": { "type": "string", "minLength": 1 },
+        "nodes": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "pages": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "when": {
+          "type": "object",
+          "additionalProperties": {
+            "oneOf": [
+              { "type": "string", "minLength": 1 },
+              {
+                "type": "array",
+                "minItems": 1,
+                "items": { "type": "string", "minLength": 1 }
+              }
+            ]
+          }
+        },
+        "options": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/varOption" }
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "kind": { "const": "branch" } } },
+          "then": {
+            "required": ["diamond", "nodes"],
+            "properties": {
+              "options": {
+                "items": {
+                  "required": ["target"]
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "kind": { "const": "local" } } },
+          "then": { "required": ["pages"] }
+        }
+      ],
+      "additionalProperties": false
+    },
+    "nodeDef": {
+      "type": "object",
+      "required": ["page", "title"],
+      "properties": {
+        "page": { "type": "string", "minLength": 1 },
+        "title": { "type": "string", "minLength": 1 },
+        "isDecision": { "type": "boolean" },
+        "branchVar": { "type": "string", "minLength": 1 },
+        "state": { "type": "string", "minLength": 1 },
+        "anno": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 2,
+            "items": { "type": "string" }
+          }
+        }
+      },
+      "if": { "properties": { "isDecision": { "const": true } } },
+      "then": { "required": ["branchVar"] },
+      "additionalProperties": false
+    },
+    "componentDef": {
+      "type": "object",
+      "required": ["comp_id", "comp_name"],
+      "properties": {
+        "comp_id": { "type": "string", "minLength": 1 },
+        "comp_name": { "type": "string", "minLength": 1 },
+        "role": {
+          "type": "string",
+          "enum": ["control", "modal", "container", "text", "feedback", "nav"]
+        },
+        "anchor": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "pageDef": {
+      "type": "object",
+      "required": ["frame"],
+      "properties": {
+        "frame": { "type": "string", "enum": ["phone", "wide"] },
+        "title": { "type": "string" },
+        "variant_of": { "type": "string", "minLength": 1 },
+        "components": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/componentDef" }
+        },
+        "overrides": {
+          "type": "object",
+          "properties": {
+            "layout": { "type": "string" },
+            "copy": {
+              "type": "object",
+              "additionalProperties": { "type": "string" }
+            },
+            "components_patch": {
+              "type": "object",
+              "additionalProperties": { "type": "object" }
+            },
+            "add_components": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/componentDef" }
+            },
+            "remove_components": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    },
+    "stateGroupDef": {
+      "type": "object",
+      "required": ["title", "states"],
+      "properties": {
+        "title": { "type": "string", "minLength": 1 },
+        "states": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["id", "label", "page"],
+            "properties": {
+              "id": { "type": "string", "minLength": 1 },
+              "label": { "type": "string", "minLength": 1 },
+              "page": { "type": "string", "minLength": 1 }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "specCardDef": {
+      "type": "object",
+      "required": ["id", "title", "page", "body"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "title": { "type": "string", "minLength": 1 },
+        "page": { "type": "string", "minLength": 1 },
+        "anchor": { "type": "string" },
+        "body": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "memoDef": {
+      "type": "object",
+      "required": ["id", "body"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "node": { "type": "string" },
+        "page": { "type": "string" },
+        "comp_id": { "type": "string" },
+        "comp_name": { "type": "string" },
+        "granularity": { "type": "string", "enum": ["element", "component", "page"] },
+        "vars": { "type": "object" },
+        "status": { "type": "string", "enum": ["valid", "invalid"] },
+        "body": { "type": "string" }
+      },
+      "additionalProperties": true
+    }
+  }
+}

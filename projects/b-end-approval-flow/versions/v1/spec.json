@@ -1,0 +1,199 @@
+{
+  "version": "spec-v2",
+  "meta": {
+    "project": "b-end-approval-flow",
+    "title": "企业采购审批流（v2.0 多级金额路由与驳回重提）",
+    "doc_version": "v2.0",
+    "platform_default": "web-admin",
+    "entry_node": "F_LIST",
+    "prd_source": "prd.md"
+  },
+  "vars": [
+    {
+      "id": "amount_tier",
+      "label": "采购金额区间",
+      "kind": "branch",
+      "default": "gt_50k",
+      "diamond": "D_AMOUNT_50K",
+      "nodes": ["D_AMOUNT_50K", "F_LEADER", "F_FINANCE"],
+      "options": [
+        {
+          "id": "le_50k",
+          "label": "<=5万",
+          "target": "F_LEADER"
+        },
+        {
+          "id": "gt_50k",
+          "label": ">5万",
+          "target": "F_FINANCE"
+        }
+      ]
+    },
+    {
+      "id": "audit_decision",
+      "label": "审批决策",
+      "kind": "branch",
+      "default": "approve",
+      "diamond": "D_AUDIT_OK",
+      "nodes": ["D_AUDIT_OK", "F_DONE", "F_REJECTED"],
+      "options": [
+        {
+          "id": "approve",
+          "label": "通过",
+          "target": "F_DONE"
+        },
+        {
+          "id": "reject",
+          "label": "驳回",
+          "target": "F_REJECTED"
+        }
+      ]
+    }
+  ],
+  "nodes": {
+    "F_LIST": {
+      "page": "p-apply-list",
+      "title": "采购申请列表",
+      "anno": [
+        ["列表入口", "展示全部采购单及当前审批节点状态，支持新建采购单与驳回重提快捷入口。"]
+      ]
+    },
+    "F_FORM": {
+      "page": "p-apply-form",
+      "title": "新建/编辑采购申请单",
+      "anno": [
+        ["金额阈值提示", "填写采购金额与采购事由，系统实时提示 > 50,000 元将加签财务总监复核。"]
+      ]
+    },
+    "D_AMOUNT_50K": {
+      "page": "p-apply-form",
+      "title": "金额 > 5万？",
+      "isDecision": true,
+      "branchVar": "amount_tier",
+      "anno": [
+        ["金额路由判断", "采购金额 <= 5万走直属主管单级审批；> 5万在主管同意后加签财务总监复核。"]
+      ]
+    },
+    "F_LEADER": {
+      "page": "p-leader-audit",
+      "title": "直属主管审批",
+      "anno": [
+        ["主管初审", "直属主管查看采购金额与事由，可执行「同意」或「驳回（保留草稿）」。"]
+      ]
+    },
+    "F_FINANCE": {
+      "page": "p-finance-audit",
+      "title": "财务总监复核",
+      "anno": [
+        ["大额加签复核", "仅当采购金额 > 5万元时触发，财务总监需填写复核意见后通过或驳回。"]
+      ]
+    },
+    "D_AUDIT_OK": {
+      "page": "p-leader-audit",
+      "title": "审批是否通过？",
+      "isDecision": true,
+      "branchVar": "audit_decision",
+      "anno": [
+        ["审批结果分流", "审批通过流转至结果页；驳回流转至草稿保留提示页并支持重新编辑提交。"]
+      ]
+    },
+    "F_DONE": {
+      "page": "p-audit-done",
+      "title": "审批通过结果页",
+      "anno": [
+        ["流程办结", "展示审批通过状态与完整审批轨迹，可执行采购或返回列表。"]
+      ]
+    },
+    "F_REJECTED": {
+      "page": "p-audit-rejected",
+      "title": "驳回保留草稿提示页",
+      "anno": [
+        ["驳回重提闭环", "完整保留原采购单草稿，支持点击「重新编辑」直接返回填报页修改重提。"]
+      ]
+    }
+  },
+  "pages": {
+    "p-apply-list": {
+      "frame": "wide",
+      "title": "采购申请列表页",
+      "components": [
+        { "comp_id": "list.new.btn", "comp_name": "新建采购单按钮", "role": "control" },
+        { "comp_id": "list.filter.select", "comp_name": "审批状态筛选器", "role": "control" },
+        { "comp_id": "list.search.input", "comp_name": "采购单搜索框", "role": "control" },
+        { "comp_id": "list.row1.view.btn", "comp_name": "查看大额采购单详情按钮", "role": "control" },
+        { "comp_id": "list.row2.reedit.btn", "comp_name": "驳回重提编辑按钮", "role": "control" },
+        { "comp_id": "list.row3.view.btn", "comp_name": "查看已通过采购单详情按钮", "role": "control" }
+      ]
+    },
+    "p-apply-form": {
+      "frame": "wide",
+      "title": "新建/编辑采购申请单页",
+      "components": [
+        { "comp_id": "form.back.btn", "comp_name": "返回采购列表按钮", "role": "nav" },
+        { "comp_id": "form.amount.input", "comp_name": "采购金额输入框", "role": "control" },
+        { "comp_id": "form.reason.input", "comp_name": "采购事由输入框", "role": "control" },
+        { "comp_id": "form.draft.btn", "comp_name": "保存草稿按钮", "role": "control" },
+        { "comp_id": "form.submit.btn", "comp_name": "提交采购申请按钮", "role": "control" }
+      ]
+    },
+    "p-leader-audit": {
+      "frame": "wide",
+      "title": "直属主管审批弹窗页",
+      "components": [
+        { "comp_id": "audit.close.btn", "comp_name": "关闭审批弹窗按钮", "role": "control" },
+        { "comp_id": "audit.comment.input", "comp_name": "直属主管审批备注输入框", "role": "control" },
+        { "comp_id": "audit.reject.btn", "comp_name": "直属主管驳回按钮", "role": "control" },
+        { "comp_id": "audit.approve.btn", "comp_name": "直属主管同意按钮", "role": "control" }
+      ]
+    },
+    "p-finance-audit": {
+      "frame": "wide",
+      "title": "财务总监复核页",
+      "components": [
+        { "comp_id": "finance.back.btn", "comp_name": "返回待办列表按钮", "role": "nav" },
+        { "comp_id": "finance.comment.input", "comp_name": "财务总监复核意见输入框", "role": "control" },
+        { "comp_id": "finance.reject.btn", "comp_name": "财务总监驳回按钮", "role": "control" },
+        { "comp_id": "finance.approve.btn", "comp_name": "财务总监复核通过按钮", "role": "control" }
+      ]
+    },
+    "p-audit-done": {
+      "frame": "wide",
+      "title": "审批通过结果页",
+      "components": [
+        { "comp_id": "done.back_list.btn", "comp_name": "返回采购申请列表按钮", "role": "nav" },
+        { "comp_id": "done.new_order.btn", "comp_name": "继续新建采购单按钮", "role": "control" }
+      ]
+    },
+    "p-audit-rejected": {
+      "frame": "wide",
+      "title": "驳回保留草稿提示页",
+      "components": [
+        { "comp_id": "rejected.back_list.btn", "comp_name": "返回列表暂不修改按钮", "role": "nav" },
+        { "comp_id": "rejected.reedit.btn", "comp_name": "重新编辑并提交按钮", "role": "control" }
+      ]
+    }
+  },
+  "spec_cards": [
+    {
+      "id": "SC_AMOUNT_THRESHOLD",
+      "title": "改点 1：金额 > 5 万元触发财务总监加签",
+      "page": "p-apply-form",
+      "anchor": "form.amount.input",
+      "body": "在采购申请单填写采购金额时，系统以 50,000 元为阈值进行路由判断（D_AMOUNT_50K）：<= 5万仅直属主管审批；> 5万在主管同意后自动加签财务总监复核。"
+    },
+    {
+      "id": "SC_FINANCE_REVIEW",
+      "title": "改点 2：新增财务总监大额复核节点",
+      "page": "p-finance-audit",
+      "anchor": "finance.approve.btn",
+      "body": "新增财务总监复核页，展示直属主管初审结论与预算池归属，要求填写复核意见（finance.comment.input）后方可通过或驳回。"
+    },
+    {
+      "id": "SC_REJECT_DRAFT",
+      "title": "改点 3：驳回后保留草稿支持一键重新编辑",
+      "page": "p-audit-rejected",
+      "anchor": "rejected.reedit.btn",
+      "body": "无论是主管还是财务驳回，均保留原采购单金额与事由草稿数据，在驳回提示页点击「重新编辑」（rejected.reedit.btn）可直接回跳填报页修改重提。"
+    }
+  ]
+}
