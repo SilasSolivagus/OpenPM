@@ -30,7 +30,7 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 from wiki_doc_builder import (
     ScreenshotCaptureError,
     auto_capture_screenshots,
-    build_fig2_rows,
+    build_document_model,
     render_fig2_confluence_xml,
     render_fig2_html,
     write_fig2_docx,
@@ -1275,8 +1275,9 @@ def cmd_export(project_dir: Path, allow_missing_screenshots: bool = False) -> in
     is_en = str(meta.get("lang") or "").strip().lower().startswith("en")
     wt_sha256 = _sha256_file(wt_path)
 
-    # 4. Build 图2-identical Left-Prototype / Right-Spec rows (`序号 | 页面 | 需求说明` + nested `原型 | 说明`)
-    rows = build_fig2_rows(
+    # 4. Build Three-Zone Document Model (Zone 1 Intro+Flow -> Zone 2 Screen Table -> Zone 3 Global Appendix)
+    doc_model = build_document_model(
+        project_dir,
         prd_sections,
         spec_data,
         screenshots_dst,
@@ -1284,22 +1285,21 @@ def cmd_export(project_dir: Path, allow_missing_screenshots: bool = False) -> in
         _md_block_to_xhtml,
     )
 
-    # 5. Generate all 3 synchronized Left-Prototype / Right-Spec deliverables in wiki-export/:
-    #    (a) Self-contained Base64 wiki-page.html (with 1-click Copy Rich Table to paste into WeCom / Feishu Doc)
-    html_content = render_fig2_html(doc_title, doc_version, zip_path.name, rows, is_en=is_en)
+    # 5. Generate all 3 synchronized Three-Zone deliverables in wiki-export/:
+    #    (a) Self-contained Base64 wiki-page.html (with 1-click Copy Full Document to paste into WeCom / Feishu Doc)
+    html_content = render_fig2_html(doc_title, doc_version, zip_path.name, doc_model, is_en=is_en)
     html_out = export_dir / "wiki-page.html"
     html_out.write_text(html_content, encoding="utf-8")
 
-    #    (b) Native Office Open XML .docx (<doc_title>-产品方案.docx) with embedded PNGs & nested tables
-    #        -> WeCom (企业微信文档) opens/imports .docx directly as a 图2-style online collaborative doc!
+    #    (b) Native Office Open XML .docx (<doc_title>-产品方案.docx) with embedded PNGs
     safe_title = re.sub(r'[\\/:*?"<>|]+', "-", doc_title).strip() or project_slug
     docx_suffix = "Spec" if is_en else "产品方案"
     docx_out = export_dir / f"{safe_title}-{docx_suffix}.docx"
-    write_fig2_docx(docx_out, doc_title, doc_version, zip_path.name, rows, is_en=is_en)
+    write_fig2_docx(docx_out, doc_title, doc_version, zip_path.name, doc_model, is_en=is_en)
 
     #    (c) Confluence 7.4+ Storage XML (always generated & strictly ET.fromstring verified)
     try:
-        storage_xml = render_fig2_confluence_xml(doc_title, doc_version, zip_path.name, rows, is_en=is_en)
+        storage_xml = render_fig2_confluence_xml(doc_title, doc_version, zip_path.name, doc_model, is_en=is_en)
         ET.fromstring(storage_xml.encode("utf-8"))
     except ET.ParseError as exc:
         print(f"ERROR: Generated Confluence Storage XML failed well-formedness check: {exc}", file=sys.stderr)
