@@ -1,0 +1,109 @@
+<div class="page" id="p-guardrail-modal" data-page="p-guardrail-modal" data-page-id="p-guardrail-modal">
+  <div class="wt-app-shell">
+    <aside class="wt-sidebar">
+      <div class="wt-brand-row">
+        <span class="wt-brand-mark">AC</span>
+        <span>Acme AI Cloud</span>
+      </div>
+      <div class="wt-side-label">Workspace</div>
+      <button type="button" class="wt-side-item" data-comp-id="policy.nav.overview.btn" data-comp-name="Policy View Overview Nav Item" onclick="goNode('F_USAGE_DASH')">
+        <span>Overview</span>
+      </button>
+      <button type="button" class="wt-side-item" data-comp-id="policy.nav.members.btn" data-comp-name="Policy View Members Nav Item" onclick="goNode('F_OWNER_REVIEW')">
+        <span>Members</span>
+      </button>
+      <button type="button" class="wt-side-item" data-comp-id="policy.nav.keys.btn" data-comp-name="Policy View API Keys Nav Item" onclick="goNode('F_KEY_PAUSED')">
+        <span>API Keys</span>
+      </button>
+      <button type="button" class="wt-side-item active" data-comp-id="policy.nav.usage.btn" data-comp-name="Policy View Usage Nav Item" onclick="goNode('F_USAGE_DASH')">
+        <span>Usage &amp; Limits</span>
+      </button>
+      <button type="button" class="wt-side-item" data-comp-id="policy.nav.audit.btn" data-comp-name="Policy View Audit Logs Nav Item" onclick="goNode('F_QUOTA_ACTIVE')">
+        <span>Audit Logs</span>
+      </button>
+    </aside>
+
+    <main class="wt-main" style="position: relative;">
+      <div class="wt-between">
+        <div>
+          <div class="wt-breadcrumb">Usage &amp; Limits / <b>Guardrail Policy Drawer</b></div>
+          <div style="font-size: 15px; font-weight: 700;">Workspace Spend Guardrails &amp; Auto-Pause Policy</div>
+        </div>
+        <span class="wt-badge">[ADMIN ONLY]</span>
+      </div>
+
+      <div class="wt-card" data-comp-id="policy.drawer.card" data-comp-name="Budget Guardrail Policy Configuration Card" data-comp-role="modal">
+        <div class="wt-card-hd wt-between">
+          <span>Guardrail Rules · Cycle Nov 2026</span>
+          <span class="wt-mono wt-muted">Policy Rev #14</span>
+        </div>
+        <div class="wt-card-bd wt-form">
+          <div class="wt-Split2">
+            <div class="wt-field">
+              <label class="wt-label">Monthly Hard Cap (USD) *</label>
+              <input class="wt-input wt-mono" type="number" value="2000" min="100" step="100" data-comp-id="policy.cap.input" data-comp-name="Monthly Hard Cap Input" data-comp-role="control" />
+              <div class="wt-help">Current spend: $1,840.00 (92% utilized).</div>
+            </div>
+            <div class="wt-field">
+              <label class="wt-label">Tiered Auto-Approve Threshold (USD) *</label>
+              <input class="wt-input wt-mono" type="number" value="500" min="0" step="50" data-comp-id="policy.threshold.input" data-comp-name="Auto-Approve Threshold Input" data-comp-role="control" />
+              <div class="wt-help">Top-ups &lt;= $500 unlock immediately; &gt; $500 require Owner sign-off.</div>
+            </div>
+          </div>
+
+          <div class="wt-field">
+            <label class="wt-label">Action When Spend Reaches 100% Hard Cap</label>
+            <div class="wt-Split2">
+              <button type="button" class="wt-btn wt-btn-primary" data-comp-id="policy.mode.pause.btn" data-comp-name="Auto-Pause Keys Enforcement Toggle" onclick="setVar('enforcement_mode','auto_pause'); setVar('cap_status','paused')">
+                [SELECTED] Auto-Pause Keys (Zero Overage)
+              </button>
+              <button type="button" class="wt-btn" data-comp-id="policy.mode.alert.btn" data-comp-name="Alert Only Enforcement Toggle" onclick="setVar('enforcement_mode','alert_only'); setVar('cap_status','within_cap')">
+                Alert Only (Allow Soft Overage)
+              </button>
+            </div>
+            <div class="wt-help" data-when-var="enforcement_mode" data-when-val="auto_pause">
+              <b>Active Rule:</b> Edge gateways return <span class="wt-mono">HTTP 429 quota_hard_cap_exceeded</span> within 5s of hitting 100%.
+            </div>
+            <div class="wt-help hidden" data-when-var="enforcement_mode" data-when-val="alert_only">
+              <b>Advisory Rule:</b> Keys stay live past 100% cap while PagerDuty/Slack alerts fire every 15m.
+            </div>
+          </div>
+
+          <div class="wt-switch-row">
+            <div>
+              <div style="font-size: 12px; font-weight: 600;">Slack &amp; Signed Webhook Threshold Alerts</div>
+              <div class="wt-help">Dispatch events at 80%, 90%, and 100% spend to <span class="wt-mono">#finops-ai-alerts</span></div>
+            </div>
+            <select class="wt-select" style="width: 144px;" data-comp-id="policy.webhook.select" data-comp-name="Webhook Alert Channel Toggle">
+              <option value="enabled" selected>[ON] 80% / 90% / 100%</option>
+              <option value="critical_only">[ON] 100% Cap Only</option>
+              <option value="disabled">[OFF] Muted</option>
+            </select>
+          </div>
+
+          <div class="wt-switch-row">
+            <div>
+              <div style="font-size: 12px; font-weight: 600;">Exempt Health-Check Keys from Auto-Pause</div>
+              <div class="wt-help">Keep synthetic uptime probe key (<span class="wt-mono">sk-probe-...01a</span>, capped at $10/mo) active</div>
+            </div>
+            <input type="checkbox" checked style="width: 16px; height: 16px;" data-comp-id="policy.exempt.checkbox" data-comp-name="Exempt Health-Check Key Checkbox" />
+          </div>
+        </div>
+
+        <div class="wt-card-ft wt-between">
+          <button type="button" class="wt-btn" data-comp-id="policy.cancel.btn" data-comp-name="Cancel Policy Changes Button" onclick="goNode('F_USAGE_DASH')">
+            Cancel
+          </button>
+          <div class="wt-row">
+            <button type="button" class="wt-btn" data-comp-id="policy.test.webhook.btn" data-comp-name="Send Test Webhook Button" onclick="goNode('D_HARD_CAP')">
+              Inspect Cap Check (D_HARD_CAP)
+            </button>
+            <button type="button" class="wt-btn wt-btn-primary" data-comp-id="policy.save.btn" data-comp-name="Save Guardrail Policy Button" onclick="goNode('D_HARD_CAP')">
+              Save Policy
+            </button>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>

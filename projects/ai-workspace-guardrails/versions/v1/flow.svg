@@ -1,0 +1,104 @@
+<svg id="flowsvg" data-flowspec="1" viewBox="0 0 860 980" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#555555" />
+    </marker>
+  </defs>
+
+  <!-- Main Vertical Spine: F_USAGE_DASH -> F_GUARDRAIL_POLICY -> D_HARD_CAP -->
+  <polyline points="400,80 400,116" fill="none" stroke="#555555" stroke-width="1.8" data-from="F_USAGE_DASH" data-to="F_GUARDRAIL_POLICY" marker-end="url(#arrow)" />
+  <polyline points="400,172 400,208" fill="none" stroke="#555555" stroke-width="1.8" data-from="F_GUARDRAIL_POLICY" data-to="D_HARD_CAP" marker-end="url(#arrow)" />
+
+  <!-- Branches from D_HARD_CAP -->
+  <polyline points="400,292 400,408" fill="none" stroke="#555555" stroke-width="1.8" data-from="D_HARD_CAP" data-to="F_QUOTA_REQ" data-branch="within_cap" marker-end="url(#arrow)" />
+  <text x="278" y="352" font-size="11" fill="#555555">&lt; 100% Cap (Active)</text>
+
+  <polyline points="505,250 665,250 665,316" fill="none" stroke="#555555" stroke-width="1.8" data-from="D_HARD_CAP" data-to="F_KEY_PAUSED" data-branch="paused" marker-end="url(#arrow)" />
+  <text x="518" y="242" font-size="11" fill="#555555">100% Cap (Auto-Pause)</text>
+
+  <!-- Recovery Path: F_KEY_PAUSED -> F_QUOTA_REQ -->
+  <polyline points="665,372 665,422 510,422" fill="none" stroke="#555555" stroke-width="1.8" data-from="F_KEY_PAUSED" data-to="F_QUOTA_REQ" marker-end="url(#arrow)" />
+  <text x="530" y="414" font-size="11" fill="#555555">Request Unlock</text>
+
+  <!-- F_QUOTA_REQ -> D_THRESHOLD -->
+  <polyline points="400,464 400,502" fill="none" stroke="#555555" stroke-width="1.8" data-from="F_QUOTA_REQ" data-to="D_THRESHOLD" marker-end="url(#arrow)" />
+
+  <!-- Branches from D_THRESHOLD -->
+  <polyline points="295,544 160,544 160,876" fill="none" stroke="#555555" stroke-width="1.8" data-from="D_THRESHOLD" data-to="F_QUOTA_ACTIVE" data-branch="le_500" marker-end="url(#arrow)" />
+  <text x="168" y="536" font-size="11" fill="#555555">&lt;= $500 (Auto-Approve)</text>
+
+  <polyline points="400,586 400,636" fill="none" stroke="#555555" stroke-width="1.8" data-from="D_THRESHOLD" data-to="F_OWNER_REVIEW" data-branch="gt_500" marker-end="url(#arrow)" />
+  <text x="410" y="616" font-size="11" fill="#555555">&gt; $500 (Owner Review)</text>
+
+  <!-- F_OWNER_REVIEW -> D_OWNER_DECISION -->
+  <polyline points="400,692 400,730" fill="none" stroke="#555555" stroke-width="1.8" data-from="F_OWNER_REVIEW" data-to="D_OWNER_DECISION" marker-end="url(#arrow)" />
+
+  <!-- Branches from D_OWNER_DECISION -->
+  <polyline points="295,772 240,772 240,876" fill="none" stroke="#555555" stroke-width="1.8" data-from="D_OWNER_DECISION" data-to="F_QUOTA_ACTIVE" data-branch="approve" marker-end="url(#arrow)" />
+  <text x="248" y="764" font-size="11" fill="#555555">Approve &amp; Unlock</text>
+
+  <polyline points="505,772 630,772 630,876" fill="none" stroke="#555555" stroke-width="1.8" data-from="D_OWNER_DECISION" data-to="F_CAP_RETAINED" data-branch="reject" marker-end="url(#arrow)" />
+  <text x="515" y="764" font-size="11" fill="#888888">Reject &amp; Keep Cap</text>
+
+  <!-- Revise & Resubmit Loop: F_CAP_RETAINED -> F_QUOTA_REQ -->
+  <polyline points="740,905 812,905 812,450 510,450" fill="none" stroke="#555555" stroke-width="1.6" stroke-dasharray="5 3" data-from="F_CAP_RETAINED" data-to="F_QUOTA_REQ" marker-end="url(#arrow)" />
+  <text x="824" y="678" font-size="11" fill="#888888" writing-mode="tb">Revise &amp; Resubmit Request</text>
+
+  <!-- Flow Nodes (10 Total: 7 Process/State Nodes + 3 Decision Diamonds) -->
+  <g class="flow-node" data-node="F_USAGE_DASH" data-node-type="start" role="button" tabindex="0">
+    <rect x="290" y="24" width="220" height="56" rx="8" fill="#ffffff" stroke="#555555" stroke-width="1.8" />
+    <text x="400" y="48" text-anchor="middle" font-size="12.5" font-weight="700" fill="#222222">Usage &amp; Spend Dashboard</text>
+    <text x="400" y="66" text-anchor="middle" font-size="10.5" fill="#888888">F_USAGE_DASH · p-usage-dash</text>
+  </g>
+
+  <g class="flow-node" data-node="F_GUARDRAIL_POLICY" data-node-type="process" role="button" tabindex="0">
+    <rect x="290" y="116" width="220" height="56" rx="8" fill="#ffffff" stroke="#555555" stroke-width="1.8" />
+    <text x="400" y="140" text-anchor="middle" font-size="12.5" font-weight="700" fill="#222222">Guardrail Policy Drawer</text>
+    <text x="400" y="158" text-anchor="middle" font-size="10.5" fill="#888888">F_GUARDRAIL_POLICY · p-guardrail-modal</text>
+  </g>
+
+  <g class="flow-node flow-decision" data-node="D_HARD_CAP" data-node-type="decision" role="button" tabindex="0">
+    <polygon points="400,208 505,250 400,292 295,250" fill="#ededed" stroke="#555555" stroke-width="1.8" />
+    <text x="400" y="254" text-anchor="middle" font-size="11.5" font-weight="700" fill="#222222">Spend Hits 100% Cap?</text>
+  </g>
+
+  <g class="flow-node" data-node="F_KEY_PAUSED" data-node-type="process" role="button" tabindex="0">
+    <rect x="560" y="316" width="210" height="56" rx="8" fill="#ffffff" stroke="#555555" stroke-width="1.8" />
+    <text x="665" y="340" text-anchor="middle" font-size="12.5" font-weight="700" fill="#222222">API Key Auto-Paused</text>
+    <text x="665" y="358" text-anchor="middle" font-size="10.5" fill="#888888">F_KEY_PAUSED · p-key-paused</text>
+  </g>
+
+  <g class="flow-node" data-node="F_QUOTA_REQ" data-node-type="process" role="button" tabindex="0">
+    <rect x="290" y="408" width="220" height="56" rx="8" fill="#ffffff" stroke="#555555" stroke-width="1.8" />
+    <text x="400" y="432" text-anchor="middle" font-size="12.5" font-weight="700" fill="#222222">Quota Top-Up Request</text>
+    <text x="400" y="450" text-anchor="middle" font-size="10.5" fill="#888888">F_QUOTA_REQ · p-quota-request</text>
+  </g>
+
+  <g class="flow-node flow-decision" data-node="D_THRESHOLD" data-node-type="decision" role="button" tabindex="0">
+    <polygon points="400,502 505,544 400,586 295,544" fill="#ededed" stroke="#555555" stroke-width="1.8" />
+    <text x="400" y="548" text-anchor="middle" font-size="11.5" font-weight="700" fill="#222222">Top-Up &gt; $500 Limit?</text>
+  </g>
+
+  <g class="flow-node" data-node="F_OWNER_REVIEW" data-node-type="process" role="button" tabindex="0">
+    <rect x="290" y="636" width="220" height="56" rx="8" fill="#ffffff" stroke="#555555" stroke-width="1.8" />
+    <text x="400" y="660" text-anchor="middle" font-size="12.5" font-weight="700" fill="#222222">Owner Approval Console</text>
+    <text x="400" y="678" text-anchor="middle" font-size="10.5" fill="#888888">F_OWNER_REVIEW · p-owner-approval</text>
+  </g>
+
+  <g class="flow-node flow-decision" data-node="D_OWNER_DECISION" data-node-type="decision" role="button" tabindex="0">
+    <polygon points="400,730 505,772 400,814 295,772" fill="#ededed" stroke="#555555" stroke-width="1.8" />
+    <text x="400" y="776" text-anchor="middle" font-size="11.5" font-weight="700" fill="#222222">Owner Approves?</text>
+  </g>
+
+  <g class="flow-node" data-node="F_QUOTA_ACTIVE" data-node-type="end" role="button" tabindex="0">
+    <rect x="90" y="876" width="220" height="58" rx="8" fill="#ffffff" stroke="#555555" stroke-width="1.8" />
+    <text x="200" y="901" text-anchor="middle" font-size="12.5" font-weight="700" fill="#222222">Quota Active &amp; Keys Unlocked</text>
+    <text x="200" y="919" text-anchor="middle" font-size="10.5" fill="#888888">F_QUOTA_ACTIVE · p-quota-active</text>
+  </g>
+
+  <g class="flow-node" data-node="F_CAP_RETAINED" data-node-type="end" role="button" tabindex="0">
+    <rect x="520" y="876" width="220" height="58" rx="8" fill="#ffffff" stroke="#555555" stroke-width="1.8" />
+    <text x="630" y="901" text-anchor="middle" font-size="12.5" font-weight="700" fill="#222222">Cap Retained · Request Denied</text>
+    <text x="630" y="919" text-anchor="middle" font-size="10.5" fill="#888888">F_CAP_RETAINED · p-key-paused</text>
+  </g>
+</svg>

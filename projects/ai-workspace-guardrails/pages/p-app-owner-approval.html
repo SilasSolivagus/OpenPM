@@ -1,0 +1,62 @@
+<div class="page" id="p-app-owner-approval" data-page="p-app-owner-approval" data-page-id="p-app-owner-approval">
+  <div class="wt-phone-shell">
+    <div>
+      <div class="wt-phone-statusbar">
+        <span>9:41</span>
+        <span>Acme Cloud · 5G [100%]</span>
+      </div>
+      <div class="wt-navbar">
+        <span>Owner Approval</span>
+        <span class="wt-pill-strong">REQ-2049</span>
+      </div>
+
+      <div style="padding: 12px;" class="wt-stack">
+        <div class="wt-card" data-comp-id="approve.summary.grid" data-comp-name="Mobile Approval Request Summary Card">
+          <div class="wt-card-hd wt-between">
+            <span>maya.chen · CC-402</span>
+            <span class="wt-badge">&gt; $500 TIER</span>
+          </div>
+          <div class="wt-card-bd wt-stack">
+            <div class="wt-between">
+              <span class="wt-muted">Requested Top-Up</span>
+              <b style="font-size: 16px;">+$800.00</b>
+            </div>
+            <div class="wt-between">
+              <span class="wt-muted">New Monthly Cap</span>
+              <span class="wt-mono">$2,000 -&gt; $2,800</span>
+            </div>
+            <div class="wt-between">
+              <span class="wt-muted">Paused Prod Key</span>
+              <span class="wt-mono">sk-prod-...8f2a</span>
+            </div>
+            <div class="wt-divider"></div>
+            <div style="font-size: 12px;">
+              <b>7d Burn:</b> $58.40/d -&gt; <b>$94.20/d</b> (0.5% err, healthy Q4 cohort traffic).
+            </div>
+            <div class="wt-field">
+              <label class="wt-label">Audit Comment *</label>
+              <input class="wt-input" type="text" value="Approved Q4 cohort capacity to Nov 30." data-comp-id="approve.comment.input" data-comp-name="Reviewer Audit Comment Input" />
+            </div>
+          </div>
+          <div class="wt-card-ft wt-Split2">
+            <button type="button" class="wt-btn wt-btn-danger" data-comp-id="approve.reject.btn" data-comp-name="Reject and Keep Cap Button"
+                    onclick="setVar('owner_decision','reject'); goNode('F_CAP_RETAINED')">
+              Reject
+            </button>
+            <button type="button" class="wt-btn wt-btn-primary" data-comp-id="approve.confirm.btn" data-comp-name="Approve and Unlock Keys Button"
+                    onclick="setVar('owner_decision','approve'); goNode('F_QUOTA_ACTIVE')">
+              Approve &amp; Unlock
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="wt-tabbar">
+      <div class="wt-tabbar-item" role="button" tabindex="0" data-comp-id="app.appv.tab.usage" data-comp-name="Mobile Approval Usage Tab" onclick="goNode('F_USAGE_DASH')">Usage</div>
+      <div class="wt-tabbar-item" role="button" tabindex="0" data-comp-id="app.appv.tab.keys" data-comp-name="Mobile Approval Keys Tab" onclick="goNode('F_KEY_PAUSED')">Keys</div>
+      <div class="wt-tabbar-item active" role="button" tabindex="0" data-comp-id="app.appv.tab.approvals" data-comp-name="Mobile Approval Queue Tab" onclick="goNode('F_OWNER_REVIEW')">Approvals (1)</div>
+      <div class="wt-tabbar-item" role="button" tabindex="0" data-comp-id="app.appv.tab.audit" data-comp-name="Mobile Approval Audit Tab" onclick="goNode('F_QUOTA_ACTIVE')">Audit</div>
+    </div>
+  </div>
+</div>

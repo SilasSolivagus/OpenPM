@@ -1,0 +1,46 @@
+<div class="page" id="p-app-key-paused" data-page="p-app-key-paused" data-page-id="p-app-key-paused">
+  <div class="wt-phone-shell" data-comp-id="paused.mobile_shell.container" data-comp-name="移动端熔断告警外壳" data-comp-role="container">
+    <div class="wt-col" style="gap: 0;">
+      <div class="wt-phone-statusbar">
+        <span>9:41</span>
+        <span>5G · 100%</span>
+      </div>
+      <div class="wt-navbar">
+        <span>企微告警 · 密钥保护性熔断</span>
+        <span class="wt-pill-strong">[已暂停]</span>
+      </div>
+
+      <div class="wt-stack" style="padding: 12px;">
+        <div class="wt-alert wt-alert-danger" data-comp-id="paused.alert.banner" data-comp-name="移动端熔断警示卡" data-comp-role="feedback">
+          [已达 100% 硬顶] 密钥 <span class="wt-mono">sk-prod-...8f2a</span> 已触发自动暂停（HTTP 429）。
+        </div>
+
+        <div class="wt-card" data-comp-id="paused.isolation.card" data-comp-name="移动端熔断详情与隔离卡" data-comp-role="container">
+          <div class="wt-card-hd">拦截详情与故障隔离</div>
+          <div class="wt-card-bd wt-col" style="gap: 8px;">
+            <div class="wt-between">
+              <span class="wt-muted">当前账期消耗</span>
+              <strong class="wt-mono">$2,000.00 / $2,000.00</strong>
+            </div>
+            <div class="wt-meter"><div class="wt-meter-fill" style="width: 100%;"></div></div>
+            <div class="wt-between">
+              <span class="wt-muted">受限主密钥</span>
+              <span class="wt-mono">sk-prod-...8f2a [已暂停]</span>
+            </div>
+            <div class="wt-between">
+              <span class="wt-muted">其他业务空间</span>
+              <span class="wt-badge">[正常 · 物理隔离不受影响]</span>
+            </div>
+            <div class="wt-divider"></div>
+            <span class="wt-muted">说明：已建立流式会话正常结束，离线评测任务挂起保留断点；审批加额后 10 秒内自动恢复。</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="wt-card-ft wt-between" style="background: #ffffff;">
+      <button type="button" class="wt-btn" onclick="goNode('F_GUARDRAIL_CFG')" data-comp-id="paused.edit_policy.btn" data-comp-name="查看风控策略按钮" data-comp-role="control">风控策略</button>
+      <button type="button" class="wt-btn wt-btn-primary" style="flex: 1;" onclick="goNode('F_QUOTA_REQ')" data-comp-id="paused.emergency_req.btn" data-comp-name="一键发起紧急加额按钮" data-comp-role="control">一键发起紧急加额</button>
+    </div>
+  </div>
+</div>

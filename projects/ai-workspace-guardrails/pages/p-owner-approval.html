@@ -1,0 +1,114 @@
+<div class="page" id="p-owner-approval" data-page="p-owner-approval" data-page-id="p-owner-approval">
+  <div class="wt-app-shell">
+    <aside class="wt-sidebar">
+      <div class="wt-brand-row">
+        <span class="wt-brand-mark">AC</span>
+        <span>Acme AI Cloud</span>
+      </div>
+      <div class="wt-side-label">Workspace</div>
+      <button type="button" class="wt-side-item" data-comp-id="approve.nav.overview.btn" data-comp-name="Approval View Overview Nav Item" onclick="goNode('F_USAGE_DASH')">
+        <span>Overview</span>
+      </button>
+      <button type="button" class="wt-side-item" data-comp-id="approve.nav.members.btn" data-comp-name="Approval View Members Nav Item" onclick="goNode('F_OWNER_REVIEW')">
+        <span>Members</span>
+      </button>
+      <button type="button" class="wt-side-item" data-comp-id="approve.nav.keys.btn" data-comp-name="Approval View API Keys Nav Item" onclick="goNode('F_KEY_PAUSED')">
+        <span>API Keys</span>
+      </button>
+      <button type="button" class="wt-side-item active" data-comp-id="approve.nav.usage.btn" data-comp-name="Approval View Usage Nav Item" onclick="goNode('F_USAGE_DASH')">
+        <span>Usage &amp; Limits</span>
+        <span class="wt-pill-strong">1</span>
+      </button>
+      <button type="button" class="wt-side-item" data-comp-id="approve.nav.audit.btn" data-comp-name="Approval View Audit Logs Nav Item" onclick="goNode('F_QUOTA_ACTIVE')">
+        <span>Audit Logs</span>
+      </button>
+    </aside>
+
+    <main class="wt-main">
+      <div class="wt-between">
+        <div>
+          <div class="wt-breadcrumb">Usage &amp; Limits / Approvals / <b>REQ-2049</b></div>
+          <div style="font-size: 15px; font-weight: 700;">Workspace Owner Quota Approval Console</div>
+        </div>
+        <span class="wt-pill-strong">[PENDING OWNER SIGN-OFF]</span>
+      </div>
+
+      <div class="wt-kpi-grid" data-comp-id="approve.summary.grid" data-comp-name="Request Impact Summary Grid">
+        <div class="wt-kpi-card">
+          <div class="wt-kpi-label"><span>Requested Increment</span><span class="wt-badge">&gt; $500</span></div>
+          <div class="wt-kpi-val">+$800.00</div>
+          <div class="wt-kpi-sub">By maya.chen · CC-402</div>
+        </div>
+        <div class="wt-kpi-card">
+          <div class="wt-kpi-label"><span>Projected Monthly Cap</span><span class="wt-badge">NOV</span></div>
+          <div class="wt-kpi-val">$2,800 <span class="wt-muted" style="font-weight: 400;">(was $2k)</span></div>
+          <div class="wt-kpi-sub">Post-approval utilization: 65.7%</div>
+        </div>
+        <div class="wt-kpi-card">
+          <div class="wt-kpi-label"><span>Blocked Prod Keys</span><span class="wt-badge">IMPACT</span></div>
+          <div class="wt-kpi-val">1 <span class="wt-muted" style="font-weight: 400;">key paused</span></div>
+          <div class="wt-kpi-sub">sk-prod-...8f2a (Core Agent)</div>
+        </div>
+      </div>
+
+      <div class="wt-card" data-comp-id="approve.burn.card" data-comp-name="Burn-Rate Comparison Table Card">
+        <div class="wt-card-hd wt-between">
+          <span>7-Day Burn-Rate &amp; Justification Verification</span>
+          <span class="wt-muted">Submitted 4 mins ago</span>
+        </div>
+        <div class="wt-card-bd wt-stack">
+          <div class="wt-banner">
+            <b>Justification (maya.chen):</b> "Scaling enterprise onboarding batch inference for Q4 customer cohort (+42k agent sessions through Nov 30)."
+          </div>
+          <table class="wt-table">
+            <thead>
+              <tr>
+                <th>Metric</th>
+                <th>Prior 7d Avg</th>
+                <th>Current 24h</th>
+                <th>Forecast to Nov 30</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Daily Token Spend (<span class="wt-mono">sk-prod-...8f2a</span>)</td>
+                <td class="wt-mono">$58.40 / day</td>
+                <td class="wt-mono">$94.20 / day</td>
+                <td class="wt-mono">$2,685.00 est.</td>
+              </tr>
+              <tr>
+                <td>Error / Retry Rate (429s excluded)</td>
+                <td class="wt-mono">0.4%</td>
+                <td class="wt-mono">0.5%</td>
+                <td><span class="wt-badge">[HEALTHY TRAFFIC]</span></td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="wt-field">
+            <label class="wt-label">Owner Audit Note (Recorded in FinOps Log) *</label>
+            <input class="wt-input" type="text" value="Verified Q4 cohort launch traffic; approved $2,800 ceiling through Nov 30."
+                   data-comp-id="approve.comment.input"
+                   data-comp-name="Reviewer Audit Comment Input" />
+          </div>
+        </div>
+
+        <div class="wt-card-ft wt-between">
+          <button type="button" class="wt-btn wt-btn-danger" data-comp-id="approve.reject.btn" data-comp-name="Reject and Keep Cap Button"
+                  onclick="setVar('owner_decision','reject'); goNode('F_CAP_RETAINED')">
+            Reject &amp; Keep $2,000 Cap
+          </button>
+          <div class="wt-row">
+            <button type="button" class="wt-btn" data-comp-id="approve.inspect.btn" data-comp-name="Inspect Decision Diamond Button" onclick="goNode('D_OWNER_DECISION')">
+              Inspect Decision
+            </button>
+            <button type="button" class="wt-btn wt-btn-primary" data-comp-id="approve.confirm.btn" data-comp-name="Approve and Unlock Keys Button"
+                    onclick="setVar('owner_decision','approve'); goNode('F_QUOTA_ACTIVE')">
+              Approve +$800 &amp; Unlock Keys
+            </button>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>

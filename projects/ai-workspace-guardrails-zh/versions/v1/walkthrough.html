@@ -1,0 +1,3924 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>星云 AI 团队工作台 · 用量预算风控与超额加签审批（v2.4）</title>
+<style>
+:root {
+  --wt-bg: #f7f7f7; --wt-white: #ffffff;
+  --wt-border: #c0c0c0; --wt-border-light: #e0e0e0;
+  --wt-text: #333333; --wt-dim: #888888; --wt-light: #aaaaaa;
+  --wt-fill: #e8e8e8; --wt-fill-dark: #d0d0d0; --wt-accent: #555555;
+  --wt-spot: #d97706; --wt-spot-bg: rgba(217, 119, 6, 0.08); --wt-spot-border: rgba(217, 119, 6, 0.55);
+  --wt-danger: #dc2626;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  height: 100%; background: var(--wt-bg); color: var(--wt-text);
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-size: 13px; line-height: 1.5; overflow: hidden;
+}
+button, input, textarea, select { font: inherit; color: inherit; }
+button {
+  cursor: pointer; border: 1px solid var(--wt-border); background: var(--wt-white);
+  color: var(--wt-text); border-radius: 5px; padding: 5px 10px; font-size: 12px;
+}
+button:hover:not(:disabled) { background: var(--wt-fill); }
+button:disabled { opacity: 0.45; cursor: default; }
+button.primary, button.primary:hover:not(:disabled) {
+  background: var(--wt-accent); color: var(--wt-white); border-color: var(--wt-accent);
+}
+.hidden { display: none !important; }
+
+/* Workbench Topbar */
+.wb-topbar {
+  height: 50px; background: var(--wt-white); border-bottom: 1px solid var(--wt-border);
+  display: flex; align-items: center; padding: 0 16px; gap: 12px;
+  position: relative; z-index: 200; user-select: none;
+}
+.fp-title { font-size: 15px; font-weight: 700; white-space: nowrap; }
+.seg-group {
+  display: inline-flex; align-items: center; background: var(--wt-bg);
+  border: 1px solid var(--wt-border); border-radius: 6px; padding: 2px; gap: 2px; flex-shrink: 0;
+}
+.seg-btn {
+  border: none; background: transparent; padding: 4px 10px; border-radius: 4px;
+  font-size: 12px; color: var(--wt-dim); white-space: nowrap;
+}
+.seg-btn:hover:not(.active) { background: var(--wt-fill); color: var(--wt-text); }
+.seg-btn.active, .seg-btn.active:hover {
+  background: var(--wt-accent); color: var(--wt-white); font-weight: 600;
+}
+.wb-global-vars { display: inline-flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.wb-gvar { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--wt-dim); white-space: nowrap; }
+.topbar-spacer { flex: 1; min-width: 8px; }
+#flow-node-ref {
+  font-size: 12px; color: var(--wt-dim); max-width: 240px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.fp-bar {
+  display: inline-flex; align-items: center; gap: 5px; font-size: 12px;
+  color: var(--wt-dim); flex-shrink: 0; white-space: nowrap;
+}
+.zb {
+  padding: 3px 9px; border: 1px solid var(--wt-border); border-radius: 4px;
+  cursor: pointer; background: var(--wt-white); user-select: none;
+  color: var(--wt-text); white-space: nowrap; font-size: 12px;
+}
+.zb:hover { background: var(--wt-fill); }
+.zb.active, .zb.active:hover {
+  border-color: var(--wt-spot); color: var(--wt-spot); background: var(--wt-spot-bg); font-weight: 600;
+}
+.zv { min-width: 42px; text-align: center; }
+.memo-toggle { white-space: nowrap; flex-shrink: 0; }
+.memo-toggle.active, .memo-toggle.active:hover {
+  background: var(--wt-accent); color: var(--wt-white); border-color: var(--wt-accent);
+}
+.wb-brand-link {
+  display: inline-flex; align-items: center; gap: 3px; padding: 3px 8px;
+  border: 1px solid var(--wt-border-light); border-radius: 4px; font-size: 11px;
+  color: var(--wt-dim); text-decoration: none; white-space: nowrap; flex-shrink: 0;
+}
+.wb-brand-link:hover { border-color: var(--wt-spot); color: var(--wt-spot); background: var(--wt-spot-bg); }
+
+/* Workbench Stage & Flow Canvas (True Side-by-Side Split, Zero Occlusion) */
+.wb-stage { position: relative; width: 100vw; height: calc(100vh - 50px); display: flex; overflow: hidden; }
+.flow-panel { flex: 1; min-width: 0; height: 100%; position: relative; overflow: hidden; display: flex; flex-direction: row; background: var(--wt-white); }
+.flow-panel.fs .inspector-drawer { display: none !important; }
+.flow-svg {
+  flex: 1; min-width: 280px; height: 100%; overflow: hidden; background: var(--wt-white);
+  cursor: grab; touch-action: none; user-select: none; position: relative;
+}
+.flow-svg:active { cursor: grabbing; }
+.flow-canvas-inner { position: absolute; left: 0; top: 0; transform-origin: 0 0; will-change: transform; }
+.flow-canvas-inner.smooth { transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1); }
+.flow-svg svg {
+  display: block; background: transparent; border: none; border-radius: 0;
+}
+.flow-svg g[data-node] { cursor: pointer; }
+.flow-svg g[data-node]:hover rect,
+.flow-svg g[data-node]:hover polygon { stroke: #333333; stroke-width: 2.5px; }
+.flow-svg polyline.branch-active { stroke: #111111 !important; stroke-width: 2.8px !important; }
+.flow-svg polyline.branch-dim { opacity: 0.32; }
+
+/* Delta Highlight Callouts (5% Amber #d97706 when body.show-delta is active) */
+body.show-delta .flow-svg g.wt-delta-node rect,
+body.show-delta .flow-svg g.wt-delta-node polygon {
+  stroke: var(--wt-spot); stroke-width: 2px;
+}
+body.show-delta .flow-svg g.wt-delta-node[data-change="modified"] rect,
+body.show-delta .flow-svg g.wt-delta-node[data-change="modified"] polygon {
+  stroke-dasharray: 5 3;
+}
+.flow-svg .wt-delta-dot { display: none; pointer-events: none; }
+body.show-delta .flow-svg .wt-delta-dot { display: block; }
+body.show-delta .wt-delta-target {
+  outline: 1.5px dashed var(--wt-spot-border); outline-offset: 2px;
+  box-shadow: 0 0 0 3px var(--wt-spot-bg);
+}
+
+/* Inspector Drawer & Device Frames (Docked Right Column, Non-Overlapping) */
+.inspector-drawer {
+  position: relative; flex-shrink: 0; width: min(706px, 58vw); height: 100%;
+  z-index: 90; background: var(--wt-white); border-left: 1px solid var(--wt-border);
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.inspector-drawer.wide-mode { width: min(1000px, 64vw); }
+.insp-head {
+  height: 46px; padding: 0 14px; border-bottom: 1px solid var(--wt-border-light);
+  background: var(--wt-bg); display: flex; align-items: center; gap: 8px; flex-shrink: 0;
+}
+.insp-badge {
+  font-size: 11px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  padding: 2px 7px; border: 1px solid var(--wt-border); border-radius: 4px;
+  background: var(--wt-white); color: var(--wt-dim);
+}
+#anno-node-title {
+  font-size: 14px; font-weight: 700; flex: 1;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.insp-body {
+  flex: 1; min-height: 0; display: flex; gap: 14px; padding: 14px;
+  background: var(--wt-bg); overflow: hidden; justify-content: center;
+}
+.stage { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; min-height: 0; max-height: 100%; }
+.frame-phone {
+  width: 375px; max-width: 100%; min-height: 660px; max-height: 100%; overflow-y: auto;
+  background: var(--wt-white); border: 1px solid var(--wt-border); border-radius: 14px; position: relative;
+}
+.frame-phone::-webkit-scrollbar { width: 0; }
+.frame-wide {
+  width: 100%; max-width: 690px; max-height: 100%; overflow-y: auto;
+  background: var(--wt-white); border: 1px solid var(--wt-border); border-radius: 8px; position: relative;
+}
+.pick-mode-on { outline: 2px solid var(--wt-spot); outline-offset: 2px; cursor: crosshair !important; }
+.pick-mode-on * { cursor: crosshair !important; }
+.page { display: none; padding-bottom: 24px; background: var(--wt-white); min-height: 100%; }
+.page.active { display: block; }
+
+/* Right Rule & Variable Panel */
+.anno-panel { width: 272px; flex-shrink: 0; max-height: 100%; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+.anno-card { padding: 11px 12px; border: 1px solid var(--wt-border-light); border-radius: 8px; background: var(--wt-white); }
+.anno-card-title {
+  font-size: 12px; font-weight: 700; color: var(--wt-text);
+  padding-bottom: 6px; margin-bottom: 8px; border-bottom: 1px solid var(--wt-border-light);
+}
+.anno-item { font-size: 12px; color: var(--wt-text); line-height: 1.65; margin-bottom: 8px; }
+.anno-item:last-child { margin-bottom: 0; }
+.anno-item b { display: block; color: var(--wt-text); margin-bottom: 2px; }
+.var-block { margin-bottom: 10px; }
+.var-block:last-child { margin-bottom: 0; }
+.var-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 5px; font-size: 12px; }
+.var-kind-tag {
+  font-size: 10px; padding: 1px 5px; border: 1px solid var(--wt-border-light);
+  border-radius: 3px; color: var(--wt-dim); background: var(--wt-bg);
+}
+.var-opts { display: flex; flex-wrap: wrap; gap: 5px; }
+.var-opt {
+  padding: 4px 9px; font-size: 11.5px; border-radius: 4px;
+  border: 1px solid var(--wt-border); background: var(--wt-white);
+}
+.var-opt.cur, .var-opt.cur:hover {
+  background: var(--wt-accent); color: var(--wt-white); border-color: var(--wt-accent); font-weight: 600;
+}
+.branch-go-btn { margin-top: 6px; width: 100%; font-size: 11.5px; padding: 4px 8px; }
+.st-group { display: flex; flex-direction: column; gap: 6px; }
+.st-btn {
+  width: 100%; padding: 7px 10px; text-align: left; border: 1px solid var(--wt-border);
+  border-radius: 5px; font-size: 12px; background: var(--wt-white); color: var(--wt-text); cursor: pointer;
+}
+.st-btn:hover { border-color: var(--wt-accent); }
+.st-btn.cur, .st-btn.cur:hover {
+  background: var(--wt-accent); color: var(--wt-white); border-color: var(--wt-accent);
+  cursor: default; font-weight: 600;
+}
+
+/* Spec Cards View */
+.spec-panel { flex: 1; min-width: 0; height: 100%; overflow-y: auto; padding: 24px 28px 60px; position: relative; }
+.spec-ws {
+  max-width: 1020px; margin: 0 auto; display: grid;
+  grid-template-columns: 375px minmax(380px, 1fr); gap: 44px; align-items: start; position: relative;
+}
+.spec-ws.wide-spec { max-width: 1240px; grid-template-columns: 690px minmax(340px, 1fr); gap: 32px; }
+@media (max-width: 960px) {
+  .spec-ws { grid-template-columns: 1fr; }
+  .spec-ws .spec-sticky { position: static; }
+}
+@media (max-width: 1140px) {
+  .spec-ws.wide-spec { grid-template-columns: 1fr; }
+  .spec-ws.wide-spec .spec-sticky { position: static; }
+}
+.spec-sticky { position: sticky; top: 4px; z-index: 20; }
+.spec-cards { display: flex; flex-direction: column; gap: 12px; padding-top: 8px; }
+.spec-card {
+  background: var(--wt-white); border: 1px solid var(--wt-border-light);
+  border-radius: 8px; padding: 13px 15px; cursor: pointer;
+}
+.spec-card.active { border-color: var(--wt-spot); border-width: 1.5px; box-shadow: 0 0 0 2px var(--wt-spot-bg); }
+.spec-card-hd { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.spec-idx {
+  font-size: 11px; font-weight: 700; padding: 1px 7px;
+  border: 1px solid var(--wt-border); border-radius: 4px; background: var(--wt-bg);
+}
+.spec-card-hd b { font-size: 13.5px; flex: 1; }
+.spec-card-bd { font-size: 12.5px; line-height: 1.65; color: var(--wt-text); }
+.tether-svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 45; overflow: visible; }
+.anchor-box {
+  position: absolute; pointer-events: none; border: 2px dashed var(--wt-spot);
+  border-radius: 6px; background: var(--wt-spot-bg); z-index: 44;
+}
+
+/* Memo Drawer (Minimalist Multi-Capsule Picking) */
+.memo-drawer {
+  width: 320px; flex-shrink: 0; height: 100%; background: var(--wt-white);
+  border-left: 1px solid var(--wt-border); display: flex; flex-direction: column; z-index: 120;
+}
+.memo-hd {
+  height: 46px; padding: 0 14px; border-bottom: 1px solid var(--wt-border-light);
+  background: var(--wt-bg); display: flex; align-items: center; justify-content: space-between;
+  flex-shrink: 0; gap: 6px;
+}
+.memo-reviewer-bar {
+  display: flex; align-items: center; gap: 8px; padding: 7px 12px;
+  border-bottom: 1px solid var(--wt-border-light); background: var(--wt-white);
+  font-size: 11.5px; color: var(--wt-dim); flex-shrink: 0;
+}
+.memo-reviewer-bar input {
+  flex: 1; min-width: 0; border: 1px solid var(--wt-border-light); border-radius: 4px;
+  padding: 3px 8px; font-size: 11.5px; color: var(--wt-text); background: var(--wt-bg);
+}
+.memo-reviewer-bar input:focus { outline: none; border-color: var(--wt-accent); background: var(--wt-white); }
+.memo-conflict-badge {
+  font-size: 10px; font-weight: 600; color: var(--wt-spot); background: var(--wt-spot-bg);
+  border: 1px solid var(--wt-spot-border); padding: 1px 6px; border-radius: 3px; flex-shrink: 0;
+}
+.memo-author-pill {
+  display: inline-block; font-size: 10.5px; font-weight: 600; color: var(--wt-text);
+  background: var(--wt-fill); border-radius: 3px; padding: 0 5px; margin-right: 4px;
+}
+.memo-form { padding: 12px; border-bottom: 1px solid var(--wt-border-light); flex-shrink: 0; background: #fafafa; }
+.memo-ctx {
+  display: block; font-size: 11px; color: var(--wt-dim); background: var(--wt-white);
+  border: 1px solid var(--wt-border-light); border-radius: 4px; padding: 4px 8px;
+  margin-bottom: 8px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.memo-editor {
+  width: 100%; min-height: 86px; max-height: 220px; overflow-y: auto;
+  border: 1px solid var(--wt-border); border-radius: 5px; padding: 7px 9px;
+  font-size: 12px; line-height: 1.55; margin-bottom: 6px; background: var(--wt-white);
+  color: var(--wt-text); outline: none; white-space: pre-wrap; word-break: break-word;
+}
+.memo-editor:focus { border-color: var(--wt-accent); }
+.memo-editor:empty::before { content: attr(data-placeholder); color: var(--wt-light); pointer-events: none; }
+.memo-form-hint {
+  font-size: 11.5px; font-weight: 600; color: var(--wt-text);
+  background: #f0f0f0; border: 1px solid var(--wt-accent);
+  border-radius: 4px; padding: 4px 8px; margin-bottom: 6px;
+}
+.memo-at-chip {
+  display: inline-flex; align-items: center; padding: 1px 6px; margin: 0 2px;
+  border-radius: 4px; background: var(--wt-fill); border: 1px solid var(--wt-border);
+  color: var(--wt-text); font-size: 11.5px; font-weight: 600; user-select: all;
+}
+.memo-list { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+.memo-empty { text-align: center; color: var(--wt-light); font-size: 12px; padding: 24px 12px; }
+.memo-item { border: 1px solid var(--wt-border-light); border-radius: 6px; padding: 10px; background: var(--wt-bg); }
+.memo-item.invalid { border-color: var(--wt-danger); background: #fef2f2; }
+.memo-item-hd { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 4px; }
+.memo-item-ctx {
+  font-size: 11px; font-weight: 600; color: var(--wt-accent); cursor: pointer;
+  flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.memo-item-ctx:hover { text-decoration: underline; }
+.memo-invalid-badge {
+  font-size: 10px; font-weight: 600; color: var(--wt-white); background: var(--wt-danger);
+  padding: 1px 6px; border-radius: 3px; flex-shrink: 0;
+}
+.memo-item-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 5px; }
+.memo-item-tag {
+  font-size: 10.5px; color: var(--wt-text); background: #f0f0f0; border: 1px solid var(--wt-accent);
+  font-weight: 600; border-radius: 999px; padding: 1px 6px;
+}
+.memo-item-meta {
+  font-size: 10.5px; color: var(--wt-dim); margin-bottom: 5px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.memo-item-txt { font-size: 12px; line-height: 1.6; white-space: pre-wrap; }
+.memo-item-ft {
+  margin-top: 7px; display: flex; justify-content: space-between; align-items: center;
+  font-size: 11px; color: var(--wt-light);
+}
+.memo-del-btn { border: none; background: transparent; color: var(--wt-dim); padding: 1px 5px; font-size: 11px; }
+.memo-del-btn:hover { color: var(--wt-danger); background: transparent; }
+.memo-export { padding: 10px 12px; border-top: 1px solid var(--wt-border-light); background: var(--wt-bg); display: flex; gap: 6px; }
+.memo-export button { flex: 1; padding: 5px 6px; font-size: 11.5px; white-space: nowrap; }
+
+#pick-highlight-overlay {
+  position: fixed; z-index: 9999; pointer-events: none;
+  border: 2px solid var(--wt-spot); background: var(--wt-spot-bg);
+  border-radius: 4px; display: none; transition: all 0.06s ease;
+}
+#pick-label-badge {
+  position: fixed; z-index: 10000; pointer-events: none;
+  background: #1f1f1f; color: #ffffff; font-size: 11.5px; font-weight: 600;
+  padding: 3px 8px; border-radius: 4px; white-space: nowrap; max-width: 300px;
+  overflow: hidden; text-overflow: ellipsis; box-shadow: 0 2px 8px rgba(0,0,0,0.22); display: none;
+}
+
+.guard-mask {
+  position: fixed; inset: 0; z-index: 10050; background: rgba(0,0,0,0.42);
+  display: flex; align-items: center; justify-content: center; padding: 16px;
+}
+.guard-modal {
+  width: 480px; max-width: 100%; background: var(--wt-white); border: 1px solid var(--wt-border);
+  border-radius: 10px; padding: 18px; box-shadow: 0 12px 32px rgba(0,0,0,0.18);
+}
+.guard-modal h3 { font-size: 15px; margin-bottom: 8px; color: var(--wt-danger); }
+.guard-modal p { font-size: 12.5px; line-height: 1.6; color: var(--wt-text); margin-bottom: 14px; }
+.guard-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 8px; }
+
+/* Neutral Wireframe Component Library (wt-* · 100% Grayscale) */
+.wt-stack { display: flex; flex-direction: column; gap: 10px; }
+.wt-row { display: flex; align-items: center; gap: 8px; }
+.wt-col { display: flex; flex-direction: column; gap: 6px; }
+.wt-between { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.wt-divider { height: 1px; background: var(--wt-border-light); margin: 8px 0; }
+.wt-muted { color: var(--wt-dim); font-size: 12px; }
+
+/* Navigation */
+.wt-navbar {
+  height: 44px; padding: 0 12px; display: flex; align-items: center; justify-content: space-between;
+  border-bottom: 1px solid var(--wt-border-light); background: var(--wt-white); font-weight: 600;
+}
+.wt-tabbar {
+  display: flex; border-top: 1px solid var(--wt-border-light); background: var(--wt-bg);
+}
+.wt-tabbar-item {
+  flex: 1; text-align: center; padding: 9px 4px; font-size: 11.5px; color: var(--wt-dim); cursor: pointer;
+}
+.wt-tabbar-item.active { color: var(--wt-text); font-weight: 700; }
+.wt-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--wt-border-light); padding: 0 12px; }
+.wt-tab {
+  padding: 8px 12px; font-size: 12.5px; color: var(--wt-dim); border: none;
+  background: transparent; border-bottom: 2px solid transparent; border-radius: 0;
+}
+.wt-tab.active { color: var(--wt-text); font-weight: 700; border-bottom-color: var(--wt-text); }
+.wt-breadcrumb { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--wt-dim); }
+
+/* Buttons */
+.wt-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+  padding: 6px 12px; border: 1px solid var(--wt-border); border-radius: 6px;
+  background: var(--wt-white); color: var(--wt-text); font-size: 12.5px; cursor: pointer;
+}
+.wt-btn:hover:not(:disabled) { background: var(--wt-fill); }
+.wt-btn-primary { background: var(--wt-accent); color: var(--wt-white); border-color: var(--wt-accent); }
+.wt-btn-primary:hover:not(:disabled) { background: #3f3f3f; }
+.wt-btn-ghost { background: transparent; border-color: transparent; }
+.wt-btn-danger { background: var(--wt-white); color: var(--wt-text); border-color: var(--wt-text); font-weight: 600; }
+.wt-btn-sm { padding: 3px 8px; font-size: 11.5px; }
+.wt-btn-block { width: 100%; }
+
+/* Cards & Lists */
+.wt-card {
+  border: 1px solid var(--wt-border-light); border-radius: 8px;
+  background: var(--wt-white); overflow: hidden;
+}
+.wt-card-hd {
+  padding: 10px 12px; border-bottom: 1px solid var(--wt-border-light);
+  background: var(--wt-bg); font-weight: 700; font-size: 12.5px;
+}
+.wt-card-bd { padding: 12px; }
+.wt-card-ft { padding: 8px 12px; border-top: 1px solid var(--wt-border-light); background: var(--wt-bg); }
+.wt-list { display: flex; flex-direction: column; }
+.wt-list-item {
+  padding: 10px 12px; border-bottom: 1px solid var(--wt-border-light);
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+}
+.wt-list-item:last-child { border-bottom: none; }
+.wt-avatar {
+  width: 32px; height: 32px; border-radius: 50%; background: var(--wt-fill);
+  border: 1px solid var(--wt-border); display: inline-flex; align-items: center;
+  justify-content: center; font-size: 12px; font-weight: 700; flex-shrink: 0;
+}
+.wt-badge, .wt-tag {
+  display: inline-block; padding: 1px 6px; font-size: 11px; border-radius: 4px;
+  border: 1px solid var(--wt-border); background: var(--wt-bg); color: var(--wt-dim);
+}
+.wt-chip {
+  display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px;
+  border-radius: 999px; border: 1px solid var(--wt-border); background: var(--wt-bg); font-size: 11.5px;
+}
+
+/* Forms */
+.wt-form { display: flex; flex-direction: column; gap: 10px; }
+.wt-field { display: flex; flex-direction: column; gap: 4px; }
+.wt-label { font-size: 12px; font-weight: 600; color: var(--wt-text); }
+.wt-input, .wt-textarea, .wt-select {
+  width: 100%; padding: 6px 9px; border: 1px solid var(--wt-border);
+  border-radius: 5px; background: var(--wt-white); font-size: 12.5px;
+}
+.wt-textarea { min-height: 72px; resize: vertical; }
+.wt-help { font-size: 11px; color: var(--wt-dim); }
+.wt-error {
+  font-size: 11px; color: var(--wt-text); font-weight: 600;
+  background: #f0f0f0; border: 1px solid var(--wt-accent); border-radius: 4px; padding: 2px 6px;
+}
+
+/* Tables */
+.wt-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.wt-table th, .wt-table td {
+  padding: 7px 9px; border: 1px solid var(--wt-border-light); text-align: left;
+}
+.wt-table th { background: var(--wt-bg); font-weight: 700; }
+
+/* Modals & Drawers */
+.wt-mask {
+  position: absolute; inset: 0; background: rgba(0, 0, 0, 0.36);
+  display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 20;
+}
+.wt-modal {
+  width: 100%; max-width: 320px; background: var(--wt-white);
+  border: 1px solid var(--wt-border); border-radius: 10px; overflow: hidden;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.16);
+}
+.wt-modal-hd {
+  padding: 10px 14px; border-bottom: 1px solid var(--wt-border-light);
+  font-weight: 700; display: flex; align-items: center; justify-content: space-between;
+}
+.wt-modal-bd { padding: 14px; font-size: 12.5px; }
+.wt-modal-ft {
+  padding: 10px 14px; border-top: 1px solid var(--wt-border-light);
+  display: flex; justify-content: flex-end; gap: 8px; background: var(--wt-bg);
+}
+
+/* Feedback & States */
+.wt-toast {
+  margin: 16px auto; max-width: 280px; padding: 9px 14px; border-radius: 6px;
+  background: #222222; color: #ffffff; text-align: center; font-size: 12px;
+}
+.wt-banner, .wt-alert {
+  padding: 8px 12px; border-radius: 6px; border: 1px solid var(--wt-border);
+  background: var(--wt-bg); font-size: 12px;
+}
+
+/* High-Density SaaS & Mobile Layout Primitives (wt-* · 100% Monochrome) */
+.wt-app-shell { display: grid; grid-template-columns: 148px minmax(0, 1fr); min-height: 520px; background: var(--wt-white); }
+.wt-sidebar {
+  border-right: 1px solid var(--wt-border-light); background: #fafafa; padding: 12px 8px;
+  display: flex; flex-direction: column; gap: 3px;
+}
+.wt-brand-row {
+  display: flex; align-items: center; gap: 7px; padding: 4px 8px 10px; margin-bottom: 4px;
+  border-bottom: 1px solid var(--wt-border-light); font-size: 12.5px; font-weight: 700;
+}
+.wt-brand-mark {
+  width: 20px; height: 20px; border-radius: 5px; background: var(--wt-accent); color: var(--wt-white);
+  display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700;
+}
+.wt-side-label { font-size: 10px; font-weight: 700; color: var(--wt-light); padding: 8px 8px 2px; text-transform: uppercase; letter-spacing: 0.4px; }
+.wt-side-item {
+  display: flex; align-items: center; justify-content: space-between; width: 100%; text-align: left;
+  padding: 6px 8px; border-radius: 5px; border: 1px solid transparent; background: transparent;
+  font-size: 12px; color: var(--wt-dim); cursor: pointer;
+}
+.wt-side-item:hover { background: var(--wt-fill); color: var(--wt-text); }
+.wt-side-item.active { background: var(--wt-white); border-color: var(--wt-border-light); color: var(--wt-text); font-weight: 600; }
+.wt-main { padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.wt-kpi-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.wt-kpi-card {
+  border: 1px solid var(--wt-border-light); border-radius: 7px; padding: 10px 12px;
+  background: var(--wt-white); display: flex; flex-direction: column; gap: 4px;
+}
+.wt-kpi-label { font-size: 11px; color: var(--wt-dim); display: flex; align-items: center; justify-content: space-between; }
+.wt-kpi-val { font-size: 18px; font-weight: 700; letter-spacing: -0.3px; color: var(--wt-text); }
+.wt-kpi-sub { font-size: 11px; color: var(--wt-dim); }
+.wt-meter { width: 100%; height: 6px; border-radius: 999px; background: var(--wt-fill); overflow: hidden; margin-top: 2px; }
+.wt-meter-fill { height: 100%; background: var(--wt-accent); border-radius: 999px; }
+.wt-mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; }
+.wt-pill-strong {
+  display: inline-flex; align-items: center; padding: 1px 7px; border-radius: 999px;
+  background: var(--wt-accent); color: var(--wt-white); font-size: 10.5px; font-weight: 600;
+}
+.wt-Split2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.wt-switch-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 8px 10px; border: 1px solid var(--wt-border-light); border-radius: 6px; background: #fafafa;
+}
+.wt-phone-shell { display: flex; flex-direction: column; min-height: 636px; justify-content: space-between; background: var(--wt-bg); }
+.wt-phone-statusbar {
+  height: 26px; padding: 0 16px; display: flex; align-items: center; justify-content: space-between;
+  font-size: 11px; font-weight: 600; color: var(--wt-text); background: var(--wt-white);
+}
+.wt-alert-danger {
+  border-color: var(--wt-accent); background: #f0f0f0; color: var(--wt-text); font-weight: 600;
+}
+.wt-empty { padding: 28px 16px; text-align: center; color: var(--wt-dim); font-size: 12px; }
+.wt-skeleton {
+  height: 14px; border-radius: 4px; background: var(--wt-fill);
+}
+
+</style>
+</head>
+<body class="show-delta">
+
+<header class="wb-topbar">
+  <div class="fp-title">星云 AI 团队工作台 · 用量预算风控与超额加签审批（v2.4）</div>
+  <div class="seg-group hidden" id="view-switch">
+    <button type="button" class="seg-btn active" data-wbview="flow" onclick="switchWbView('flow')">全局流程</button>
+    <button type="button" class="seg-btn" data-wbview="spec" onclick="switchWbView('spec')">单页改点</button>
+  </div>
+  <div class="wb-global-vars" id="global-vars-bar"></div>
+  <div class="topbar-spacer"></div>
+  <span id="flow-node-ref" aria-live="polite"></span>
+  <div class="fp-bar" id="zoom-bar">
+    <span class="zb" onclick="setZoom(-1)">&#65293;</span>
+    <span class="zv" id="zv">100%</span>
+    <span class="zb" onclick="setZoom(1)">&#65291;</span>
+    <span class="zb" onclick="setZoom(0)">适宽</span>
+    <span class="zb" id="fs-btn" onclick="toggleFs()">全屏画布</span>
+  </div>
+  <button type="button" class="zb active" id="delta-toggle-btn" onclick="toggleDeltaHighlight()">改动高亮</button>
+  <button type="button" class="memo-toggle" id="memo-toggle-btn" onclick="toggleMemo()">评审备注 (0)</button>
+  <a class="wb-brand-link" href="https://github.com/SilasSolivagus/OpenPM" target="_blank" rel="noopener" title="由 OpenPM 开源工作台生成 · 点击前往 GitHub 点亮 Star">OpenPM &#9733;</a>
+</header>
+
+<div class="wb-stage">
+  <aside class="flow-panel" id="flow-panel-root">
+    <div class="flow-svg" id="flow-svg"><div class="flow-canvas-inner" id="flow-canvas-inner"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 980" width="860" height="980">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8.5 5 L 0 8.5 z" fill="#555555" />
+    </marker>
+    <pattern id="bg-grid" width="24" height="24" patternUnits="userSpaceOnUse">
+      <circle cx="1" cy="1" r="0.8" fill="#e5e5e5" />
+    </pattern>
+  </defs>
+
+  <!-- Subtle monochrome dot grid background -->
+  <rect x="0" y="0" width="860" height="980" fill="url(#bg-grid)" />
+
+  <!-- Swimlane / Stage header caption -->
+  <text x="24" y="22" font-size="11" font-weight="600" fill="#888888">星云 AI 团队工作台 · 用量预算风控与超额加签拓扑（Top-Down 纵向主干）</text>
+
+  <!-- ==================== ORTHOGONAL EDGES (<polyline>) ==================== -->
+  <!-- 1. F_USAGE_DASH -> F_GUARDRAIL_CFG -->
+  <polyline
+    points="430,88 430,124"
+    fill="none"
+    stroke="#666666"
+    stroke-width="1.8"
+    data-from="F_USAGE_DASH"
+    data-to="F_GUARDRAIL_CFG"
+    marker-end="url(#arrow)" />
+
+  <!-- 2. F_GUARDRAIL_CFG -> D_HARD_CAP -->
+  <polyline
+    points="430,182 430,218"
+    fill="none"
+    stroke="#666666"
+    stroke-width="1.8"
+    data-from="F_GUARDRAIL_CFG"
+    data-to="D_HARD_CAP"
+    marker-end="url(#arrow)" />
+
+  <!-- 3. D_HARD_CAP -> F_QUOTA_REQ (within_cap) -->
+  <polyline
+    points="430,294 430,418"
+    fill="none"
+    stroke="#666666"
+    stroke-width="1.8"
+    data-from="D_HARD_CAP"
+    data-to="F_QUOTA_REQ"
+    data-branch="within_cap"
+    marker-end="url(#arrow)" />
+  <text x="418" y="356" text-anchor="end" font-size="11" fill="#666666">预警期内 (&lt;100% 主动扩容)</text>
+
+  <!-- 4. D_HARD_CAP -> F_KEY_PAUSED (hit_pause) -->
+  <polyline
+    points="560,258 700,258 700,326"
+    fill="none"
+    stroke="#666666"
+    stroke-width="1.8"
+    data-from="D_HARD_CAP"
+    data-to="F_KEY_PAUSED"
+    data-branch="hit_pause"
+    marker-end="url(#arrow)" />
+  <text x="632" y="249" text-anchor="middle" font-size="11" fill="#666666">达 100% 自动熔断</text>
+
+  <!-- 5. F_KEY_PAUSED -> F_QUOTA_REQ -->
+  <polyline
+    points="700,384 700,449 554,449"
+    fill="none"
+    stroke="#666666"
+    stroke-width="1.8"
+    data-from="F_KEY_PAUSED"
+    data-to="F_QUOTA_REQ"
+    marker-end="url(#arrow)" />
+  <text x="692" y="440" text-anchor="end" font-size="11" fill="#666666">一键发起紧急加额</text>
+
+  <!-- 6. F_QUOTA_REQ -> D_THRESHOLD -->
+  <polyline
+    points="430,476 430,514"
+    fill="none"
+    stroke="#666666"
+    stroke-width="1.8"
+    data-from="F_QUOTA_REQ"
+    data-to="D_THRESHOLD"
+    marker-end="url(#arrow)" />
+
+  <!-- 7. D_THRESHOLD -> F_QUOTA_ACTIVE (le_500) -->
+  <polyline
+    points="300,554 180,554 180,872"
+    fill="none"
+    stroke="#666666"
+    stroke-width="1.8"
+    data-from="D_THRESHOLD"
+    data-to="F_QUOTA_ACTIVE"
+    data-branch="le_500"
+    marker-end="url(#arrow)" />
+  <text x="238" y="545" text-anchor="middle" font-size="11" fill="#666666">&lt;= $500 免审自动放行</text>
+
+  <!-- 8. D_THRESHOLD -> F_OWNER_APPROVAL (gt_500) -->
+  <polyline
+    points="430,590 430,638"
+    fill="none"
+    stroke="#666666"
+    stroke-width="1.8"
+    data-from="D_THRESHOLD"
+    data-to="F_OWNER_APPROVAL"
+    data-branch="gt_500"
+    marker-end="url(#arrow)" />
+  <text x="442" y="618" text-anchor="start" font-size="11" fill="#666666">&gt; $500 负责人加签</text>
+
+  <!-- 9. F_OWNER_APPROVAL -> D_OWNER_DECISION -->
+  <polyline
+    points="430,696 430,736"
+    fill="none"
+    stroke="#666666"
+    stroke-width="1.8"
+    data-from="F_OWNER_APPROVAL"
+    data-to="D_OWNER_DECISION"
+    marker-end="url(#arrow)" />
+
+  <!-- 10. D_OWNER_DECISION -> F_QUOTA_ACTIVE (approve) -->
+  <polyline
+    points="300,776 280,776 280,872"
+    fill="none"
+    stroke="#666666"
+    stroke-width="1.8"
+    data-from="D_OWNER_DECISION"
+    data-to="F_QUOTA_ACTIVE"
+    data-branch="approve"
+    marker-end="url(#arrow)" />
+  <text x="292" y="832" text-anchor="start" font-size="11" fill="#666666">同意加额并解封</text>
+
+  <!-- 11. D_OWNER_DECISION -> F_REJECT_HOLD (reject) -->
+  <polyline
+    points="560,776 630,776 630,872"
+    fill="none"
+    stroke="#666666"
+    stroke-width="1.8"
+    data-from="D_OWNER_DECISION"
+    data-to="F_REJECT_HOLD"
+    data-branch="reject"
+    marker-end="url(#arrow)" />
+  <text x="638" y="832" text-anchor="start" font-size="11" fill="#666666">驳回维持原上限</text>
+
+  <!-- ==================== PROCESS & DECISION NODES (<g data-node>) ==================== -->
+
+  <!-- 1. F_USAGE_DASH (unchanged) -->
+  <g class="flow-node" data-node="F_USAGE_DASH" data-node-type="start" role="button" tabindex="0">
+    <rect x="310" y="34" width="240" height="54" rx="8" fill="#ffffff" stroke="#333333" stroke-width="1.6" />
+    <text x="430" y="57" text-anchor="middle" font-size="13" font-weight="700" fill="#222222">团队额度与密钥监控总览</text>
+    <text x="430" y="75" text-anchor="middle" font-size="11" fill="#777777">已用 $1,840 / $2,000 [预警 92%]</text>
+  </g>
+
+  <!-- 2. F_GUARDRAIL_CFG (modified) -->
+  <g class="flow-node" data-node="F_GUARDRAIL_CFG" data-node-type="process" role="button" tabindex="0">
+    <rect x="310" y="128" width="240" height="54" rx="8" fill="#ffffff" stroke="#555555" stroke-width="1.6" />
+    <text x="430" y="151" text-anchor="middle" font-size="13" font-weight="700" fill="#222222">预算风控与超限熔断配置</text>
+    <text x="430" y="169" text-anchor="middle" font-size="11" fill="#777777">硬顶 $2,000 · 免审阈值 $500 [改动]</text>
+  </g>
+
+  <!-- 3. D_HARD_CAP (new, decision) -->
+  <g class="flow-node flow-decision" data-node="D_HARD_CAP" data-node-type="decision" role="button" tabindex="0">
+    <polygon points="430,222 560,258 430,294 300,258" fill="#fafafa" stroke="#444444" stroke-width="1.6" />
+    <text x="430" y="255" text-anchor="middle" font-size="12.5" font-weight="700" fill="#222222">消耗达 100% 硬顶？</text>
+    <text x="430" y="272" text-anchor="middle" font-size="10.5" fill="#777777">实时流式计量网关</text>
+  </g>
+
+  <!-- 4. F_KEY_PAUSED (new) -->
+  <g class="flow-node" data-node="F_KEY_PAUSED" data-node-type="process" role="button" tabindex="0">
+    <rect x="590" y="330" width="220" height="54" rx="8" fill="#ffffff" stroke="#555555" stroke-width="1.6" />
+    <text x="700" y="353" text-anchor="middle" font-size="13" font-weight="700" fill="#222222">额度耗尽自动熔断拦截</text>
+    <text x="700" y="371" text-anchor="middle" font-size="11" fill="#777777">暂停密钥 sk-prod-...8f2a [新增]</text>
+  </g>
+
+  <!-- 5. F_QUOTA_REQ (modified) -->
+  <g class="flow-node" data-node="F_QUOTA_REQ" data-node-type="process" role="button" tabindex="0">
+    <rect x="310" y="422" width="240" height="54" rx="8" fill="#ffffff" stroke="#555555" stroke-width="1.6" />
+    <text x="430" y="445" text-anchor="middle" font-size="13" font-weight="700" fill="#222222">成员申请临时加额</text>
+    <text x="430" y="463" text-anchor="middle" font-size="11" fill="#777777">填写追加金额与成本中心 [改动]</text>
+  </g>
+
+  <!-- 6. D_THRESHOLD (new, decision) -->
+  <g class="flow-node flow-decision" data-node="D_THRESHOLD" data-node-type="decision" role="button" tabindex="0">
+    <polygon points="430,518 560,554 430,590 300,554" fill="#fafafa" stroke="#444444" stroke-width="1.6" />
+    <text x="430" y="551" text-anchor="middle" font-size="12.5" font-weight="700" fill="#222222">追加额度 &gt; $500？</text>
+    <text x="430" y="568" text-anchor="middle" font-size="10.5" fill="#777777">阶梯免审路由判断</text>
+  </g>
+
+  <!-- 7. F_OWNER_APPROVAL (new) -->
+  <g class="flow-node" data-node="F_OWNER_APPROVAL" data-node-type="process" role="button" tabindex="0">
+    <rect x="310" y="642" width="240" height="54" rx="8" fill="#ffffff" stroke="#555555" stroke-width="1.6" />
+    <text x="430" y="665" text-anchor="middle" font-size="13" font-weight="700" fill="#222222">空间负责人加签审批</text>
+    <text x="430" y="683" text-anchor="middle" font-size="11" fill="#777777">消耗速率比对与备注复核 [新增]</text>
+  </g>
+
+  <!-- 8. D_OWNER_DECISION (unchanged, decision) -->
+  <g class="flow-node flow-decision" data-node="D_OWNER_DECISION" data-node-type="decision" role="button" tabindex="0">
+    <polygon points="430,740 560,776 430,812 300,776" fill="#fafafa" stroke="#444444" stroke-width="1.6" />
+    <text x="430" y="773" text-anchor="middle" font-size="12.5" font-weight="700" fill="#222222">负责人审批结论？</text>
+    <text x="430" y="790" text-anchor="middle" font-size="10.5" fill="#777777">Web / 企微移动端双端同步</text>
+  </g>
+
+  <!-- 9. F_QUOTA_ACTIVE (unchanged) -->
+  <g class="flow-node" data-node="F_QUOTA_ACTIVE" data-node-type="end" role="button" tabindex="0">
+    <rect x="130" y="876" width="240" height="56" rx="8" fill="#ffffff" stroke="#333333" stroke-width="1.6" />
+    <text x="250" y="900" text-anchor="middle" font-size="13" font-weight="700" fill="#222222">额度生效与密钥恢复</text>
+    <text x="250" y="918" text-anchor="middle" font-size="11" fill="#777777">总额度 $2,800 · 审计归档 [已生效]</text>
+  </g>
+
+  <!-- 10. F_REJECT_HOLD (unchanged) -->
+  <g class="flow-node" data-node="F_REJECT_HOLD" data-node-type="end" role="button" tabindex="0">
+    <rect x="510" y="876" width="240" height="56" rx="8" fill="#f5f5f5" stroke="#555555" stroke-width="1.6" />
+    <text x="630" y="900" text-anchor="middle" font-size="13" font-weight="700" fill="#222222">驳回申请并维持原上限</text>
+    <text x="630" y="918" text-anchor="middle" font-size="11" fill="#777777">保留 $2,000 硬顶与熔断态 [已拦截]</text>
+  </g>
+
+<rect id="sel-ring" fill="rgba(217,119,6,0.08)" stroke="#d97706" stroke-width="2.5" stroke-dasharray="6 4" rx="8" visibility="hidden" pointer-events="none"/>
+</svg></div></div>
+    <div class="inspector-drawer" id="inspector-drawer">
+      <div class="insp-head">
+        <span class="insp-badge" id="insp-node-id"></span>
+        <span id="anno-node-title"></span>
+        <button type="button" onclick="openMemoForCurrent()">+ 记备注</button>
+        <button type="button" onclick="toggleFs(true)">收起 ✕</button>
+      </div>
+      <div class="insp-body">
+        <div class="stage" id="flow-stage">
+          <div class="frame-phone" id="frame-phone">
+<div class="page" id="p-app-usage-dash" data-page="p-app-usage-dash" data-page-id="p-app-usage-dash">
+  <div class="wt-phone-shell" data-comp-id="dash.mobile_shell.container" data-comp-name="移动端监控外壳" data-comp-role="container">
+    <div class="wt-col" style="gap: 0;">
+      <div class="wt-phone-statusbar">
+        <span>9:41</span>
+        <span>5G · 100%</span>
+      </div>
+      <div class="wt-navbar">
+        <span>星云 AI · 额度监控</span>
+        <span class="wt-badge wt-mono">ws-nebula</span>
+      </div>
+
+      <div class="wt-stack" style="padding: 12px;">
+        <div class="wt-banner" data-comp-id="dash.warning.banner" data-comp-name="移动端预算预警横幅" data-comp-role="feedback">
+          <strong>[预警 92%]</strong> 本月已消耗 $1,840 / $2,000，预计约 29 小时触顶。
+        </div>
+
+        <div class="wt-card" data-comp-id="dash.usage.card" data-comp-name="移动端月度额度卡片" data-comp-role="container">
+          <div class="wt-card-bd wt-col" style="gap: 8px;">
+            <div class="wt-between">
+              <span class="wt-muted">本月团队已用额度</span>
+              <span class="wt-pill-strong">[预警 92%]</span>
+            </div>
+            <div class="wt-kpi-val wt-mono" style="font-size: 20px;">$1,840.00 <span class="wt-muted">/ $2,000</span></div>
+            <div class="wt-meter"><div class="wt-meter-fill" style="width: 92%;"></div></div>
+            <div class="wt-Split2" style="margin-top: 4px;">
+              <div class="wt-kpi-card" style="padding: 8px;">
+                <span class="wt-muted">活跃密钥</span>
+                <strong>18 个 [正常]</strong>
+              </div>
+              <div class="wt-kpi-card" style="padding: 8px;">
+                <span class="wt-muted">待加签单</span>
+                <strong>2 单 [待批]</strong>
+              </div>
+            </div>
+          </div>
+          <div class="wt-card-ft wt-between">
+            <button type="button" class="wt-btn wt-btn-sm" onclick="goNode('F_GUARDRAIL_CFG')" data-comp-id="dash.guardrail.btn" data-comp-name="配置预算风控按钮" data-comp-role="control">配置预算风控</button>
+            <button type="button" class="wt-btn wt-btn-sm wt-btn-primary" onclick="goNode('F_QUOTA_REQ')" data-comp-id="dash.request.btn" data-comp-name="申请临时加额按钮" data-comp-role="control">申请临时加额</button>
+          </div>
+        </div>
+
+        <div class="wt-card" data-comp-id="dash.key_list.card" data-comp-name="移动端高耗密钥列表" data-comp-role="container">
+          <div class="wt-card-hd wt-between">
+            <span>高消耗 API 密钥 Top 3</span>
+            <button type="button" class="wt-btn wt-btn-sm" onclick="goNode('F_OWNER_APPROVAL')" data-comp-id="dash.goto_approval.btn" data-comp-name="前往移动端审批按钮" data-comp-role="control">审批 (2) →</button>
+          </div>
+          <div class="wt-list">
+            <div class="wt-list-item">
+              <div class="wt-col" style="gap: 2px;">
+                <span class="wt-mono"><strong>sk-prod-...8f2a</strong></span>
+                <span class="wt-muted">智能客服 Agent · 林哲</span>
+              </div>
+              <div class="wt-col" style="gap: 2px; align-items: flex-end;">
+                <strong class="wt-mono">$792.40</strong>
+                <span class="wt-pill-strong">[92%]</span>
+              </div>
+            </div>
+            <div class="wt-list-item">
+              <div class="wt-col" style="gap: 2px;">
+                <span class="wt-mono"><strong>sk-eval-...3c19</strong></span>
+                <span class="wt-muted">多模态回归评测 · 周航</span>
+              </div>
+              <div class="wt-col" style="gap: 2px; align-items: flex-end;">
+                <strong class="wt-mono">$518.20</strong>
+                <span class="wt-badge">[正常]</span>
+              </div>
+            </div>
+            <div class="wt-list-item">
+              <div class="wt-col" style="gap: 2px;">
+                <span class="wt-mono"><strong>sk-code-...91d0</strong></span>
+                <span class="wt-muted">IDE 补全网关 · 陈默</span>
+              </div>
+              <div class="wt-col" style="gap: 2px; align-items: flex-end;">
+                <strong class="wt-mono">$346.80</strong>
+                <span class="wt-badge">[正常]</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="wt-tabbar">
+      <div class="wt-tabbar-item active" role="tab" onclick="goNode('F_USAGE_DASH')" data-comp-id="dash.tab_monitor.btn" data-comp-name="底部额度监控标签" data-comp-role="nav">额度监控</div>
+      <div class="wt-tabbar-item" role="tab" onclick="goNode('F_OWNER_APPROVAL')" data-comp-id="dash.tab_approve.btn" data-comp-name="底部加签审批标签" data-comp-role="nav">加签审批 (2)</div>
+      <div class="wt-tabbar-item" role="tab" onclick="goNode('F_QUOTA_ACTIVE')" data-comp-id="dash.tab_audit.btn" data-comp-name="底部审计流水标签" data-comp-role="nav">审计日志</div>
+    </div>
+  </div>
+</div>
+<div class="page" id="p-app-guardrail-modal" data-page="p-app-guardrail-modal" data-page-id="p-app-guardrail-modal">
+  <div class="wt-phone-shell" data-comp-id="policy.mobile_shell.container" data-comp-name="移动端风控配置外壳" data-comp-role="container">
+    <div class="wt-col" style="gap: 0;">
+      <div class="wt-phone-statusbar">
+        <span>9:41</span>
+        <span>5G · 100%</span>
+      </div>
+      <div class="wt-navbar">
+        <button type="button" class="wt-btn wt-btn-sm" onclick="goNode('F_USAGE_DASH')" data-comp-id="policy.back.btn" data-comp-name="返回监控页按钮" data-comp-role="control">← 返回</button>
+        <span>预算风控策略</span>
+        <span class="wt-badge">Owner</span>
+      </div>
+
+      <div class="wt-stack" style="padding: 12px;">
+        <div class="wt-card" data-comp-id="policy.drawer.card" data-comp-name="移动端风控配置卡片" data-comp-role="modal">
+          <div class="wt-card-hd">月度硬顶与免审阈值</div>
+          <div class="wt-card-bd wt-form">
+            <div class="wt-field">
+              <label class="wt-label">月度预算硬顶金额（USD） *</label>
+              <input class="wt-input wt-mono" type="number" value="2000" data-comp-id="policy.cap.input" data-comp-name="月度硬顶金额输入框" data-comp-role="control" />
+              <span class="wt-help">当前已消耗 $1,840 (92%)，不可低于已发生账单。</span>
+            </div>
+
+            <div class="wt-field">
+              <label class="wt-label">单次免审自动放行阈值（USD） *</label>
+              <input class="wt-input wt-mono" type="number" value="500" data-comp-id="policy.threshold.input" data-comp-name="自动放行阈值输入框" data-comp-role="control" />
+              <span class="wt-help">&lt;= $500 自动放行；&gt; $500 推企微加签。</span>
+            </div>
+
+            <div class="wt-field">
+              <label class="wt-label">达到 100% 硬顶策略 *</label>
+              <select class="wt-select" onchange="setVar('enforcement_mode', this.value)" data-comp-id="policy.strategy.select" data-comp-name="达到硬顶策略选择框" data-comp-role="control">
+                <option value="auto_pause" selected>自动暂停密钥（返回 429 拦截）</option>
+                <option value="alert_only">仅发送告警（不阻断线上请求）</option>
+              </select>
+            </div>
+
+            <div class="wt-switch-row">
+              <div class="wt-col" style="gap: 2px;">
+                <span class="wt-label">企业微信分级预警</span>
+                <span class="wt-help">80% / 90% / 100% 机器人通知</span>
+              </div>
+              <input type="checkbox" checked data-comp-id="policy.wecom.switch" data-comp-name="企微告警开关" data-comp-role="control" />
+            </div>
+
+            <div class="wt-switch-row">
+              <div class="wt-col" style="gap: 2px;">
+                <span class="wt-label">财务 Webhook 推送</span>
+                <span class="wt-help">finops-bus.nebula.internal</span>
+              </div>
+              <input type="checkbox" checked data-comp-id="policy.webhook.switch" data-comp-name="Webhook告警开关" data-comp-role="control" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="wt-card-ft wt-between" style="background: #ffffff;">
+      <button type="button" class="wt-btn" onclick="goNode('F_USAGE_DASH')" data-comp-id="policy.cancel.btn" data-comp-name="取消配置按钮" data-comp-role="control">取消</button>
+      <button type="button" class="wt-btn wt-btn-primary" style="flex: 1;" onclick="goNode('D_HARD_CAP')" data-comp-id="policy.save.btn" data-comp-name="保存风控策略按钮" data-comp-role="control">保存风控策略</button>
+    </div>
+  </div>
+</div>
+<div class="page" id="p-app-quota-request" data-page="p-app-quota-request" data-page-id="p-app-quota-request">
+  <div class="wt-phone-shell" data-comp-id="req.mobile_shell.container" data-comp-name="移动端申请加额外壳" data-comp-role="container">
+    <div class="wt-col" style="gap: 0;">
+      <div class="wt-phone-statusbar">
+        <span>9:41</span>
+        <span>5G · 100%</span>
+      </div>
+      <div class="wt-navbar">
+        <button type="button" class="wt-btn wt-btn-sm" onclick="goNode('F_USAGE_DASH')" data-comp-id="req.back.btn" data-comp-name="返回监控页按钮" data-comp-role="control">← 返回</button>
+        <span>申请临时加额</span>
+        <span class="wt-badge">[成员端]</span>
+      </div>
+
+      <div class="wt-stack" style="padding: 12px;">
+        <div class="wt-banner" data-when-var="request_tier" data-when-val="gt_500">
+          <strong>[需负责人加签]</strong> 追加额度 &gt; $500，将推送周琳复核。
+        </div>
+        <div class="wt-banner hidden" data-when-var="request_tier" data-when-val="le_500">
+          <strong>[系统免审直通]</strong> 追加额度 &lt;= $500，提交后 3 秒自动生效。
+        </div>
+
+        <div class="wt-card" data-comp-id="req.form.card" data-comp-name="移动端临时加额表单卡片" data-comp-role="container">
+          <div class="wt-card-bd wt-form">
+            <div class="wt-field">
+              <label class="wt-label">归属项目密钥 *</label>
+              <select class="wt-select" data-comp-id="req.key.select" data-comp-name="归属项目密钥下拉框" data-comp-role="control">
+                <option value="sk-prod-8f2a" selected>sk-prod-...8f2a · 智能客服</option>
+                <option value="sk-eval-3c19">sk-eval-...3c19 · 回归评测</option>
+              </select>
+            </div>
+
+            <div class="wt-field">
+              <label class="wt-label">申请追加额度（USD） *</label>
+              <input class="wt-input wt-mono" type="number" min="50" step="50" value="800" oninput="setVar('request_tier', parseFloat(this.value || 0) > 500 ? 'gt_500' : 'le_500')" data-comp-id="req.amount.input" data-comp-name="申请追加额度输入框" data-comp-role="control" />
+              <span class="wt-help">扩容后总额度 $2,800（12 月 1 日自动回落 $2,000）</span>
+            </div>
+
+            <div class="wt-field">
+              <label class="wt-label">成本中心归属 *</label>
+              <select class="wt-select" data-comp-id="req.cost_center.select" data-comp-name="成本中心归属下拉框" data-comp-role="control">
+                <option value="CC-204" selected>CC-204 · 智能客服研发部</option>
+                <option value="CC-108">CC-108 · 模型评测平台组</option>
+              </select>
+            </div>
+
+            <div class="wt-field">
+              <label class="wt-label">业务峰值事由 *</label>
+              <textarea class="wt-textarea" style="min-height: 64px;" data-comp-id="req.reason.textarea" data-comp-name="业务峰值事由输入框" data-comp-role="control">双十一返场大促咨询量激增 2.3 倍，需临时追加 $800 保障线上客服零中断。</textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="wt-card-ft wt-between" style="background: #ffffff;">
+      <button type="button" class="wt-btn" onclick="setVar('request_tier','le_500')" data-comp-id="req.fill_300.btn" data-comp-name="试算免审按钮" data-comp-role="control">试算免审</button>
+      <button type="button" class="wt-btn wt-btn-primary" style="flex: 1;" onclick="goBranch('request_tier')" data-comp-id="req.submit.btn" data-comp-name="提交加额申请按钮" data-comp-role="control">提交加额申请</button>
+    </div>
+  </div>
+</div>
+<div class="page" id="p-app-owner-approval" data-page="p-app-owner-approval" data-page-id="p-app-owner-approval">
+  <div class="wt-phone-shell" data-comp-id="approve.mobile_shell.container" data-comp-name="企微移动端加签审批外壳" data-comp-role="container">
+    <div class="wt-col" style="gap: 0;">
+      <div class="wt-phone-statusbar">
+        <span>9:41</span>
+        <span>5G · 100%</span>
+      </div>
+      <div class="wt-navbar">
+        <span>企微工作台 · 加签审批</span>
+        <span class="wt-pill-strong">[待复核]</span>
+      </div>
+
+      <div class="wt-stack" style="padding: 12px;">
+        <div class="wt-card" data-comp-id="approve.summary.card" data-comp-name="移动端加额审批摘要卡" data-comp-role="container">
+          <div class="wt-card-hd wt-between">
+            <span>单号 #QR-20261120-08</span>
+            <span class="wt-badge">CC-204 客服部</span>
+          </div>
+          <div class="wt-card-bd wt-col" style="gap: 8px;">
+            <div class="wt-between">
+              <span class="wt-muted">申请人</span>
+              <strong>林哲 · 智能客服 Agent</strong>
+            </div>
+            <div class="wt-between">
+              <span class="wt-muted">本次追加金额</span>
+              <strong class="wt-mono" style="font-size: 16px;">+$800.00 ($2k → $2.8k)</strong>
+            </div>
+            <div class="wt-divider"></div>
+            <div class="wt-muted"><strong>事由：</strong>双十一返场大促工单并发 2.3x，需追加 $800 保障月底前生产流量零降级（次月回落）。</div>
+          </div>
+        </div>
+
+        <div class="wt-card" data-comp-id="approve.compare.card" data-comp-name="移动端消耗速率对比卡" data-comp-role="container">
+          <div class="wt-card-hd wt-between">
+            <span>消耗速率风控核查</span>
+            <span class="wt-badge">[非异常刷量]</span>
+          </div>
+          <div class="wt-list">
+            <div class="wt-list-item">
+              <span class="wt-muted">近 24h 速率对比</span>
+              <span class="wt-mono"><strong>$6.80/h</strong> vs 均值 $2.95/h</span>
+            </div>
+            <div class="wt-list-item">
+              <span class="wt-muted">5xx / 重试异常率</span>
+              <span class="wt-mono">0.42% [正常]</span>
+            </div>
+            <div class="wt-list-item">
+              <span class="wt-muted">单会话均摊成本</span>
+              <span class="wt-mono">$0.014/通 [优于基线]</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="wt-field">
+          <label class="wt-label">审批复核备注</label>
+          <textarea class="wt-textarea" style="min-height: 52px;" data-comp-id="approve.note.textarea" data-comp-name="复核备注输入框" data-comp-role="control">核实大促流量属实，同意当月扩容 $800。</textarea>
+        </div>
+      </div>
+    </div>
+
+    <div class="wt-card-ft wt-between" style="background: #ffffff;">
+      <button type="button" class="wt-btn wt-btn-danger" onclick="setVar('owner_decision','reject'); goNode('F_REJECT_HOLD')" data-comp-id="approve.reject.btn" data-comp-name="驳回并维持原上限按钮" data-comp-role="control">驳回维持原上限</button>
+      <button type="button" class="wt-btn wt-btn-primary" style="flex: 1;" onclick="setVar('owner_decision','approve'); goNode('F_QUOTA_ACTIVE')" data-comp-id="approve.confirm.btn" data-comp-name="同意加额并解封按钮" data-comp-role="control">同意加额并解封</button>
+    </div>
+  </div>
+</div>
+<div class="page" id="p-app-key-paused" data-page="p-app-key-paused" data-page-id="p-app-key-paused">
+  <div class="wt-phone-shell" data-comp-id="paused.mobile_shell.container" data-comp-name="移动端熔断告警外壳" data-comp-role="container">
+    <div class="wt-col" style="gap: 0;">
+      <div class="wt-phone-statusbar">
+        <span>9:41</span>
+        <span>5G · 100%</span>
+      </div>
+      <div class="wt-navbar">
+        <span>企微告警 · 密钥保护性熔断</span>
+        <span class="wt-pill-strong">[已暂停]</span>
+      </div>
+
+      <div class="wt-stack" style="padding: 12px;">
+        <div class="wt-alert wt-alert-danger" data-comp-id="paused.alert.banner" data-comp-name="移动端熔断警示卡" data-comp-role="feedback">
+          [已达 100% 硬顶] 密钥 <span class="wt-mono">sk-prod-...8f2a</span> 已触发自动暂停（HTTP 429）。
+        </div>
+
+        <div class="wt-card" data-comp-id="paused.isolation.card" data-comp-name="移动端熔断详情与隔离卡" data-comp-role="container">
+          <div class="wt-card-hd">拦截详情与故障隔离</div>
+          <div class="wt-card-bd wt-col" style="gap: 8px;">
+            <div class="wt-between">
+              <span class="wt-muted">当前账期消耗</span>
+              <strong class="wt-mono">$2,000.00 / $2,000.00</strong>
+            </div>
+            <div class="wt-meter"><div class="wt-meter-fill" style="width: 100%;"></div></div>
+            <div class="wt-between">
+              <span class="wt-muted">受限主密钥</span>
+              <span class="wt-mono">sk-prod-...8f2a [已暂停]</span>
+            </div>
+            <div class="wt-between">
+              <span class="wt-muted">其他业务空间</span>
+              <span class="wt-badge">[正常 · 物理隔离不受影响]</span>
+            </div>
+            <div class="wt-divider"></div>
+            <span class="wt-muted">说明：已建立流式会话正常结束，离线评测任务挂起保留断点；审批加额后 10 秒内自动恢复。</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="wt-card-ft wt-between" style="background: #ffffff;">
+      <button type="button" class="wt-btn" onclick="goNode('F_GUARDRAIL_CFG')" data-comp-id="paused.edit_policy.btn" data-comp-name="查看风控策略按钮" data-comp-role="control">风控策略</button>
+      <button type="button" class="wt-btn wt-btn-primary" style="flex: 1;" onclick="goNode('F_QUOTA_REQ')" data-comp-id="paused.emergency_req.btn" data-comp-name="一键发起紧急加额按钮" data-comp-role="control">一键发起紧急加额</button>
+    </div>
+  </div>
+</div>
+<div class="page" id="p-app-quota-active" data-page="p-app-quota-active" data-page-id="p-app-quota-active">
+  <div class="wt-phone-shell" data-comp-id="active.mobile_shell.container" data-comp-name="移动端额度生效回执外壳" data-comp-role="container">
+    <div class="wt-col" style="gap: 0;">
+      <div class="wt-phone-statusbar">
+        <span>9:41</span>
+        <span>5G · 100%</span>
+      </div>
+      <div class="wt-navbar">
+        <span>审批回执 · 额度已恢复</span>
+        <span class="wt-badge">[已生效]</span>
+      </div>
+
+      <div class="wt-stack" style="padding: 12px;">
+        <div class="wt-banner" data-comp-id="active.result.banner" data-comp-name="移动端解封生效横幅" data-comp-role="feedback">
+          <strong>[密钥已恢复正常]</strong> 月度硬顶已更新为 $2,800.00，全节点耗时 4.2 秒完成解封。
+        </div>
+
+        <div class="wt-card">
+          <div class="wt-card-bd wt-col" style="gap: 8px;">
+            <div class="wt-between">
+              <span class="wt-muted">更新后月度水位</span>
+              <span class="wt-badge">[正常 66%]</span>
+            </div>
+            <div class="wt-kpi-val wt-mono">$1,840 / $2,800</div>
+            <div class="wt-meter"><div class="wt-meter-fill" style="width: 66%;"></div></div>
+            <span class="wt-muted">可用余额 $960.00 · 12 月 1 日零点自动恢复 $2,000 基线</span>
+          </div>
+        </div>
+
+        <div class="wt-card" data-comp-id="active.audit.card" data-comp-name="移动端审计流水记录卡" data-comp-role="container">
+          <div class="wt-card-hd">审计流水记录</div>
+          <div class="wt-list">
+            <div class="wt-list-item">
+              <div class="wt-col" style="gap: 2px;">
+                <strong>[密钥恢复] sk-prod-...8f2a</strong>
+                <span class="wt-muted">Guardrail-Gateway · 解除 429 拦截</span>
+              </div>
+              <span class="wt-mono wt-muted">15:18:09</span>
+            </div>
+            <div class="wt-list-item">
+              <div class="wt-col" style="gap: 2px;">
+                <strong>[加签通过] +$800 (CC-204)</strong>
+                <span class="wt-muted">周琳 (Owner) · 单号 #QR-20261120-08</span>
+              </div>
+              <span class="wt-mono wt-muted">15:18:05</span>
+            </div>
+            <div class="wt-list-item">
+              <div class="wt-col" style="gap: 2px;">
+                <strong>[发起申请] 大促峰值扩容</strong>
+                <span class="wt-muted">林哲 (Member)</span>
+              </div>
+              <span class="wt-mono wt-muted">15:12:41</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="wt-card-ft" style="background: #ffffff;">
+      <button type="button" class="wt-btn wt-btn-primary wt-btn-block" onclick="goNode('F_USAGE_DASH')" data-comp-id="active.back_dash.btn" data-comp-name="返回额度监控台按钮" data-comp-role="control">返回额度监控台</button>
+    </div>
+  </div>
+</div>
+          </div>
+          <div class="frame-wide hidden" id="frame-wide">
+<div class="page" id="p-usage-dash" data-page="p-usage-dash" data-page-id="p-usage-dash">
+  <div class="wt-app-shell" data-comp-id="dash.shell.container" data-comp-name="工作台主布局容器" data-comp-role="container">
+    <aside class="wt-sidebar" data-comp-id="dash.sidebar.nav" data-comp-name="左侧控制台导航栏" data-comp-role="nav">
+      <div class="wt-brand-row">
+        <span class="wt-brand-mark">N</span>
+        <span>星云 AI 工作台</span>
+      </div>
+      <div class="wt-side-label">研发中心空间</div>
+      <button type="button" class="wt-side-item" onclick="goNode('F_USAGE_DASH')" data-comp-id="dash.nav_overview.btn" data-comp-name="概览菜单按钮" data-comp-role="nav">
+        <span>概览</span>
+      </button>
+      <button type="button" class="wt-side-item" onclick="goNode('F_USAGE_DASH')" data-comp-id="dash.nav_members.btn" data-comp-name="成员管理菜单按钮" data-comp-role="nav">
+        <span>成员管理</span>
+        <span class="wt-muted">42</span>
+      </button>
+      <button type="button" class="wt-side-item" onclick="goNode('F_USAGE_DASH')" data-comp-id="dash.nav_keys.btn" data-comp-name="API密钥菜单按钮" data-comp-role="nav">
+        <span>API 密钥</span>
+        <span class="wt-muted">18</span>
+      </button>
+      <button type="button" class="wt-side-item active" onclick="goNode('F_USAGE_DASH')" data-comp-id="dash.nav_guardrails.btn" data-comp-name="额度与风控菜单按钮" data-comp-role="nav">
+        <span>额度与风控</span>
+        <span class="wt-badge">[激活]</span>
+      </button>
+      <button type="button" class="wt-side-item" onclick="goNode('F_QUOTA_ACTIVE')" data-comp-id="dash.nav_audit.btn" data-comp-name="审计日志菜单按钮" data-comp-role="nav">
+        <span>审计日志</span>
+      </button>
+      <div class="wt-divider"></div>
+      <div class="wt-col" style="padding: 4px 8px;">
+        <span class="wt-muted">账期: 2026-11</span>
+        <span class="wt-muted">套餐: Enterprise</span>
+      </div>
+    </aside>
+
+    <main class="wt-main">
+      <div class="wt-between" data-comp-id="dash.header.bar" data-comp-name="额度监控页顶栏" data-comp-role="container">
+        <div class="wt-col" style="gap: 2px;">
+          <div class="wt-row">
+            <strong style="font-size: 15px;">团队额度与密钥监控总览</strong>
+            <span class="wt-badge wt-mono">ws-nebula-core</span>
+          </div>
+          <span class="wt-muted">实时流式 Token 计费 · 硬顶风控策略已开启（延迟 &lt; 10s）</span>
+        </div>
+        <div class="wt-row">
+          <button type="button" class="wt-btn" onclick="goNode('F_GUARDRAIL_CFG')" data-comp-id="dash.guardrail.btn" data-comp-name="配置预算风控按钮" data-comp-role="control">配置预算风控</button>
+          <button type="button" class="wt-btn wt-btn-primary" onclick="goNode('F_QUOTA_REQ')" data-comp-id="dash.request.btn" data-comp-name="申请临时加额按钮" data-comp-role="control">申请临时加额</button>
+        </div>
+      </div>
+
+      <div class="wt-banner wt-between" data-comp-id="dash.warning.banner" data-comp-name="月度预算预警横幅" data-comp-role="feedback">
+        <span><strong>[预警 92%]</strong> 本月已消耗 <span class="wt-mono">$1,840.00 / $2,000.00</span>，按近 24h 速率预计 29 小时后触及月度硬顶。</span>
+        <button type="button" class="wt-btn wt-btn-sm" onclick="setVar('cap_trigger','hit_pause'); goNode('F_KEY_PAUSED')" data-comp-id="dash.preview_pause.btn" data-comp-name="预览触顶熔断态按钮" data-comp-role="control">预览 100% 熔断</button>
+      </div>
+
+      <div class="wt-kpi-grid" data-comp-id="dash.kpi.grid" data-comp-name="额度监控三联指标卡" data-comp-role="container">
+        <div class="wt-kpi-card" data-comp-id="dash.usage.card" data-comp-name="本月已用额度卡片" data-comp-role="container">
+          <div class="wt-kpi-label">
+            <span>本月已用 / 月度硬顶</span>
+            <span class="wt-pill-strong">[92%]</span>
+          </div>
+          <div class="wt-kpi-val wt-mono">$1,840 / $2,000</div>
+          <div class="wt-meter"><div class="wt-meter-fill" style="width: 92%;"></div></div>
+          <div class="wt-kpi-sub">剩余可用 $160 · 免审阈值 $500</div>
+        </div>
+
+        <div class="wt-kpi-card" data-comp-id="dash.keys.card" data-comp-name="活跃密钥指标卡" data-comp-role="container">
+          <div class="wt-kpi-label">
+            <span>活跃密钥</span>
+            <span class="wt-badge">[正常]</span>
+          </div>
+          <div class="wt-kpi-val">18 个</div>
+          <div class="wt-kpi-sub">生产网关 7 个 · 评测沙箱 11 个</div>
+          <div class="wt-kpi-sub">当前受限暂停: 0 个</div>
+        </div>
+
+        <div class="wt-kpi-card" data-comp-id="dash.pending.card" data-comp-name="待审批加额指标卡" data-comp-role="container">
+          <div class="wt-kpi-label">
+            <span>待审批加额</span>
+            <span class="wt-badge">[待加签]</span>
+          </div>
+          <div class="wt-kpi-val">2 单</div>
+          <div class="wt-between" style="margin-top: 2px;">
+            <span class="wt-kpi-sub">合计待批 $1,150</span>
+            <button type="button" class="wt-btn wt-btn-sm" onclick="goNode('F_OWNER_APPROVAL')" data-comp-id="dash.goto_approval.btn" data-comp-name="前往负责人审批台按钮" data-comp-role="control">去审批 →</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="wt-card" data-comp-id="dash.key_table.card" data-comp-name="API密钥消耗明细表卡片" data-comp-role="container">
+        <div class="wt-card-hd wt-between">
+          <span>API 密钥消耗明细（按当月账单降序）</span>
+          <div class="wt-row">
+            <select class="wt-select" style="width: 148px; padding: 3px 8px; font-size: 11.5px;" data-comp-id="dash.env_filter.select" data-comp-name="密钥环境筛选框" data-comp-role="control">
+              <option value="all">全部环境 (18)</option>
+              <option value="prod">生产环境 Production (7)</option>
+              <option value="eval">评测沙箱 Staging (11)</option>
+            </select>
+          </div>
+        </div>
+        <div class="wt-card-bd" style="padding: 0;">
+          <table class="wt-table">
+            <thead>
+              <tr>
+                <th>项目密钥 / 负责人</th>
+                <th>主力模型</th>
+                <th>当月已用</th>
+                <th>速率</th>
+                <th>状态</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>
+                  <div class="wt-mono"><strong>sk-prod-...8f2a</strong></div>
+                  <div class="wt-muted">智能客服 Agent · 林哲</div>
+                </td>
+                <td class="wt-mono">nebula-4o</td>
+                <td class="wt-mono"><strong>$792.40</strong></td>
+                <td class="wt-mono">$6.80/h</td>
+                <td><span class="wt-pill-strong">[预警 92%]</span></td>
+                <td>
+                  <button type="button" class="wt-btn wt-btn-sm" onclick="goNode('F_QUOTA_REQ')" data-comp-id="dash.row_prod_expand.btn" data-comp-name="客服密钥申请加额按钮" data-comp-role="control">加额</button>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <div class="wt-mono"><strong>sk-eval-...3c19</strong></div>
+                  <div class="wt-muted">多模态回归评测 · 周航</div>
+                </td>
+                <td class="wt-mono">nebula-4o-mini</td>
+                <td class="wt-mono">$518.20</td>
+                <td class="wt-mono">$4.15/h</td>
+                <td><span class="wt-badge">[正常]</span></td>
+                <td>
+                  <button type="button" class="wt-btn wt-btn-sm" onclick="goNode('F_GUARDRAIL_CFG')" data-comp-id="dash.row_eval_policy.btn" data-comp-name="评测密钥限额策略按钮" data-comp-role="control">风控</button>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <div class="wt-mono"><strong>sk-code-...91d0</strong></div>
+                  <div class="wt-muted">IDE 代码补全网关 · 陈默</div>
+                </td>
+                <td class="wt-mono">nebula-coder-v2</td>
+                <td class="wt-mono">$346.80</td>
+                <td class="wt-mono">$2.10/h</td>
+                <td><span class="wt-badge">[正常]</span></td>
+                <td>
+                  <button type="button" class="wt-btn wt-btn-sm" onclick="goNode('F_GUARDRAIL_CFG')" data-comp-id="dash.row_code_policy.btn" data-comp-name="代码网关限额策略按钮" data-comp-role="control">风控</button>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <div class="wt-mono"><strong>sk-batch-...04e7</strong></div>
+                  <div class="wt-muted">离线知识库向量化 · 宋佳</div>
+                </td>
+                <td class="wt-mono">nebula-embed-v3</td>
+                <td class="wt-mono">$182.60</td>
+                <td class="wt-mono">$0.45/h</td>
+                <td><span class="wt-badge">[低负载]</span></td>
+                <td>
+                  <button type="button" class="wt-btn wt-btn-sm" onclick="goNode('F_QUOTA_REQ')" data-comp-id="dash.row_batch_expand.btn" data-comp-name="离线任务加额按钮" data-comp-role="control">加额</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+<div class="page" id="p-guardrail-modal" data-page="p-guardrail-modal" data-page-id="p-guardrail-modal">
+  <div class="wt-app-shell" data-comp-id="policy.shell.container" data-comp-name="风控配置页主布局" data-comp-role="container">
+    <aside class="wt-sidebar" data-comp-id="policy.sidebar.nav" data-comp-name="左侧控制台导航栏" data-comp-role="nav">
+      <div class="wt-brand-row">
+        <span class="wt-brand-mark">N</span>
+        <span>星云 AI 工作台</span>
+      </div>
+      <div class="wt-side-label">研发中心空间</div>
+      <button type="button" class="wt-side-item" onclick="goNode('F_USAGE_DASH')" data-comp-id="policy.nav_overview.btn" data-comp-name="概览菜单按钮" data-comp-role="nav">
+        <span>概览</span>
+      </button>
+      <button type="button" class="wt-side-item" onclick="goNode('F_USAGE_DASH')" data-comp-id="policy.nav_members.btn" data-comp-name="成员管理菜单按钮" data-comp-role="nav">
+        <span>成员管理</span>
+        <span class="wt-muted">42</span>
+      </button>
+      <button type="button" class="wt-side-item" onclick="goNode('F_USAGE_DASH')" data-comp-id="policy.nav_keys.btn" data-comp-name="API密钥菜单按钮" data-comp-role="nav">
+        <span>API 密钥</span>
+        <span class="wt-muted">18</span>
+      </button>
+      <button type="button" class="wt-side-item active" onclick="goNode('F_GUARDRAIL_CFG')" data-comp-id="policy.nav_guardrails.btn" data-comp-name="额度与风控菜单按钮" data-comp-role="nav">
+        <span>额度与风控</span>
+        <span class="wt-badge">[激活]</span>
+      </button>
+      <button type="button" class="wt-side-item" onclick="goNode('F_QUOTA_ACTIVE')" data-comp-id="policy.nav_audit.btn" data-comp-name="审计日志菜单按钮" data-comp-role="nav">
+        <span>审计日志</span>
+      </button>
+    </aside>
+
+    <main class="wt-main">
+      <div class="wt-between">
+        <div class="wt-col" style="gap: 2px;">
+          <div class="wt-breadcrumb">额度与风控 / <span>配置预算风控与熔断策略</span></div>
+          <strong style="font-size: 15px;">预算风控与超限熔断配置</strong>
+        </div>
+        <button type="button" class="wt-btn" onclick="goNode('F_USAGE_DASH')" data-comp-id="policy.back.btn" data-comp-name="返回监控总览按钮" data-comp-role="control">← 返回总览</button>
+      </div>
+
+      <div class="wt-kpi-grid">
+        <div class="wt-kpi-card">
+          <div class="wt-kpi-label"><span>当前已发生消耗</span><span class="wt-badge">[下限基线]</span></div>
+          <div class="wt-kpi-val wt-mono">$1,840.00</div>
+          <div class="wt-meter"><div class="wt-meter-fill" style="width: 92%;"></div></div>
+        </div>
+        <div class="wt-kpi-card">
+          <div class="wt-kpi-label"><span>分级预警水位</span><span class="wt-badge">[已启用]</span></div>
+          <div class="wt-kpi-val wt-mono">80% / 90% / 100%</div>
+          <div class="wt-kpi-sub">已触发 80% 与 90% 企微提醒</div>
+        </div>
+        <div class="wt-kpi-card">
+          <div class="wt-kpi-label"><span>网关下发延迟</span><span class="wt-badge">[SLA]</span></div>
+          <div class="wt-kpi-val wt-mono">&lt;= 10 秒</div>
+          <div class="wt-kpi-sub">全球 4 节点配额缓存同步</div>
+        </div>
+      </div>
+
+      <div class="wt-card" data-comp-id="policy.drawer.card" data-comp-name="风控规则配置抽屉卡片" data-comp-role="modal">
+        <div class="wt-card-hd wt-between">
+          <span>月度硬顶与免审自动放行规则</span>
+          <span class="wt-badge">仅空间 Owner 可编辑</span>
+        </div>
+        <div class="wt-card-bd wt-form">
+          <div class="wt-Split2">
+            <div class="wt-field">
+              <label class="wt-label">月度预算硬顶金额（USD） *</label>
+              <input class="wt-input wt-mono" type="number" min="1840" step="100" value="2000" data-comp-id="policy.cap.input" data-comp-name="月度硬顶金额输入框" data-comp-role="control" />
+              <span class="wt-help">不可低于当月已出账消耗 $1,840；次月 1 日零点重置计量。</span>
+            </div>
+
+            <div class="wt-field">
+              <label class="wt-label">单次免审自动放行阈值（USD） *</label>
+              <input class="wt-input wt-mono" type="number" min="0" step="50" value="500" data-comp-id="policy.threshold.input" data-comp-name="自动放行阈值输入框" data-comp-role="control" />
+              <span class="wt-help">成员申请加额 &lt;= $500（当月首次）免审秒级生效；超出需加签。</span>
+            </div>
+          </div>
+
+          <div class="wt-field">
+            <label class="wt-label">达到 100% 硬顶执行策略 *</label>
+            <select class="wt-select" onchange="setVar('enforcement_mode', this.value)" data-comp-id="policy.strategy.select" data-comp-name="达到硬顶策略选择框" data-comp-role="control">
+              <option value="auto_pause" selected>自动暂停密钥（推荐：返回 HTTP 429 保护性熔断，阻断失控账单）</option>
+              <option value="alert_only">仅发送告警（不阻断线上 API 请求，超支部分按实结算）</option>
+            </select>
+            <div class="wt-banner" data-when-var="enforcement_mode" data-when-val="auto_pause">
+              <strong>[当前策略：自动暂停密钥]</strong> 累计消耗达 $2,000.00 时自动暂停当前空间密钥，进行中流式响应正常收尾，不影响其他业务空间。
+            </div>
+            <div class="wt-banner hidden" data-when-var="enforcement_mode" data-when-val="alert_only">
+              <strong>[当前策略：仅发送告警]</strong> 累计消耗达 $2,000.00 时保持 API 正常放行，每超额 $200 向空间负责人追加推送高优账单通知。
+            </div>
+          </div>
+
+          <div class="wt-Split2">
+            <div class="wt-switch-row">
+              <div class="wt-col" style="gap: 2px;">
+                <span class="wt-label">企业微信群机器人预警</span>
+                <span class="wt-help">80% / 90% / 100% 实时推送卡片</span>
+              </div>
+              <input type="checkbox" checked data-comp-id="policy.wecom.switch" data-comp-name="企微机器人告警开关" data-comp-role="control" />
+            </div>
+
+            <div class="wt-switch-row">
+              <div class="wt-col" style="gap: 2px;">
+                <span class="wt-label">FinOps Webhook 实时回调</span>
+                <span class="wt-help">同步推送至内部财务成本中心</span>
+              </div>
+              <input type="checkbox" checked data-comp-id="policy.webhook.switch" data-comp-name="Webhook告警开关" data-comp-role="control" />
+            </div>
+          </div>
+
+          <div class="wt-field">
+            <label class="wt-label">告警回调终端标识（内部网关路由）</label>
+            <input class="wt-input wt-mono" type="text" value="finops-bus.nebula.internal/v2/guardrail-events" data-comp-id="policy.webhook_endpoint.input" data-comp-name="Webhook回调端点输入框" data-comp-role="control" />
+          </div>
+        </div>
+
+        <div class="wt-card-ft wt-between">
+          <span class="wt-muted">最近变更：周琳 (Owner) · 2026-11-12 10:20</span>
+          <div class="wt-row">
+            <button type="button" class="wt-btn" onclick="goNode('F_USAGE_DASH')" data-comp-id="policy.cancel.btn" data-comp-name="取消风控配置按钮" data-comp-role="control">取消</button>
+            <button type="button" class="wt-btn wt-btn-primary" onclick="goNode('D_HARD_CAP')" data-comp-id="policy.save.btn" data-comp-name="保存风控策略按钮" data-comp-role="control">保存风控策略</button>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+<div class="page" id="p-quota-request" data-page="p-quota-request" data-page-id="p-quota-request">
+  <div class="wt-app-shell" data-comp-id="req.shell.container" data-comp-name="申请加额页主布局" data-comp-role="container">
+    <aside class="wt-sidebar" data-comp-id="req.sidebar.nav" data-comp-name="左侧控制台导航栏" data-comp-role="nav">
+      <div class="wt-brand-row">
+        <span class="wt-brand-mark">N</span>
+        <span>星云 AI 工作台</span>
+      </div>
+      <div class="wt-side-label">研发中心空间</div>
+      <button type="button" class="wt-side-item" onclick="goNode('F_USAGE_DASH')" data-comp-id="req.nav_overview.btn" data-comp-name="概览菜单按钮" data-comp-role="nav">
+        <span>概览</span>
+      </button>
+      <button type="button" class="wt-side-item" onclick="goNode('F_USAGE_DASH')" data-comp-id="req.nav_members.btn" data-comp-name="成员管理菜单按钮" data-comp-role="nav">
+        <span>成员管理</span>
+        <span class="wt-muted">42</span>
+      </button>
+      <button type="button" class="wt-side-item" onclick="goNode('F_USAGE_DASH')" data-comp-id="req.nav_keys.btn" data-comp-name="API密钥菜单按钮" data-comp-role="nav">
+        <span>API 密钥</span>
+        <span class="wt-muted">18</span>
+      </button>
+      <button type="button" class="wt-side-item active" onclick="goNode('F_USAGE_DASH')" data-comp-id="req.nav_guardrails.btn" data-comp-name="额度与风控菜单按钮" data-comp-role="nav">
+        <span>额度与风控</span>
+        <span class="wt-badge">[激活]</span>
+      </button>
+      <button type="button" class="wt-side-item" onclick="goNode('F_QUOTA_ACTIVE')" data-comp-id="req.nav_audit.btn" data-comp-name="审计日志菜单按钮" data-comp-role="nav">
+        <span>审计日志</span>
+      </button>
+    </aside>
+
+    <main class="wt-main">
+      <div class="wt-between">
+        <div class="wt-col" style="gap: 2px;">
+          <div class="wt-breadcrumb">额度与风控 / <span>申请临时加额</span></div>
+          <strong style="font-size: 15px;">成员发起临时加额申请</strong>
+        </div>
+        <button type="button" class="wt-btn" onclick="goNode('F_USAGE_DASH')" data-comp-id="req.back.btn" data-comp-name="返回监控台按钮" data-comp-role="control">← 返回监控台</button>
+      </div>
+
+      <div class="wt-kpi-grid">
+        <div class="wt-kpi-card">
+          <div class="wt-kpi-label"><span>当前空间余额</span><span class="wt-pill-strong">[92%]</span></div>
+          <div class="wt-kpi-val wt-mono">$160.00</div>
+          <div class="wt-kpi-sub">原硬顶 $2,000 · 已用 $1,840</div>
+        </div>
+        <div class="wt-kpi-card">
+          <div class="wt-kpi-label"><span>免审自动放行额度</span><span class="wt-badge">[当月可用]</span></div>
+          <div class="wt-kpi-val wt-mono">&lt;= $500</div>
+          <div class="wt-kpi-sub">当月剩余免审次数: 1 次</div>
+        </div>
+        <div class="wt-kpi-card">
+          <div class="wt-kpi-label"><span>预计审批链路</span><span class="wt-badge">[动态路由]</span></div>
+          <div class="wt-kpi-val" style="font-size: 15px;" data-when-var="request_tier" data-when-val="gt_500">负责人加签</div>
+          <div class="wt-kpi-val hidden" style="font-size: 15px;" data-when-var="request_tier" data-when-val="le_500">系统秒级免审</div>
+          <div class="wt-kpi-sub">审批人: 周琳 (Workspace Owner)</div>
+        </div>
+      </div>
+
+      <div class="wt-card" data-comp-id="req.form.card" data-comp-name="临时加额申请表单卡片" data-comp-role="container">
+        <div class="wt-card-hd wt-between">
+          <span>临时扩容申请单（单号预分配 #QR-20261120-08）</span>
+          <span class="wt-muted">申请人：林哲 (linzhe@nebula.team)</span>
+        </div>
+        <div class="wt-card-bd wt-form">
+          <div class="wt-Split2">
+            <div class="wt-field">
+              <label class="wt-label">归属项目 API 密钥 *</label>
+              <select class="wt-select" data-comp-id="req.key.select" data-comp-name="归属项目密钥下拉框" data-comp-role="control">
+                <option value="sk-prod-8f2a" selected>sk-prod-...8f2a · 智能客服 Agent ($792.40)</option>
+                <option value="sk-eval-3c19">sk-eval-...3c19 · 多模态回归评测 ($518.20)</option>
+                <option value="sk-code-91d0">sk-code-...91d0 · IDE 代码补全网关 ($346.80)</option>
+              </select>
+            </div>
+
+            <div class="wt-field">
+              <label class="wt-label">申请追加额度（USD） *</label>
+              <input class="wt-input wt-mono" type="number" min="50" step="50" value="800" oninput="setVar('request_tier', parseFloat(this.value || 0) > 500 ? 'gt_500' : 'le_500')" data-comp-id="req.amount.input" data-comp-name="申请追加额度输入框" data-comp-role="control" />
+              <span class="wt-help">试算：输入 300 切换为免审直通；输入 800 触发负责人加签（新硬顶 $2,800）。</span>
+            </div>
+          </div>
+
+          <div class="wt-Split2">
+            <div class="wt-field">
+              <label class="wt-label">成本中心归属 *</label>
+              <select class="wt-select" data-comp-id="req.cost_center.select" data-comp-name="成本中心归属下拉框" data-comp-role="control">
+                <option value="CC-204" selected>CC-204 · 商业化智能客服研发部</option>
+                <option value="CC-108">CC-108 · 基础模型评测平台组</option>
+                <option value="CC-315">CC-315 · 企业研发效能工具链</option>
+              </select>
+            </div>
+
+            <div class="wt-field">
+              <label class="wt-label">临时额度有效期 *</label>
+              <select class="wt-select" data-comp-id="req.ttl.select" data-comp-name="临时额度有效期下拉框" data-comp-role="control">
+                <option value="month_end" selected>仅当月有效（12 月 1 日自动回落 $2,000）</option>
+                <option value="72h">72 小时大促应急窗口</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="wt-field">
+            <label class="wt-label">业务峰值事由与容量测算 *</label>
+            <textarea class="wt-textarea" data-comp-id="req.reason.textarea" data-comp-name="业务峰值事由输入框" data-comp-role="control">双十一返场大促期间客户咨询并发增长 2.3 倍，智能客服 Agent（sk-prod-...8f2a）日均推理消耗由 $82 升至 $190，申请追加 $800 保障月底前生产流量零中断。</textarea>
+          </div>
+
+          <div class="wt-banner" data-when-var="request_tier" data-when-val="gt_500">
+            <strong>[超阈值加签路由]</strong> 本次申请追加 <strong>$800 &gt; $500</strong>，提交后将实时推送企微审批卡片至空间负责人「周琳」，预计响应 SLA &lt; 15 分钟。
+          </div>
+          <div class="wt-banner hidden" data-when-var="request_tier" data-when-val="le_500">
+            <strong>[免审自动放行路由]</strong> 本次申请追加额度 <strong>&lt;= $500</strong>，满足团队免审自愈条件，提交后网关将在 3 秒内自动调增上限并记录审计流水。
+          </div>
+        </div>
+
+        <div class="wt-card-ft wt-between">
+          <button type="button" class="wt-btn" onclick="setVar('request_tier','le_500')" data-comp-id="req.fill_300.btn" data-comp-name="切换小额免审试算按钮" data-comp-role="control">试算 &lt;= $500 免审通道</button>
+          <button type="button" class="wt-btn wt-btn-primary" onclick="goBranch('request_tier')" data-comp-id="req.submit.btn" data-comp-name="提交加额申请按钮" data-comp-role="control">提交加额申请</button>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+<div class="page" id="p-owner-approval" data-page="p-owner-approval" data-page-id="p-owner-approval">
+  <div class="wt-app-shell" data-comp-id="approve.shell.container" data-comp-name="负责人审批台主布局" data-comp-role="container">
+    <aside class="wt-sidebar" data-comp-id="approve.sidebar.nav" data-comp-name="左侧控制台导航栏" data-comp-role="nav">
+      <div class="wt-brand-row">
+        <span class="wt-brand-mark">N</span>
+        <span>星云 AI 工作台</span>
+      </div>
+      <div class="wt-side-label">研发中心空间</div>
+      <button type="button" class="wt-side-item" onclick="goNode('F_USAGE_DASH')" data-comp-id="approve.nav_overview.btn" data-comp-name="概览菜单按钮" data-comp-role="nav">
+        <span>概览</span>
+      </button>
+      <button type="button" class="wt-side-item" onclick="goNode('F_USAGE_DASH')" data-comp-id="approve.nav_members.btn" data-comp-name="成员管理菜单按钮" data-comp-role="nav">
+        <span>成员管理</span>
+        <span class="wt-muted">42</span>
+      </button>
+      <button type="button" class="wt-side-item" onclick="goNode('F_USAGE_DASH')" data-comp-id="approve.nav_keys.btn" data-comp-name="API密钥菜单按钮" data-comp-role="nav">
+        <span>API 密钥</span>
+        <span class="wt-muted">18</span>
+      </button>
+      <button type="button" class="wt-side-item active" onclick="goNode('F_OWNER_APPROVAL')" data-comp-id="approve.nav_guardrails.btn" data-comp-name="额度与风控菜单按钮" data-comp-role="nav">
+        <span>额度与风控</span>
+        <span class="wt-badge">[待批 2]</span>
+      </button>
+      <button type="button" class="wt-side-item" onclick="goNode('F_QUOTA_ACTIVE')" data-comp-id="approve.nav_audit.btn" data-comp-name="审计日志菜单按钮" data-comp-role="nav">
+        <span>审计日志</span>
+      </button>
+    </aside>
+
+    <main class="wt-main">
+      <div class="wt-between">
+        <div class="wt-col" style="gap: 2px;">
+          <div class="wt-row">
+            <strong style="font-size: 15px;">空间负责人加签审批台</strong>
+            <span class="wt-pill-strong">[待加签 #QR-20261120-08]</span>
+          </div>
+          <span class="wt-muted">审批人视角：周琳 (Workspace Owner) · 支持切换顶栏「App 审批端 375px」查看企微卡片</span>
+        </div>
+        <button type="button" class="wt-btn" onclick="goNode('F_USAGE_DASH')" data-comp-id="approve.back_dash.btn" data-comp-name="返回监控台按钮" data-comp-role="control">返回总览</button>
+      </div>
+
+      <div class="wt-kpi-grid">
+        <div class="wt-kpi-card">
+          <div class="wt-kpi-label"><span>申请人 / 成本中心</span><span class="wt-badge">[实名核验]</span></div>
+          <div class="wt-kpi-val" style="font-size: 15px;">林哲 · CC-204</div>
+          <div class="wt-kpi-sub">智能客服 Agent 生产网关</div>
+        </div>
+        <div class="wt-kpi-card">
+          <div class="wt-kpi-label"><span>本次申请追加</span><span class="wt-pill-strong">[+$800]</span></div>
+          <div class="wt-kpi-val wt-mono">$2,000 → $2,800</div>
+          <div class="wt-kpi-sub">仅 2026-11 账期有效（次月回落）</div>
+        </div>
+        <div class="wt-kpi-card">
+          <div class="wt-kpi-label"><span>部门 Q4 预算余量</span><span class="wt-badge">[充足]</span></div>
+          <div class="wt-kpi-val wt-mono">$14,200.00</div>
+          <div class="wt-kpi-sub">审批后占部门总池 19.7%</div>
+        </div>
+      </div>
+
+      <div class="wt-card" data-comp-id="approve.compare.card" data-comp-name="消耗速率异常排查对比表" data-comp-role="container">
+        <div class="wt-card-hd wt-between">
+          <span>申请人密钥与同空间基线消耗速率对比</span>
+          <span class="wt-badge">风控引擎诊断: [正常业务峰值]</span>
+        </div>
+        <div class="wt-card-bd" style="padding: 0;">
+          <table class="wt-table">
+            <thead>
+              <tr>
+                <th>核查指标</th>
+                <th>申请密钥 (sk-prod-...8f2a)</th>
+                <th>空间生产均值</th>
+                <th>风控诊断结论</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>近 24h 消耗速率</td>
+                <td class="wt-mono"><strong>$6.80 / 小时</strong></td>
+                <td class="wt-mono">$2.95 / 小时</td>
+                <td><span class="wt-badge">[+130% 与大促流量吻合]</span></td>
+              </tr>
+              <tr>
+                <td>异常重试 / 5xx 占比</td>
+                <td class="wt-mono">0.42%</td>
+                <td class="wt-mono">0.38%</td>
+                <td><span class="wt-badge">[正常 · 排除死循环脚本]</span></td>
+              </tr>
+              <tr>
+                <td>单通会话推理成本</td>
+                <td class="wt-mono">$0.014 / 通</td>
+                <td class="wt-mono">$0.016 / 通</td>
+                <td><span class="wt-badge">[Prompt 缓存命中率 64%]</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="wt-card-ft">
+          <span class="wt-muted"><strong>申请人事由：</strong>双十一返场大促客户咨询并发增长 2.3 倍，日均消耗升至 $190，申请追加 $800 保障月底前生产流量零中断。</span>
+        </div>
+      </div>
+
+      <div class="wt-card" data-comp-id="approve.decision.card" data-comp-name="负责人复核决策卡片" data-comp-role="container">
+        <div class="wt-card-bd wt-form">
+          <div class="wt-field">
+            <label class="wt-label">复核备注（同步抄送申请人与财务审计台账）</label>
+            <textarea class="wt-textarea" style="min-height: 56px;" data-comp-id="approve.note.textarea" data-comp-name="复核备注输入框" data-comp-role="control">已核对客服工单监控与 Prompt 缓存命中率，确属大促真实流量峰值，同意当月临时调增上限至 $2,800，12 月 1 日恢复 $2,000。</textarea>
+          </div>
+        </div>
+        <div class="wt-card-ft wt-between">
+          <button type="button" class="wt-btn wt-btn-danger" onclick="setVar('owner_decision','reject'); goNode('F_REJECT_HOLD')" data-comp-id="approve.reject.btn" data-comp-name="驳回并维持原上限按钮" data-comp-role="control">驳回并维持原上限</button>
+          <button type="button" class="wt-btn wt-btn-primary" onclick="setVar('owner_decision','approve'); goNode('F_QUOTA_ACTIVE')" data-comp-id="approve.confirm.btn" data-comp-name="同意加额并解封按钮" data-comp-role="control">同意加额并解封</button>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+<div class="page" id="p-key-paused" data-page="p-key-paused" data-page-id="p-key-paused">
+  <div class="wt-app-shell" data-comp-id="paused.shell.container" data-comp-name="熔断拦截页主布局" data-comp-role="container">
+    <aside class="wt-sidebar" data-comp-id="paused.sidebar.nav" data-comp-name="左侧控制台导航栏" data-comp-role="nav">
+      <div class="wt-brand-row">
+        <span class="wt-brand-mark">N</span>
+        <span>星云 AI 工作台</span>
+      </div>
+      <div class="wt-side-label">研发中心空间</div>
+      <button type="button" class="wt-side-item" onclick="goNode('F_USAGE_DASH')" data-comp-id="paused.nav_overview.btn" data-comp-name="概览菜单按钮" data-comp-role="nav">
+        <span>概览</span>
+      </button>
+      <button type="button" class="wt-side-item" onclick="goNode('F_USAGE_DASH')" data-comp-id="paused.nav_members.btn" data-comp-name="成员管理菜单按钮" data-comp-role="nav">
+        <span>成员管理</span>
+        <span class="wt-muted">42</span>
+      </button>
+      <button type="button" class="wt-side-item" onclick="goNode('F_KEY_PAUSED')" data-comp-id="paused.nav_keys.btn" data-comp-name="API密钥菜单按钮" data-comp-role="nav">
+        <span>API 密钥</span>
+        <span class="wt-pill-strong">[已暂停]</span>
+      </button>
+      <button type="button" class="wt-side-item active" onclick="goNode('F_KEY_PAUSED')" data-comp-id="paused.nav_guardrails.btn" data-comp-name="额度与风控菜单按钮" data-comp-role="nav">
+        <span>额度与风控</span>
+        <span class="wt-badge">[激活]</span>
+      </button>
+      <button type="button" class="wt-side-item" onclick="goNode('F_QUOTA_ACTIVE')" data-comp-id="paused.nav_audit.btn" data-comp-name="审计日志菜单按钮" data-comp-role="nav">
+        <span>审计日志</span>
+      </button>
+    </aside>
+
+    <main class="wt-main">
+      <div class="wt-between">
+        <div class="wt-col" style="gap: 2px;">
+          <div class="wt-row">
+            <strong style="font-size: 15px;">额度耗尽自动熔断拦截</strong>
+            <span class="wt-pill-strong">[已暂停 100%]</span>
+          </div>
+          <span class="wt-muted">错误码: <span class="wt-mono">HTTP 429 · workspace_hard_cap_exceeded</span></span>
+        </div>
+        <button type="button" class="wt-btn" onclick="goNode('F_USAGE_DASH')" data-comp-id="paused.back_dash.btn" data-comp-name="返回监控台按钮" data-comp-role="control">返回监控总览</button>
+      </div>
+
+      <div class="wt-alert wt-alert-danger" data-comp-id="paused.alert.banner" data-comp-name="保护性暂停警示横幅" data-comp-role="feedback">
+        [保护性暂停已生效] 密钥 <span class="wt-mono">sk-prod-...8f2a</span> 所在空间已达月度预算硬顶 $2,000.00 (100%)，新发起的推理请求已暂停计费与转发。
+      </div>
+
+      <div class="wt-kpi-grid">
+        <div class="wt-kpi-card">
+          <div class="wt-kpi-label"><span>当前空间水位</span><span class="wt-pill-strong">[100%]</span></div>
+          <div class="wt-kpi-val wt-mono">$2,000 / $2,000</div>
+          <div class="wt-meter"><div class="wt-meter-fill" style="width: 100%;"></div></div>
+          <div class="wt-kpi-sub">超支溢出金额: $0.00（零透支）</div>
+        </div>
+        <div class="wt-kpi-card">
+          <div class="wt-kpi-label"><span>已触发暂停密钥</span><span class="wt-badge">[受保护]</span></div>
+          <div class="wt-kpi-val">18 个</div>
+          <div class="wt-kpi-sub">含主密钥 <span class="wt-mono">sk-prod-...8f2a</span></div>
+        </div>
+        <div class="wt-kpi-card">
+          <div class="wt-kpi-label"><span>跨空间故障隔离</span><span class="wt-badge">[正常]</span></div>
+          <div class="wt-kpi-val" style="font-size: 15px;">其他项目零影响</div>
+          <div class="wt-kpi-sub">独立结算空间与个人配额正常可用</div>
+        </div>
+      </div>
+
+      <div class="wt-card" data-comp-id="paused.isolation.card" data-comp-name="熔断影响范围与隔离说明卡片" data-comp-role="container">
+        <div class="wt-card-hd wt-between">
+          <span>拦截影响范围与平滑恢复说明</span>
+          <span class="wt-muted">触发时间：2026-11-20 15:10:02</span>
+        </div>
+        <div class="wt-card-bd" style="padding: 0;">
+          <table class="wt-table">
+            <thead>
+              <tr>
+                <th>资源对象</th>
+                <th>当前状态</th>
+                <th>熔断隔离与恢复机制</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="wt-mono"><strong>sk-prod-...8f2a</strong> (智能客服)</td>
+                <td><span class="wt-pill-strong">[已暂停]</span></td>
+                <td>拒绝新请求并返回 429 重试头；审批通过后 10 秒内自动解封，无需重启服务或轮换密钥。</td>
+              </tr>
+              <tr>
+                <td class="wt-mono"><strong>sk-eval-...3c19</strong> (回归评测)</td>
+                <td><span class="wt-pill-strong">[已暂停]</span></td>
+                <td>离线批处理队列自动进入挂起态，保留已完成 Checkpoint 数据不丢失。</td>
+              </tr>
+              <tr>
+                <td class="wt-mono"><strong>其他独立团队空间</strong></td>
+                <td><span class="wt-badge">[正常]</span></td>
+                <td>企业下属其他业务线 Workspace 采用独立预算池物理隔离，不受本次熔断影响。</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="wt-card-ft wt-between">
+          <button type="button" class="wt-btn" onclick="goNode('F_GUARDRAIL_CFG')" data-comp-id="paused.edit_policy.btn" data-comp-name="调整风控硬顶策略按钮" data-comp-role="control">调整风控策略</button>
+          <button type="button" class="wt-btn wt-btn-primary" onclick="goNode('F_QUOTA_REQ')" data-comp-id="paused.emergency_req.btn" data-comp-name="一键发起紧急加额按钮" data-comp-role="control">一键发起紧急加额</button>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+<div class="page" id="p-quota-active" data-page="p-quota-active" data-page-id="p-quota-active">
+  <div class="wt-app-shell" data-comp-id="active.shell.container" data-comp-name="额度生效页主布局" data-comp-role="container">
+    <aside class="wt-sidebar" data-comp-id="active.sidebar.nav" data-comp-name="左侧控制台导航栏" data-comp-role="nav">
+      <div class="wt-brand-row">
+        <span class="wt-brand-mark">N</span>
+        <span>星云 AI 工作台</span>
+      </div>
+      <div class="wt-side-label">研发中心空间</div>
+      <button type="button" class="wt-side-item" onclick="goNode('F_USAGE_DASH')" data-comp-id="active.nav_overview.btn" data-comp-name="概览菜单按钮" data-comp-role="nav">
+        <span>概览</span>
+      </button>
+      <button type="button" class="wt-side-item" onclick="goNode('F_USAGE_DASH')" data-comp-id="active.nav_members.btn" data-comp-name="成员管理菜单按钮" data-comp-role="nav">
+        <span>成员管理</span>
+        <span class="wt-muted">42</span>
+      </button>
+      <button type="button" class="wt-side-item" onclick="goNode('F_USAGE_DASH')" data-comp-id="active.nav_keys.btn" data-comp-name="API密钥菜单按钮" data-comp-role="nav">
+        <span>API 密钥</span>
+        <span class="wt-badge">[正常 18]</span>
+      </button>
+      <button type="button" class="wt-side-item" onclick="goNode('F_USAGE_DASH')" data-comp-id="active.nav_guardrails.btn" data-comp-name="额度与风控菜单按钮" data-comp-role="nav">
+        <span>额度与风控</span>
+      </button>
+      <button type="button" class="wt-side-item active" onclick="goNode('F_QUOTA_ACTIVE')" data-comp-id="active.nav_audit.btn" data-comp-name="审计日志菜单按钮" data-comp-role="nav">
+        <span>审计日志</span>
+        <span class="wt-badge">[激活]</span>
+      </button>
+    </aside>
+
+    <main class="wt-main">
+      <div class="wt-between">
+        <div class="wt-col" style="gap: 2px;">
+          <div class="wt-row">
+            <strong style="font-size: 15px;">额度生效与密钥恢复结果</strong>
+            <span class="wt-badge">[已生效]</span>
+          </div>
+          <span class="wt-muted">网关配额版本号: <span class="wt-mono">rev-20261120-094</span> · 全节点同步耗时 4.2 秒</span>
+        </div>
+        <button type="button" class="wt-btn wt-btn-primary" onclick="goNode('F_USAGE_DASH')" data-comp-id="active.top_back.btn" data-comp-name="顶部返回监控台按钮" data-comp-role="control">返回额度监控台</button>
+      </div>
+
+      <div class="wt-banner wt-between" data-comp-id="active.result.banner" data-comp-name="额度扩容生效横幅" data-comp-role="feedback">
+        <span><strong>[解封完成]</strong> 本月总额度已调增至 <strong class="wt-mono">$2,800.00</strong>，密钥 <span class="wt-mono">sk-prod-...8f2a</span> 及全部关联队列已恢复正常响应。</span>
+        <span class="wt-badge">[正常 66%]</span>
+      </div>
+
+      <div class="wt-kpi-grid">
+        <div class="wt-kpi-card">
+          <div class="wt-kpi-label"><span>更新后总额度</span><span class="wt-badge">[正常 66%]</span></div>
+          <div class="wt-kpi-val wt-mono">$1,840 / $2,800</div>
+          <div class="wt-meter"><div class="wt-meter-fill" style="width: 66%;"></div></div>
+          <div class="wt-kpi-sub">可用余额增至 $960.00</div>
+        </div>
+        <div class="wt-kpi-card">
+          <div class="wt-kpi-label"><span>API 密钥健康度</span><span class="wt-badge">[正常]</span></div>
+          <div class="wt-kpi-val">18 / 18 活跃</div>
+          <div class="wt-kpi-sub">429 拦截率已回落至 0.00%</div>
+        </div>
+        <div class="wt-kpi-card">
+          <div class="wt-kpi-label"><span>次月自动回落计划</span><span class="wt-badge">[已排期]</span></div>
+          <div class="wt-kpi-val wt-mono">$2,000.00</div>
+          <div class="wt-kpi-sub">2026-12-01 00:00 自动恢复原基线</div>
+        </div>
+      </div>
+
+      <div class="wt-card" data-comp-id="active.audit.card" data-comp-name="额度变更审计流水卡片" data-comp-role="container">
+        <div class="wt-card-hd wt-between">
+          <span>不可篡改审计流水记录（Audit Trail）</span>
+          <button type="button" class="wt-btn wt-btn-sm" onclick="goNode('F_USAGE_DASH')" data-comp-id="active.export_csv.btn" data-comp-name="导出审计流水按钮" data-comp-role="control">导出 CSV 对账单</button>
+        </div>
+        <div class="wt-card-bd" style="padding: 0;">
+          <table class="wt-table">
+            <thead>
+              <tr>
+                <th>发生时间</th>
+                <th>动作类型</th>
+                <th>执行主体</th>
+                <th>变更快照与财务归属</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="wt-mono">15:18:09</td>
+                <td><span class="wt-badge">[密钥恢复]</span></td>
+                <td class="wt-mono">Guardrail-Gateway</td>
+                <td>解除 <span class="wt-mono">sk-prod-...8f2a</span> 等 18 个密钥 429 限流，流式转发恢复 [正常]</td>
+              </tr>
+              <tr>
+                <td class="wt-mono">15:18:05</td>
+                <td><span class="wt-badge">[加签批准]</span></td>
+                <td>周琳 (Owner)</td>
+                <td>审批通过 #QR-20261120-08，月度硬顶 <span class="wt-mono">$2,000 → $2,800</span>（归属 CC-204）</td>
+              </tr>
+              <tr>
+                <td class="wt-mono">15:12:41</td>
+                <td><span class="wt-badge">[提交申请]</span></td>
+                <td>林哲 (Member)</td>
+                <td>发起临时加额 <span class="wt-mono">+$800.00</span>，事由：双十一返场大促客服并发扩容</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="wt-card-ft wt-between">
+          <span class="wt-muted">审计哈希签名: sha256:9f4c...e81b（已同步企业 FinOps 归档库）</span>
+          <button type="button" class="wt-btn wt-btn-primary" onclick="goNode('F_USAGE_DASH')" data-comp-id="active.back_dash.btn" data-comp-name="返回额度监控台按钮" data-comp-role="control">返回额度监控台</button>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+          </div>
+        </div>
+        <aside class="anno-panel">
+          <div class="anno-card hidden" id="vars-card">
+            <div class="anno-card-title">条件与局部控制</div>
+            <div id="vars-body"></div>
+          </div>
+          <div class="anno-card hidden" id="state-card">
+            <div class="anno-card-title">页面状态切换</div>
+            <div id="state-body"></div>
+          </div>
+          <div class="anno-card">
+            <div class="anno-card-title">当前节点规则</div>
+            <div id="anno-body"></div>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </aside>
+
+  <section class="spec-panel hidden" id="spec-panel-root">
+    <div class="spec-ws" id="spec-ws">
+      <svg class="tether-svg" id="tether-svg"></svg>
+      <div class="anchor-box hidden" id="anchor-box"></div>
+      <div class="spec-sticky" id="spec-stage-slot"></div>
+      <div class="spec-cards" id="spec-cards"></div>
+    </div>
+  </section>
+
+  <aside class="memo-drawer hidden" id="memo-drawer">
+    <div class="memo-hd">
+      <b>评审备注</b>
+      <div style="display:flex;gap:6px">
+        <button type="button" onclick="document.getElementById('memo-import-file').click()" title="导入合并多位同事导出的 .jsonl 或 .md 评审文件">导入合并</button>
+        <button type="button" onclick="openMemoForCurrent()">+ 新增</button>
+      </div>
+    </div>
+    <div class="memo-reviewer-bar">
+      <span>评审人</span>
+      <input id="memo-reviewer-input" type="text" placeholder="选填署名（如：前端-王工 / 测试-小李）" oninput="saveReviewerName(this.value)" />
+      <input id="memo-import-file" type="file" multiple accept=".jsonl,.md,.json" class="hidden" onchange="importFeedbackFiles(this.files)" />
+    </div>
+    <div class="memo-form hidden" id="memo-form">
+      <div class="memo-ctx" id="memo-ctx"></div>
+      <div id="memo-input" class="memo-editor" contenteditable="true" data-placeholder="记录评审结论或待确认项，可直接点选原型插入 @组件（Cmd/Ctrl+Enter 保存）"></div>
+      <div class="memo-form-hint hidden" id="memo-form-hint"></div>
+      <div style="display:flex;justify-content:flex-end;gap:6px">
+        <button type="button" onclick="closeMemoForm()">取消</button>
+        <button type="button" class="primary" onclick="saveMemoItem()">保存</button>
+      </div>
+    </div>
+    <div class="memo-list" id="memo-list"></div>
+    <div class="memo-export">
+      <button type="button" id="copy-md-btn" onclick="copyMemosMd()">复制 MD</button>
+      <button type="button" class="primary" onclick="downloadMemosMd()">导出 .md</button>
+      <button type="button" onclick="downloadMemosJsonl()">导出 .jsonl</button>
+    </div>
+  </aside>
+</div>
+
+<div id="pick-highlight-overlay"></div>
+<div id="pick-label-badge"></div>
+
+<div class="guard-mask hidden" id="export-guard-modal">
+  <div class="guard-modal">
+    <h3>存在落点已失效的备注</h3>
+    <p id="export-guard-msg"></p>
+    <div class="guard-actions">
+      <button type="button" onclick="closeExportGuard()">取消（去处理）</button>
+      <button type="button" id="export-all-with-invalid-btn" onclick="confirmExportAllWithInvalid()">仍导出全部（含失效标记）</button>
+      <button type="button" class="primary" id="export-valid-only-btn" onclick="confirmExportValidOnly()">仅导出有效备注</button>
+    </div>
+  </div>
+</div>
+
+<script>
+var META = {"project": "ai-workspace-guardrails-zh", "title": "星云 AI 团队工作台 · 用量预算风控与超额加签审批（v2.4）", "doc_version": "v2.4", "lang": "zh", "platform_default": "web", "entry_node": "F_USAGE_DASH", "prd_source": "prd.md"};
+var ENTRY_NODE = "F_USAGE_DASH";
+var NODES = {"F_USAGE_DASH": {"page": "p-usage-dash", "title": "团队额度与密钥监控总览", "change": "unchanged", "anno": [["实时流式计量总览", "聚合展示当前团队空间本月已用额度（$1,840 / $2,000 [92%]）、18 个活跃 API 密钥消耗速率与待批加额单。"], ["分级预警通知", "累计消耗达 80% / 90% 时推送企微机器人预警卡片并在控制台置顶提示，引导高负载业务提前发起扩容。"]]}, "F_GUARDRAIL_CFG": {"page": "p-guardrail-modal", "title": "预算风控与超限熔断配置", "change": "modified", "anno": [["月度硬顶与免审阈值双轨配置", "空间管理员可设定月度预算硬顶（默认 $2,000，下限不得低于当月已出账金额）及单次免审自动放行上限（默认 $500）。"], ["硬顶执行策略切换", "支持切换「自动暂停密钥（返回 429）」与「仅发送告警」，同步联动企业微信群机器人与内部 FinOps Webhook。"]]}, "D_HARD_CAP": {"page": "p-usage-dash", "title": "消耗达 100% 硬顶？", "isDecision": true, "branchVar": "cap_trigger", "change": "new", "anno": [["网关级秒级硬顶判定", "流式计量引擎每 5 秒聚合空间累计消耗：未达 100% 时正常放行；达到 100% 且策略为自动暂停时在 10 秒内下发 429 熔断规则。"]]}, "F_KEY_PAUSED": {"page": "p-key-paused", "title": "额度耗尽自动熔断拦截", "change": "new", "anno": [["保护性暂停与平滑收尾", "密钥 sk-prod-...8f2a 达到 100% 硬顶后拒绝新请求（workspace_hard_cap_exceeded），进行中的流式响应正常收尾不截断。"], ["跨空间物理隔离", "仅暂停当前超支空间的关联密钥，企业下属其他独立业务空间不受影响；成员可一键发起紧急加额。"]]}, "F_QUOTA_REQ": {"page": "p-quota-request", "title": "成员申请临时加额", "change": "modified", "anno": [["实时阶梯试算表单", "成员选定归属密钥并输入追加额度（如 $800）时，前端实时计算审批路径（<= $500 免审 vs > $500 负责人加签）。"], ["月底自动回落机制", "临时扩容默认仅在当前计费月生效，次月 1 日零点自动回落至 $2,000 原硬顶，防止一次性大促演变为长期预算膨胀。"]]}, "D_THRESHOLD": {"page": "p-quota-request", "title": "追加额度 > $500？", "isDecision": true, "branchVar": "request_tier", "change": "new", "anno": [["$500 免审分流门禁", "单次追加 <= $500 且该空间当月首次申请，由风控引擎 3 秒内自动放行；> $500 强制流转空间负责人加签复核。"]]}, "F_OWNER_APPROVAL": {"page": "p-owner-approval", "title": "空间负责人加签审批", "change": "new", "anno": [["消耗速率与死循环排查", "审批台并列展示目标密钥近 24h 消耗速率（$6.80/h vs 均值 $2.95/h）、5xx 重试率与单通会话成本，辅助排除脚本死循环。"], ["Web 与企微移动端同步", "支持顶栏一键切换「App 审批端 375px」查看企微移动端审批卡片，任意一端处理后全局状态实时闭环。"]]}, "D_OWNER_DECISION": {"page": "p-owner-approval", "title": "负责人审批结论？", "isDecision": true, "branchVar": "owner_decision", "change": "unchanged", "anno": [["加签裁决分支", "同意加额则实时更新配额缓存并解除密钥 429 拦截；驳回则维持 $2,000 原上限并将复核意见回传申请人。"]]}, "F_QUOTA_ACTIVE": {"page": "p-quota-active", "title": "额度生效与密钥恢复", "change": "unchanged", "anno": [["秒级解封与不可篡改审计", "空间总额度更新至 $2,800（水位降至 66%），10 秒内恢复全部受限密钥调用，并生成含哈希签名的 FinOps 审计流水。"]]}, "F_REJECT_HOLD": {"page": "p-key-paused", "title": "驳回申请并维持原上限", "change": "unchanged", "anno": [["维持原硬顶保护态", "加额申请被驳回后，空间继续维持 $2,000 硬顶及超额保护状态，申请人可根据复核意见优化调用侧缓存后重新发起。"]]}};
+var PAGE_FRAME = {"p-usage-dash": "wide", "p-guardrail-modal": "wide", "p-quota-request": "wide", "p-owner-approval": "wide", "p-key-paused": "wide", "p-quota-active": "wide", "p-app-usage-dash": "phone", "p-app-guardrail-modal": "phone", "p-app-quota-request": "phone", "p-app-owner-approval": "phone", "p-app-key-paused": "phone", "p-app-quota-active": "phone"};
+var VARIANT_MAP = {"p-usage-dash": {"base": "p-usage-dash", "variants": {"wide": "p-usage-dash", "web": "p-usage-dash", "phone": "p-app-usage-dash", "app": "p-app-usage-dash"}}, "p-app-usage-dash": {"base": "p-usage-dash", "variants": {"wide": "p-usage-dash", "web": "p-usage-dash", "phone": "p-app-usage-dash", "app": "p-app-usage-dash"}}, "p-guardrail-modal": {"base": "p-guardrail-modal", "variants": {"wide": "p-guardrail-modal", "web": "p-guardrail-modal", "phone": "p-app-guardrail-modal", "app": "p-app-guardrail-modal"}}, "p-app-guardrail-modal": {"base": "p-guardrail-modal", "variants": {"wide": "p-guardrail-modal", "web": "p-guardrail-modal", "phone": "p-app-guardrail-modal", "app": "p-app-guardrail-modal"}}, "p-quota-request": {"base": "p-quota-request", "variants": {"wide": "p-quota-request", "web": "p-quota-request", "phone": "p-app-quota-request", "app": "p-app-quota-request"}}, "p-app-quota-request": {"base": "p-quota-request", "variants": {"wide": "p-quota-request", "web": "p-quota-request", "phone": "p-app-quota-request", "app": "p-app-quota-request"}}, "p-owner-approval": {"base": "p-owner-approval", "variants": {"wide": "p-owner-approval", "web": "p-owner-approval", "phone": "p-app-owner-approval", "app": "p-app-owner-approval"}}, "p-app-owner-approval": {"base": "p-owner-approval", "variants": {"wide": "p-owner-approval", "web": "p-owner-approval", "phone": "p-app-owner-approval", "app": "p-app-owner-approval"}}, "p-key-paused": {"base": "p-key-paused", "variants": {"wide": "p-key-paused", "web": "p-key-paused", "phone": "p-app-key-paused", "app": "p-app-key-paused"}}, "p-app-key-paused": {"base": "p-key-paused", "variants": {"wide": "p-key-paused", "web": "p-key-paused", "phone": "p-app-key-paused", "app": "p-app-key-paused"}}, "p-quota-active": {"base": "p-quota-active", "variants": {"wide": "p-quota-active", "web": "p-quota-active", "phone": "p-app-quota-active", "app": "p-app-quota-active"}}, "p-app-quota-active": {"base": "p-quota-active", "variants": {"wide": "p-quota-active", "web": "p-quota-active", "phone": "p-app-quota-active", "app": "p-app-quota-active"}}};
+var STATE_GROUPS = {};
+var VARS = [{"id": "platform", "label": "预览端形态", "kind": "global", "default": "web", "options": [{"id": "web", "label": "Web 控制台"}, {"id": "app", "label": "App 审批端 375px"}]}, {"id": "cap_trigger", "label": "月度硬顶水位", "kind": "branch", "default": "within_cap", "diamond": "D_HARD_CAP", "nodes": ["F_USAGE_DASH", "F_GUARDRAIL_CFG", "D_HARD_CAP", "F_KEY_PAUSED"], "options": [{"id": "within_cap", "label": "预警期内 (<100% 主动扩容)", "target": "F_QUOTA_REQ"}, {"id": "hit_pause", "label": "达 100% 触发自动熔断", "target": "F_KEY_PAUSED"}]}, {"id": "enforcement_mode", "label": "硬顶执行策略", "kind": "local", "default": "auto_pause", "pages": ["p-guardrail-modal", "p-app-guardrail-modal"], "options": [{"id": "auto_pause", "label": "自动暂停密钥"}, {"id": "alert_only", "label": "仅发送告警"}]}, {"id": "request_tier", "label": "追加额度区间", "kind": "branch", "default": "gt_500", "diamond": "D_THRESHOLD", "nodes": ["F_QUOTA_REQ", "D_THRESHOLD", "F_OWNER_APPROVAL", "F_QUOTA_ACTIVE"], "options": [{"id": "le_500", "label": "<= $500 免审自动放行", "target": "F_QUOTA_ACTIVE"}, {"id": "gt_500", "label": "> $500 负责人加签", "target": "F_OWNER_APPROVAL"}]}, {"id": "owner_decision", "label": "负责人审批结论", "kind": "branch", "default": "approve", "diamond": "D_OWNER_DECISION", "nodes": ["F_OWNER_APPROVAL", "D_OWNER_DECISION", "F_QUOTA_ACTIVE", "F_REJECT_HOLD"], "options": [{"id": "approve", "label": "同意加额并解封", "target": "F_QUOTA_ACTIVE"}, {"id": "reject", "label": "驳回并维持原上限", "target": "F_REJECT_HOLD"}]}];
+var SPEC_CARDS = [{"id": "SC-01", "title": "月度预算水位监控与风控入口收敛", "page": "p-usage-dash", "anchor": "dash.guardrail.btn", "body": "在团队额度总览顶栏收敛「配置预算风控」与「申请临时加额」操作，联动三联 KPI 卡实时展示已用额度进度（$1,840 / $2,000 [92%]）、活跃密钥消耗速率与待批单数。"}, {"id": "SC-02", "title": "月度硬顶熔断与 $500 免审阈值双轨策略", "page": "p-guardrail-modal", "anchor": "policy.cap.input", "body": "支持空间 Owner 配置月度预算硬顶金额（校验不低于当月已发生账单）与单次免审放行阈值（默认 $500），达 100% 硬顶时可按策略自动暂停超限密钥或仅推送企微/Webhook 告警。"}, {"id": "SC-03", "title": "临时加额实时阶梯分流（<= $500 免审 / > $500 加签）", "page": "p-quota-request", "anchor": "req.amount.input", "body": "成员输入申请追加金额时实时触发 setVar('request_tier', ...) 预判审批路径：<= $500 自动放行；> $500（如 $800 大促峰值）关联成本中心流转负责人加签，次月 1 日自动回落原上限。"}, {"id": "SC-04", "title": "消耗速率比对复核与秒级密钥解封", "page": "p-owner-approval", "anchor": "approve.confirm.btn", "body": "审批台内置目标密钥近 24h 消耗速率、5xx 重试率与同空间均值对比表以排除死循环刷量；点击「同意加额并解封」后 10 秒内恢复密钥正常转发并落盘不可篡改审计流水。"}];
+var INITIAL_MEMOS = [];
+var currentNode = null;
+var currentState = null;
+var currentPage = null;
+var varValues = {};
+var wbView = "flow";
+var activeSpecId = null;
+
+(VARS || []).forEach(function (v) {
+  if (v && v.id && v.options && v.options.length) {
+    varValues[v.id] = v.default || v.options[0].id;
+  }
+});
+
+function computeDocVersionHash() {
+  var parts = [];
+  parts.push(Object.keys(NODES || {}).sort().map(function (k) {
+    var n = NODES[k] || {};
+    return k + ":" + (n.page || "") + ":" + (n.branchVar || "");
+  }).join(","));
+  parts.push((VARS || []).map(function (v) {
+    return v.id + ":" + (v.options || []).map(function (o) {
+      return o.id + ">" + (o.target || "");
+    }).join("/");
+  }).join(","));
+  parts.push((SPEC_CARDS || []).map(function (c) {
+    return c.id + ":" + (c.page || "") + ":" + (c.anchor || "");
+  }).join(","));
+  document.querySelectorAll(".page").forEach(function (pg) {
+    var comps = Array.prototype.slice.call(pg.querySelectorAll("[data-comp-id]"))
+      .map(function (el) { return el.getAttribute("data-comp-id"); });
+    parts.push((pg.id || "") + "=" + comps.join(","));
+  });
+  var raw = parts.join("|");
+  var h = 2166136261;
+  for (var i = 0; i < raw.length; i++) {
+    h ^= raw.charCodeAt(i);
+    h = (h * 16777619) >>> 0;
+  }
+  return ("00000000" + h.toString(16)).slice(-8);
+}
+
+var DOC_VERSION_HASH = computeDocVersionHash();
+var PROJECT_SLUG = (typeof META === "object" && META && META.project) ? String(META.project) : "default";
+var IS_EN = (typeof META === "object" && META && String(META.lang || "").toLowerCase().indexOf("en") === 0);
+var UI_TEXT = IS_EN ? {
+  branchTag: "Branch",
+  localTag: "Scoped",
+  jumpTo: "Jump to: ",
+  noAnno: "No node specification notes.",
+  showDetail: "Show Inspector",
+  fullCanvas: "Full Canvas",
+  ctxPrefix: "Context: ",
+  pickedPrefix: "Inserted @",
+  hoverPrefix: "Click to mention @",
+  memoToggle: "Comments",
+  memoEmpty: "No review comments yet.<br>Click '+ New' and click any UI element to insert an @chip.",
+  invalidBadge: "Stale Anchor",
+  conflictBadge: "Multi-Review",
+  conflictTitle: "Multiple comments target this same component",
+  delBtn: "Delete",
+  emptyHint: "Please write your comment after the @component chip.",
+  copied: "Copied",
+  noMemosAlert: "No review comments to export."
+} : {
+  branchTag: "分支条件",
+  localTag: "局部组件",
+  jumpTo: "跳转至：",
+  noAnno: "暂无节点规则说明",
+  showDetail: "显示详情",
+  fullCanvas: "全屏画布",
+  ctxPrefix: "当前上下文：",
+  pickedPrefix: "已插入 @",
+  hoverPrefix: "点击添加 @",
+  memoToggle: "评审备注",
+  memoEmpty: "暂无评审备注。<br>点击「+ 新增」后，可直接点选原型组件添加 @ 胶囊。",
+  invalidBadge: "落点已失效",
+  conflictBadge: "同组件多方意见",
+  conflictTitle: "多条备注指向同一组件",
+  delBtn: "删除",
+  emptyHint: "请输入具体修改意见（仅选择 @组件 无法保存）",
+  copied: "已复制",
+  noMemosAlert: "当前没有可导出的评审备注。"
+};
+var MEMO_STORAGE_KEY = "wt_memos_" + PROJECT_SLUG;
+var REVIEWER_STORAGE_KEY = "wt_reviewer_name";
+
+function getReviewerName() {
+  var el = document.getElementById("memo-reviewer-input");
+  if (el && el.value.trim()) return el.value.trim();
+  try { return (localStorage.getItem(REVIEWER_STORAGE_KEY) || "").trim(); } catch (e) { return ""; }
+}
+
+window.saveReviewerName = function (val) {
+  try { localStorage.setItem(REVIEWER_STORAGE_KEY, String(val || "").trim()); } catch (e) {}
+};
+
+function escapeHtml(str) {
+  return String(str || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function resolveVariantPage(pageId, platVal) {
+  if (!pageId || typeof VARIANT_MAP !== "object" || !VARIANT_MAP || !VARIANT_MAP[pageId]) {
+    return pageId;
+  }
+  var plat = platVal !== undefined ? platVal : varValues.platform;
+  if (!plat) return pageId;
+  var vmap = VARIANT_MAP[pageId].variants || {};
+  if (vmap[plat] && PAGE_FRAME[vmap[plat]]) return vmap[plat];
+  var pStr = String(plat).toLowerCase();
+  var targetFrame = "";
+  if (/^(pc|web|web[-_]?admin|desktop|wide|admin|pad)$/.test(pStr)) {
+    targetFrame = "wide";
+  } else if (/^(app|h5|mobile|phone|mp|mini[-_]?program|ios|android)$/.test(pStr)) {
+    targetFrame = "phone";
+  }
+  if (targetFrame && vmap[targetFrame] && PAGE_FRAME[vmap[targetFrame]]) {
+    return vmap[targetFrame];
+  }
+  return pageId;
+}
+
+function initDeltaHighlights() {
+  Object.keys(NODES || {}).forEach(function (nodeId) {
+    var n = NODES[nodeId];
+    var chg = n && n.change;
+    if (chg !== "new" && chg !== "modified") return;
+    var g = document.querySelector('.flow-svg g[data-node="' + nodeId + '"]');
+    if (!g) return;
+    g.classList.add("wt-delta-node");
+    g.setAttribute("data-change", chg);
+    if (!g.querySelector(".wt-delta-dot")) {
+      var dotX = null;
+      var dotY = null;
+      var rectEl = g.querySelector("rect");
+      var polyEl = g.querySelector("polygon");
+      if (rectEl) {
+        var rx = parseFloat(rectEl.getAttribute("x"));
+        var ry = parseFloat(rectEl.getAttribute("y"));
+        var rw = parseFloat(rectEl.getAttribute("width"));
+        if (!isNaN(rx) && !isNaN(ry) && !isNaN(rw)) {
+          dotX = rx + rw - 2;
+          dotY = ry + 2;
+        }
+      } else if (polyEl) {
+        var nums = (polyEl.getAttribute("points") || "").match(/-?\d+(?:\.\d+)?/g);
+        if (nums && nums.length >= 4) {
+          dotX = (parseFloat(nums[0]) + parseFloat(nums[2])) / 2;
+          dotY = (parseFloat(nums[1]) + parseFloat(nums[3])) / 2;
+        }
+      }
+      if (dotX === null || dotY === null) {
+        try {
+          var bb = g.getBBox();
+          dotX = bb.x + bb.width - 3;
+          dotY = bb.y + 3;
+        } catch (e) {}
+      }
+      if (dotX !== null && dotY !== null) {
+        var dot = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+        dot.setAttribute("class", "wt-delta-dot");
+        dot.setAttribute("cx", String(dotX));
+        dot.setAttribute("cy", String(dotY));
+        dot.setAttribute("r", "4.5");
+        dot.setAttribute("fill", "#d97706");
+        dot.setAttribute("stroke", "#ffffff");
+        dot.setAttribute("stroke-width", "1.5");
+        g.appendChild(dot);
+      }
+    }
+  });
+
+  (SPEC_CARDS || []).forEach(function (card) {
+    if (!card || !card.anchor) return;
+    var pageIds = [];
+    if (card.page) {
+      pageIds.push(card.page);
+      if (typeof VARIANT_MAP === "object" && VARIANT_MAP && VARIANT_MAP[card.page]) {
+        var vmap = VARIANT_MAP[card.page].variants || {};
+        Object.keys(vmap).forEach(function (k) {
+          if (vmap[k] && pageIds.indexOf(vmap[k]) < 0) pageIds.push(vmap[k]);
+        });
+      }
+    }
+    var roots = pageIds.length
+      ? pageIds.map(function (pid) { return document.getElementById(pid); }).filter(Boolean)
+      : Array.prototype.slice.call(document.querySelectorAll(".page"));
+    roots.forEach(function (root) {
+      root.querySelectorAll("[data-comp-id], [data-anchor]").forEach(function (el) {
+        if (el.getAttribute("data-comp-id") === card.anchor ||
+            el.getAttribute("data-anchor") === card.anchor) {
+          el.classList.add("wt-delta-target");
+        }
+      });
+    });
+  });
+}
+
+window.toggleDeltaHighlight = function (force) {
+  var on = force !== undefined ? !!force : !document.body.classList.contains("show-delta");
+  document.body.classList.toggle("show-delta", on);
+  var btn = document.getElementById("delta-toggle-btn");
+  if (btn) btn.classList.toggle("active", on);
+};
+
+function checkVarWhen(v) {
+  if (!v.when) return true;
+  for (var k in v.when) {
+    var expected = v.when[k];
+    var actual = varValues[k];
+    if (Array.isArray(expected)) {
+      if (expected.indexOf(actual) < 0) return false;
+    } else if (actual !== expected) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function isVarApplicable(v) {
+  if (!v || !checkVarWhen(v)) return false;
+  if (v.kind === "global") return true;
+  if (currentNode && NODES[currentNode] && NODES[currentNode].isDecision) {
+    if (v.diamond === currentNode || v.id === NODES[currentNode].branchVar) return true;
+  }
+  var hasNodes = Array.isArray(v.nodes) && v.nodes.length > 0;
+  var hasPages = Array.isArray(v.pages) && v.pages.length > 0;
+  if (!hasNodes && !hasPages) return true;
+  var nMatch = hasNodes ? v.nodes.indexOf(currentNode) >= 0 : false;
+  var pMatch = hasPages ? v.pages.indexOf(currentPage) >= 0 : false;
+  return nMatch || pMatch;
+}
+
+function syncDeclarativePageVars() {
+  document.querySelectorAll("[data-when-var]").forEach(function (el) {
+    var varId = el.getAttribute("data-when-var");
+    var expected = el.getAttribute("data-when-val");
+    if (!varId || expected === null) return;
+    var vals = expected.split(",").map(function (s) { return s.trim(); });
+    el.classList.toggle("hidden", vals.indexOf(String(varValues[varId])) < 0);
+  });
+}
+
+function renderGlobalVars() {
+  var bar = document.getElementById("global-vars-bar");
+  if (!bar) return;
+  var globals = (VARS || []).filter(function (v) {
+    return v.kind === "global" && checkVarWhen(v);
+  });
+  bar.innerHTML = globals.map(function (v) {
+    var btns = (v.options || []).map(function (o) {
+      var active = varValues[v.id] === o.id ? " active" : "";
+      return '<button type="button" class="seg-btn' + active + '" onclick="setVar(\'' +
+        escapeHtml(v.id) + '\',\'' + escapeHtml(o.id) + '\')">' +
+        escapeHtml(o.label) + '</button>';
+    }).join("");
+    return '<div class="wb-gvar"><span>' + escapeHtml(v.label) + '</span>' +
+      '<div class="seg-group">' + btns + '</div></div>';
+  }).join("");
+}
+
+function renderScopedVars() {
+  var card = document.getElementById("vars-card");
+  var body = document.getElementById("vars-body");
+  if (!card || !body) return;
+
+  var scoped = (VARS || []).filter(function (v) {
+    return v.kind !== "global" && isVarApplicable(v);
+  });
+
+  var activeBranches = [];
+  (VARS || []).forEach(function (v) {
+    if (v.kind === "branch" && v.diamond && checkVarWhen(v)) {
+      var cur = (v.options || []).find(function (o) { return o.id === varValues[v.id]; });
+      if (cur && cur.target) {
+        activeBranches.push({ diamond: v.diamond, target: cur.target, optId: cur.id });
+      }
+    }
+  });
+  highlightBranchEdges(activeBranches);
+
+  if (!scoped.length) {
+    body.innerHTML = "";
+    card.classList.add("hidden");
+    return;
+  }
+
+  body.innerHTML = scoped.map(function (v) {
+    var tag = v.kind === "branch" ? UI_TEXT.branchTag : UI_TEXT.localTag;
+    var curOpt = (v.options || []).find(function (o) { return o.id === varValues[v.id]; });
+    var optsHtml = (v.options || []).map(function (o) {
+      var curCls = varValues[v.id] === o.id ? " cur" : "";
+      return '<button type="button" class="var-opt' + curCls + '" onclick="setVar(\'' +
+        escapeHtml(v.id) + '\',\'' + escapeHtml(o.id) + '\')">' +
+        escapeHtml(o.label) + '</button>';
+    }).join("");
+    var goHtml = (v.kind === "branch" && curOpt && curOpt.target && NODES[curOpt.target])
+      ? '<button type="button" class="branch-go-btn" onclick="goBranch(\'' +
+        escapeHtml(v.id) + '\')">' + UI_TEXT.jumpTo +
+        escapeHtml(NODES[curOpt.target].title || curOpt.target) + ' →</button>'
+      : "";
+    return '<div class="var-block"><div class="var-head"><b>' + escapeHtml(v.label) +
+      '</b><span class="var-kind-tag">' + tag + '</span></div>' +
+      '<div class="var-opts">' + optsHtml + '</div>' + goHtml + '</div>';
+  }).join("");
+  card.classList.remove("hidden");
+}
+
+function buildSvgEdgeMap() {
+  var polys = document.querySelectorAll("#flow-svg polyline[data-from]");
+  var outMap = {};
+  polys.forEach(function (pl) {
+    var f = pl.getAttribute("data-from");
+    var t = pl.getAttribute("data-to");
+    if (f && t) {
+      (outMap[f] = outMap[f] || []).push({
+        to: t,
+        branch: pl.getAttribute("data-branch") || "",
+        pl: pl
+      });
+    }
+  });
+  return { polys: polys, outMap: outMap };
+}
+
+function canReachNode(outMap, startId, goalId) {
+  if (!startId || !goalId) return false;
+  if (startId === goalId) return true;
+  var seen = {};
+  var q = [startId];
+  seen[startId] = true;
+  while (q.length) {
+    var cur = q.shift();
+    if (cur !== startId && NODES[cur] && !NODES[cur].isDecision) continue;
+    var outs = outMap[cur] || [];
+    for (var i = 0; i < outs.length; i++) {
+      var nxt = outs[i].to;
+      if (nxt === goalId) return true;
+      if (!seen[nxt]) {
+        seen[nxt] = true;
+        q.push(nxt);
+      }
+    }
+  }
+  return false;
+}
+
+function pickDiamondOutgoingEdge(outMap, diamondChoice, dId) {
+  var info = diamondChoice[dId];
+  var outs = outMap[dId] || [];
+  if (!info || !outs.length) return null;
+  var rawTarget = info.target;
+  var optId = info.optId;
+  return outs.find(function (e) { return optId && e.branch === optId; }) ||
+    outs.find(function (e) { return e.to === rawTarget; }) ||
+    outs.find(function (e) { return diamondChoice[e.to] && canReachNode(outMap, e.to, rawTarget); }) ||
+    outs.find(function (e) { return canReachNode(outMap, e.to, rawTarget); }) ||
+    null;
+}
+
+function highlightBranchEdges(activeBranches) {
+  var g = buildSvgEdgeMap();
+  g.polys.forEach(function (pl) {
+    pl.classList.remove("branch-active");
+    pl.classList.remove("branch-dim");
+  });
+  if (!activeBranches || !activeBranches.length) return;
+  var diamondChoice = {};
+  activeBranches.forEach(function (item) {
+    if (item.diamond) diamondChoice[item.diamond] = item;
+  });
+  var visited = {};
+  function walkDiamond(dId) {
+    if (!dId || visited[dId] || !diamondChoice[dId]) return;
+    visited[dId] = true;
+    var outs = g.outMap[dId] || [];
+    var chosen = pickDiamondOutgoingEdge(g.outMap, diamondChoice, dId);
+    if (!chosen) return;
+    chosen.pl.classList.remove("branch-dim");
+    chosen.pl.classList.add("branch-active");
+    outs.forEach(function (e) {
+      if (e !== chosen && !e.pl.classList.contains("branch-active")) {
+        e.pl.classList.add("branch-dim");
+      }
+    });
+    if (diamondChoice[chosen.to]) walkDiamond(chosen.to);
+  }
+  (g.outMap[currentNode] || []).forEach(function (e) {
+    if (diamondChoice[e.to]) {
+      e.pl.classList.add("branch-active");
+      walkDiamond(e.to);
+    }
+  });
+  Object.keys(diamondChoice).forEach(function (dId) { walkDiamond(dId); });
+}
+
+var isRestoringHash = false;
+function syncUrlHash() {
+  if (isRestoringHash) return;
+  var params = new URLSearchParams();
+  if (currentNode) params.set("node", currentNode);
+  (VARS || []).forEach(function (v) {
+    if (v && v.id && varValues[v.id] !== undefined) {
+      params.set(v.id, varValues[v.id]);
+    }
+  });
+  if (wbView && wbView !== "flow") params.set("view", wbView);
+  var newHash = "#" + params.toString();
+  if (location.hash !== newHash) {
+    try { history.replaceState(null, "", newHash); } catch (e) { location.hash = newHash; }
+  }
+}
+
+function parseUrlHash() {
+  var raw = (location.hash || "").replace(/^#/, "");
+  var out = { node: null, view: null };
+  if (!raw) return out;
+  var params = new URLSearchParams(raw);
+  (VARS || []).forEach(function (v) {
+    if (!v || !v.id || !params.has(v.id)) return;
+    var val = params.get(v.id);
+    if ((v.options || []).some(function (o) { return o.id === val; })) {
+      varValues[v.id] = val;
+    }
+  });
+  var n = params.get("node");
+  if (n && NODES[n]) out.node = n;
+  var vw = params.get("view");
+  if (vw === "flow" || vw === "spec") out.view = vw;
+  return out;
+}
+
+window.getVar = function (varId) { return varValues[varId]; };
+window.setVar = function (varId, optId) {
+  var v = (VARS || []).find(function (x) { return x.id === varId; });
+  if (!v) return;
+  var opt = (v.options || []).find(function (o) { return o.id === optId; });
+  if (!opt) return;
+  varValues[varId] = optId;
+  if (opt.page && PAGE_FRAME[opt.page]) {
+    showPage(resolveVariantPage(opt.page, varValues.platform));
+  } else if (v.kind === "global" && currentPage) {
+    var variantPg = resolveVariantPage(currentPage, optId);
+    if (variantPg && PAGE_FRAME[variantPg] && variantPg !== currentPage) {
+      showPage(variantPg);
+    }
+  }
+  syncDeclarativePageVars();
+  renderGlobalVars();
+  renderScopedVars();
+  syncUrlHash();
+  scheduleOverlaySync();
+  if (typeof window.onWalkVarChange === "function") {
+    window.onWalkVarChange(varId, optId, Object.assign({}, varValues));
+  }
+};
+
+window.goBranch = function (varId) {
+  var v = (VARS || []).find(function (x) { return x.id === varId; });
+  if (!v) return;
+  var opt = (v.options || []).find(function (o) { return o.id === varValues[varId]; });
+  if (!opt || !opt.target) return;
+  if (NODES[opt.target]) setViewByNode(opt.target);
+};
+
+function renderStates() {
+  var card = document.getElementById("state-card");
+  var body = document.getElementById("state-body");
+  if (!card || !body) return;
+  var st = currentState ? String(currentState).split("/") : null;
+  var grp = st && STATE_GROUPS[st[0]];
+  if (!grp || !grp.states || grp.states.length < 2) {
+    body.innerHTML = "";
+    card.classList.add("hidden");
+    return;
+  }
+  body.innerHTML = '<div class="st-group">' + grp.states.map(function (s) {
+    if (s.id === st[1]) {
+      return '<button type="button" class="st-btn cur" disabled>' + escapeHtml(s.label) + '</button>';
+    }
+    return '<button type="button" class="st-btn" onclick="goState(\'' +
+      escapeHtml(st[0]) + '\',\'' + escapeHtml(s.id) + '\')">' +
+      escapeHtml(s.label) + '</button>';
+  }).join("") + '</div>';
+  card.classList.remove("hidden");
+}
+
+function showPage(pageId) {
+  if (!pageId) return;
+  currentPage = pageId;
+  var frame = PAGE_FRAME[pageId] || "phone";
+  var phoneEl = document.getElementById("frame-phone");
+  var wideEl = document.getElementById("frame-wide");
+  if (phoneEl) phoneEl.classList.toggle("hidden", frame !== "phone");
+  if (wideEl) wideEl.classList.toggle("hidden", frame !== "wide");
+  var drawer = document.getElementById("inspector-drawer");
+  var prevWide = drawer ? drawer.classList.contains("wide-mode") : null;
+  var nextWide = frame === "wide";
+  if (drawer) drawer.classList.toggle("wide-mode", nextWide);
+  var specWs = document.getElementById("spec-ws");
+  if (specWs) specWs.classList.toggle("wide-spec", nextWide);
+  document.querySelectorAll(".page").forEach(function (p) {
+    p.classList.toggle("active", p.id === pageId);
+  });
+  syncDeclarativePageVars();
+  var memoForm = document.getElementById("memo-form");
+  if (memoForm && !memoForm.classList.contains("hidden") && typeof updateMemoFormCtx === "function") {
+    updateMemoFormCtx();
+  }
+  if (prevWide !== null && prevWide !== nextWide && typeof hasBootFitted !== "undefined" && hasBootFitted) {
+    fitBootZoom();
+  }
+  scheduleOverlaySync();
+}
+
+window.goState = function (groupId, stateId) {
+  var grp = STATE_GROUPS[groupId];
+  if (!grp) return;
+  var state = (grp.states || []).find(function (s) { return s.id === stateId; });
+  if (!state) return;
+  currentState = groupId + "/" + stateId;
+  showPage(resolveVariantPage(state.page, varValues.platform));
+  renderStates();
+  renderScopedVars();
+};
+
+function setViewByNode(nodeId) {
+  var n = NODES[nodeId];
+  if (!n) return;
+  var panel = document.querySelector(".flow-panel");
+  if (panel && panel.classList.contains("fs")) toggleFs(false);
+  if (n.isDecision && n.branchVar) {
+    var bv = (VARS || []).find(function (x) { return x.id === n.branchVar; });
+    if (bv && bv.when) {
+      for (var wk in bv.when) {
+        var wexp = bv.when[wk];
+        if (Array.isArray(wexp)) {
+          if (wexp.indexOf(varValues[wk]) < 0 && wexp.length) varValues[wk] = wexp[0];
+        } else if (varValues[wk] !== wexp) {
+          varValues[wk] = wexp;
+        }
+      }
+    }
+  }
+  currentNode = nodeId;
+  currentState = n.state || null;
+  showPage(resolveVariantPage(n.page, varValues.platform));
+
+  var ring = document.getElementById("sel-ring");
+  var target = document.querySelector('.flow-svg g[data-node="' + nodeId + '"]');
+  if (ring && target) {
+    var bb = target.getBBox();
+    ring.setAttribute("x", bb.x - 7);
+    ring.setAttribute("y", bb.y - 7);
+    ring.setAttribute("width", bb.width + 14);
+    ring.setAttribute("height", bb.height + 14);
+    ring.setAttribute("stroke", "#d97706");
+    ring.setAttribute("fill", "rgba(217,119,6,0.08)");
+    ring.setAttribute("visibility", "visible");
+  }
+
+  var badge = document.getElementById("insp-node-id");
+  if (badge) badge.textContent = nodeId;
+  var titleEl = document.getElementById("anno-node-title");
+  if (titleEl) titleEl.textContent = n.title || nodeId;
+  var refEl = document.getElementById("flow-node-ref");
+  if (refEl) refEl.textContent = nodeId + (n.title ? " · " + n.title : "");
+  var annoEl = document.getElementById("anno-body");
+  if (annoEl) {
+    annoEl.innerHTML = (n.anno || []).map(function (p) {
+      return '<div class="anno-item"><b>' + escapeHtml(p[0]) + '</b>' + escapeHtml(p[1]) + '</div>';
+    }).join("") || ('<div class="wt-muted">' + UI_TEXT.noAnno + '</div>');
+  }
+
+  renderStates();
+  renderGlobalVars();
+  renderScopedVars();
+  syncUrlHash();
+  if (target) panNodeToSafeLeft(target);
+  if (typeof updateMemoFormCtx === "function" && !document.getElementById("memo-form").classList.contains("hidden")) {
+    updateMemoFormCtx();
+  }
+  if (typeof window.onWalkNodeChange === "function") {
+    window.onWalkNodeChange(nodeId, currentPage, Object.assign({}, varValues));
+  }
+}
+window.goNode = setViewByNode;
+
+// =========================================================================
+// SVG Canvas Pan & Zoom (Intrinsic viewBox Scale, True Non-Overlapping Split)
+// =========================================================================
+var zoomPct = 100;
+var panX = 0;
+var panY = 0;
+var hasBootFitted = false;
+var flowSvgEl = document.getElementById("flow-svg");
+var flowInnerEl = document.getElementById("flow-canvas-inner");
+var movedFlag = false;
+
+function getSvgIntrinsicSize() {
+  var svg = document.querySelector("#flow-svg svg");
+  if (!svg) return { w: 820, h: 920 };
+  var vb = svg.viewBox && svg.viewBox.baseVal;
+  if (vb && vb.width > 0 && vb.height > 0) {
+    return { w: vb.width, h: vb.height };
+  }
+  var wAttr = parseFloat(svg.getAttribute("width")) || 0;
+  var hAttr = parseFloat(svg.getAttribute("height")) || 0;
+  if (wAttr > 0 && hAttr > 0) return { w: wAttr, h: hAttr };
+  try {
+    var bb = svg.getBBox();
+    if (bb.width > 0 && bb.height > 0) {
+      return { w: Math.max(320, bb.x + bb.width + 40), h: Math.max(320, bb.y + bb.height + 40) };
+    }
+  } catch (e) {}
+  return { w: 820, h: 920 };
+}
+
+function ensureSvgIntrinsicBox() {
+  var svg = document.querySelector("#flow-svg svg");
+  if (!svg) return;
+  var sz = getSvgIntrinsicSize();
+  svg.style.width = sz.w + "px";
+  svg.style.height = sz.h + "px";
+}
+
+function applyPan(smooth) {
+  if (!flowInnerEl) return;
+  flowInnerEl.classList.toggle("smooth", !!smooth);
+  var s = zoomPct / 100;
+  flowInnerEl.style.transform = "translate(" + panX.toFixed(1) + "px," + panY.toFixed(1) + "px) scale(" + s.toFixed(4) + ")";
+}
+
+function applyZoomPct(pct) {
+  zoomPct = Math.min(300, Math.max(18, Math.round(pct)));
+  var zv = document.getElementById("zv");
+  if (zv) zv.textContent = zoomPct + "%";
+}
+
+function zoomAt(value, clientX, clientY) {
+  if (!flowSvgEl) return;
+  ensureSvgIntrinsicBox();
+  var oldZoom = zoomPct;
+  var newZoom = Math.min(300, Math.max(18, Math.round(value)));
+  if (newZoom === oldZoom) return;
+  var rect = flowSvgEl.getBoundingClientRect();
+  var cx = clientX !== undefined ? clientX : (rect.left + rect.width / 2);
+  var cy = clientY !== undefined ? clientY : (rect.top + rect.height / 2);
+  var relX = cx - rect.left;
+  var relY = cy - rect.top;
+  var ratio = newZoom / oldZoom;
+  panX = relX - (relX - panX) * ratio;
+  panY = relY - (relY - panY) * ratio;
+  applyZoomPct(newZoom);
+  applyPan(false);
+}
+
+function setZoom(dir) {
+  if (dir === 0) {
+    fitBootZoom();
+    return;
+  }
+  var step = dir > 0 ? 20 : -20;
+  var rect = flowSvgEl ? flowSvgEl.getBoundingClientRect() : null;
+  var cx = rect ? rect.left + rect.width / 2 : undefined;
+  var cy = rect ? rect.top + rect.height / 2 : undefined;
+  zoomAt(zoomPct + step, cx, cy);
+}
+
+function fitBootZoom() {
+  if (!flowSvgEl) return;
+  ensureSvgIntrinsicBox();
+  var sz = getSvgIntrinsicSize();
+  var cw = flowSvgEl.clientWidth || 480;
+  var ch = flowSvgEl.clientHeight || 720;
+  var pad = 24;
+  var fitScale = Math.min(
+    Math.max(120, cw - pad * 2) / sz.w,
+    Math.max(120, ch - pad * 2) / sz.h
+  );
+  var targetPct = Math.min(115, Math.max(18, Math.round(fitScale * 100)));
+  applyZoomPct(targetPct);
+  var actualScale = zoomPct / 100;
+  panX = (cw - sz.w * actualScale) / 2;
+  panY = (ch - sz.h * actualScale) / 2;
+  applyPan(false);
+  hasBootFitted = true;
+}
+
+function panNodeToSafeLeft(target) {
+  if (!target || !flowSvgEl || !hasBootFitted) return;
+  var flowRect = flowSvgEl.getBoundingClientRect();
+  if (!flowRect.width || !flowRect.height) return;
+  var pad = 24;
+  var safeLeft = flowRect.left + pad;
+  var safeRight = flowRect.right - pad;
+  var safeTop = flowRect.top + pad;
+  var safeBottom = flowRect.bottom - pad;
+  var tr = target.getBoundingClientRect();
+  if (!tr.width && !tr.height) return;
+
+  var dx = 0;
+  var dy = 0;
+  if (tr.left < safeLeft || tr.right > safeRight) {
+    dx = (flowRect.left + flowRect.width / 2) - (tr.left + tr.width / 2);
+  }
+  if (tr.top < safeTop || tr.bottom > safeBottom) {
+    dy = (flowRect.top + flowRect.height / 2) - (tr.top + tr.height / 2);
+  }
+  if (Math.abs(dx) > 1 || Math.abs(dy) > 1) {
+    panX += dx;
+    panY += dy;
+    applyPan(true);
+    setTimeout(function () { if (flowInnerEl) flowInnerEl.classList.remove("smooth"); }, 280);
+  }
+}
+
+function toggleFs(force) {
+  var p = document.querySelector(".flow-panel");
+  if (!p) return;
+  var on = force !== undefined ? force : !p.classList.contains("fs");
+  p.classList.toggle("fs", on);
+  var btn = document.getElementById("fs-btn");
+  if (btn) btn.textContent = on ? UI_TEXT.showDetail : UI_TEXT.fullCanvas;
+  fitBootZoom();
+}
+
+if (flowSvgEl) {
+  var dragState = { active: false, startX: 0, startY: 0, startPanX: 0, startPanY: 0 };
+  flowSvgEl.addEventListener("pointerdown", function (e) {
+    if (e.button !== 0 && e.pointerType === "mouse") return;
+    dragState.active = true;
+    movedFlag = false;
+    dragState.startX = e.clientX;
+    dragState.startY = e.clientY;
+    dragState.startPanX = panX;
+    dragState.startPanY = panY;
+    if (flowInnerEl) flowInnerEl.classList.remove("smooth");
+  });
+  window.addEventListener("pointermove", function (e) {
+    if (!dragState.active) return;
+    var dx = e.clientX - dragState.startX;
+    var dy = e.clientY - dragState.startY;
+    if (!movedFlag && Math.hypot(dx, dy) > 4) movedFlag = true;
+    if (movedFlag) {
+      panX = dragState.startPanX + dx;
+      panY = dragState.startPanY + dy;
+      applyPan(false);
+    }
+  });
+  function endFlowDrag() {
+    if (!dragState.active) return;
+    dragState.active = false;
+    if (movedFlag) setTimeout(function () { movedFlag = false; }, 0);
+  }
+  window.addEventListener("pointerup", endFlowDrag);
+  window.addEventListener("pointercancel", endFlowDrag);
+
+  flowSvgEl.addEventListener("click", function (e) {
+    if (movedFlag) {
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+    var nodeEl = e.target.closest("g[data-node]");
+    if (nodeEl) {
+      setViewByNode(nodeEl.getAttribute("data-node"));
+    } else {
+      toggleFs(true);
+    }
+  });
+
+  flowSvgEl.addEventListener("keydown", function (e) {
+    if (e.key !== "Enter" && e.key !== " ") return;
+    var nodeEl = e.target.closest("g[data-node]");
+    if (nodeEl) {
+      e.preventDefault();
+      setViewByNode(nodeEl.getAttribute("data-node"));
+    }
+  });
+
+  flowSvgEl.addEventListener("wheel", function (e) {
+    e.preventDefault();
+    if (e.ctrlKey || e.metaKey) {
+      var factor = Math.exp(-e.deltaY * 0.008);
+      zoomAt(zoomPct * factor, e.clientX, e.clientY);
+    } else {
+      panX -= e.deltaX;
+      panY -= e.deltaY;
+      applyPan(false);
+    }
+  }, { passive: false });
+
+  var gestureStartZoom = 100;
+  flowSvgEl.addEventListener("gesturestart", function (e) {
+    e.preventDefault();
+    gestureStartZoom = zoomPct;
+  }, { passive: false });
+  flowSvgEl.addEventListener("gesturechange", function (e) {
+    e.preventDefault();
+    zoomAt(gestureStartZoom * e.scale, e.clientX, e.clientY);
+  }, { passive: false });
+  flowSvgEl.addEventListener("gestureend", function (e) {
+    e.preventDefault();
+  }, { passive: false });
+}
+
+document.addEventListener("keydown", function (e) {
+  if (e.key !== "Escape") return;
+  var guardModal = document.getElementById("export-guard-modal");
+  if (guardModal && !guardModal.classList.contains("hidden")) {
+    closeExportGuard();
+    return;
+  }
+  var memoForm = document.getElementById("memo-form");
+  if (memoForm && !memoForm.classList.contains("hidden")) {
+    closeMemoForm();
+    return;
+  }
+  if (wbView === "flow") {
+    var panel = document.querySelector(".flow-panel");
+    if (panel && !panel.classList.contains("fs")) toggleFs(true);
+  }
+});
+
+// =========================================================================
+// Spec Cards Mode (Single-page Cubic Bezier Tether & Scroll Sync)
+// =========================================================================
+function initSpecMode() {
+  var sw = document.getElementById("view-switch");
+  var box = document.getElementById("spec-cards");
+  if (!sw || !box || !SPEC_CARDS || !SPEC_CARDS.length) return;
+  sw.classList.remove("hidden");
+  box.innerHTML = SPEC_CARDS.map(function (c) {
+    return '<div class="spec-card" data-cid="' + escapeHtml(c.id) +
+      '" data-page="' + escapeHtml(c.page || "") +
+      '" data-anchor="' + escapeHtml(c.anchor || "") + '">' +
+      '<div class="spec-card-hd"><span class="spec-idx">' + escapeHtml(c.id) +
+      '</span><b>' + escapeHtml(c.title) + '</b></div>' +
+      '<div class="spec-card-bd">' + escapeHtml(c.body) + '</div></div>';
+  }).join("");
+  box.querySelectorAll(".spec-card").forEach(function (el) {
+    el.addEventListener("mouseenter", function () { activateSpecCard(el.getAttribute("data-cid")); });
+    el.addEventListener("click", function () { activateSpecCard(el.getAttribute("data-cid")); });
+  });
+}
+
+window.switchWbView = function (view) {
+  wbView = view;
+  document.getElementById("flow-panel-root").classList.toggle("hidden", view !== "flow");
+  document.getElementById("spec-panel-root").classList.toggle("hidden", view !== "spec");
+  var stageEl = document.getElementById("flow-stage");
+  var specSlot = document.getElementById("spec-stage-slot");
+  var inspBody = document.querySelector(".insp-body");
+  document.querySelectorAll("#view-switch .seg-btn").forEach(function (b) {
+    b.classList.toggle("active", b.getAttribute("data-wbview") === view);
+  });
+  if (view === "spec" && SPEC_CARDS && SPEC_CARDS.length) {
+    specSlot.appendChild(stageEl);
+    activateSpecCard(activeSpecId || SPEC_CARDS[0].id);
+  } else {
+    inspBody.insertBefore(stageEl, inspBody.firstChild);
+    var svg = document.getElementById("tether-svg");
+    var abox = document.getElementById("anchor-box");
+    if (svg) svg.innerHTML = "";
+    if (abox) abox.classList.add("hidden");
+    if (currentNode && NODES[currentNode]) {
+      setViewByNode(currentNode);
+    }
+  }
+  syncUrlHash();
+  scheduleOverlaySync();
+};
+
+function activateSpecCard(cid) {
+  activeSpecId = cid;
+  var card = (SPEC_CARDS || []).find(function (c) { return c.id === cid; });
+  if (!card) return;
+  var targetPage = resolveVariantPage(card.page, varValues.platform);
+  showPage(targetPage);
+  var specWs = document.getElementById("spec-ws");
+  if (specWs) specWs.classList.toggle("wide-spec", (PAGE_FRAME[targetPage] || "phone") === "wide");
+  document.querySelectorAll(".spec-card").forEach(function (el) {
+    el.classList.toggle("active", el.getAttribute("data-cid") === cid);
+  });
+  requestAnimationFrame(updateSpecTether);
+}
+
+function findSpecAnchorElement(anchor) {
+  if (!anchor) return null;
+  var activePage = document.querySelector(".page.active");
+  if (!activePage) return null;
+  var candidates = activePage.querySelectorAll("[data-comp-id], [data-anchor]");
+  for (var i = 0; i < candidates.length; i++) {
+    if (candidates[i].getAttribute("data-comp-id") === anchor ||
+        candidates[i].getAttribute("data-anchor") === anchor) {
+      return candidates[i];
+    }
+  }
+  return null;
+}
+
+function updateSpecTether() {
+  var svg = document.getElementById("tether-svg");
+  var abox = document.getElementById("anchor-box");
+  var ws = document.getElementById("spec-ws");
+  if (!svg || !abox || !ws || wbView !== "spec" || !activeSpecId) return;
+  var cardEl = document.querySelector('.spec-card[data-cid="' + activeSpecId + '"]');
+  var anchor = cardEl && cardEl.getAttribute("data-anchor");
+  var targetEl = findSpecAnchorElement(anchor);
+  if (!cardEl || !targetEl) {
+    svg.innerHTML = "";
+    abox.classList.add("hidden");
+    return;
+  }
+  var wr = ws.getBoundingClientRect();
+  var tr = targetEl.getBoundingClientRect();
+  var cr = cardEl.getBoundingClientRect();
+  if ((tr.width === 0 && tr.height === 0) || (cr.width === 0 && cr.height === 0)) {
+    svg.innerHTML = "";
+    abox.classList.add("hidden");
+    return;
+  }
+  abox.style.left = (tr.left - wr.left - 4) + "px";
+  abox.style.top = (tr.top - wr.top - 4) + "px";
+  abox.style.width = (tr.width + 8) + "px";
+  abox.style.height = (tr.height + 8) + "px";
+  abox.classList.remove("hidden");
+
+  var stageEl = document.getElementById("flow-stage");
+  var sr = stageEl ? stageEl.getBoundingClientRect() : tr;
+  var isStacked = cr.left < (sr.right - 16);
+  var x1, y1, x2, y2, dPath;
+  if (isStacked) {
+    x1 = tr.left - wr.left + tr.width / 2;
+    y1 = tr.bottom - wr.top + 4;
+    x2 = cr.left - wr.left + Math.min(48, cr.width / 2);
+    y2 = cr.top - wr.top;
+    var dy = Math.max(32, Math.abs(y2 - y1) * 0.5);
+    var cy1 = y1 + dy;
+    var cy2 = y2 - dy;
+    dPath = "M " + x1 + " " + y1 + " C " + x1 + " " + cy1 + ", " + x2 + " " + cy2 + ", " + x2 + " " + y2;
+  } else {
+    x1 = tr.right - wr.left + 4;
+    y1 = tr.top - wr.top + tr.height / 2;
+    x2 = cr.left - wr.left;
+    y2 = cr.top - wr.top + Math.min(24, cr.height / 2);
+    var dx = Math.max(32, Math.abs(x2 - x1) * 0.5);
+    var cx1 = x1 + dx;
+    var cx2 = x2 - dx;
+    dPath = "M " + x1 + " " + y1 + " C " + cx1 + " " + y1 + ", " + cx2 + " " + y2 + ", " + x2 + " " + y2;
+  }
+  svg.innerHTML =
+    '<path d="' + dPath + '" fill="none" stroke="#d97706" stroke-width="1.8" stroke-dasharray="5 4"></path>' +
+    '<circle cx="' + x1 + '" cy="' + y1 + '" r="3" fill="#d97706"></circle>' +
+    '<circle cx="' + x2 + '" cy="' + y2 + '" r="3" fill="#d97706"></circle>';
+}
+
+// =========================================================================
+// Minimalist Pick-and-Memo (Strict Semantic Picking + Cross-Page @ Chips)
+// =========================================================================
+var isMemoPickingActive = false;
+var lastPickedEl = null;
+var overlayRafId = 0;
+
+function scheduleOverlaySync() {
+  if (overlayRafId) return;
+  overlayRafId = requestAnimationFrame(function () {
+    overlayRafId = 0;
+    if (wbView === "spec") updateSpecTether();
+    if (isMemoPickingActive) updatePickOverlay();
+  });
+}
+
+function getStageContainers() {
+  return [document.getElementById("frame-phone"), document.getElementById("frame-wide")].filter(Boolean);
+}
+
+function setMemoPickingActive(active) {
+  isMemoPickingActive = !!active;
+  getStageContainers().forEach(function (el) {
+    el.classList.toggle("pick-mode-on", isMemoPickingActive);
+  });
+  if (!isMemoPickingActive) hidePickOverlay();
+}
+
+function hidePickOverlay() {
+  var ov = document.getElementById("pick-highlight-overlay");
+  var bg = document.getElementById("pick-label-badge");
+  if (ov) ov.style.display = "none";
+  if (bg) bg.style.display = "none";
+}
+
+function positionPickOverlay(targetEl, labelText) {
+  var ov = document.getElementById("pick-highlight-overlay");
+  var bg = document.getElementById("pick-label-badge");
+  if (!ov || !bg || !targetEl || !targetEl.isConnected) {
+    hidePickOverlay();
+    return;
+  }
+  var rect = targetEl.getBoundingClientRect();
+  if (rect.width === 0 && rect.height === 0) {
+    hidePickOverlay();
+    return;
+  }
+  ov.style.display = "block";
+  ov.style.left = rect.left + "px";
+  ov.style.top = rect.top + "px";
+  ov.style.width = rect.width + "px";
+  ov.style.height = rect.height + "px";
+
+  bg.style.display = "block";
+  bg.textContent = labelText;
+  var topPos = rect.top - 26;
+  if (topPos < 54) topPos = rect.bottom + 4;
+  var leftPos = Math.max(8, Math.min(window.innerWidth - 280, rect.left));
+  bg.style.left = leftPos + "px";
+  bg.style.top = topPos + "px";
+}
+
+function getCompDisplayName(el) {
+  if (!el) return "";
+  var cname = el.getAttribute("data-comp-name");
+  if (cname) return cname;
+  var cid = el.getAttribute("data-comp-id");
+  if (cid) return cid;
+  var anc = el.getAttribute("data-anchor");
+  if (anc) return anc;
+  return "";
+}
+
+function updatePickOverlay() {
+  if (!isMemoPickingActive || !lastPickedEl || !lastPickedEl.isConnected) {
+    hidePickOverlay();
+    return;
+  }
+  var pageEl = lastPickedEl.closest(".page.active");
+  if (!pageEl) {
+    hidePickOverlay();
+    return;
+  }
+  var name = getCompDisplayName(lastPickedEl);
+  positionPickOverlay(lastPickedEl, "已 @：" + name);
+}
+
+function buildFallbackSelector(el, pageEl) {
+  if (!el || !pageEl || el === pageEl) return "";
+  if (el.id) return "#" + CSS.escape(el.id);
+  var cid = el.getAttribute("data-comp-id");
+  if (cid) return '[data-comp-id="' + cid + '"]';
+  var anc = el.getAttribute("data-anchor");
+  if (anc) return '[data-anchor="' + anc + '"]';
+  var parts = [];
+  var cur = el;
+  while (cur && cur !== pageEl && cur.nodeType === 1) {
+    var tag = cur.tagName.toLowerCase();
+    var c = cur.getAttribute("data-comp-id");
+    if (c) {
+      parts.unshift('[data-comp-id="' + c + '"]');
+      break;
+    }
+    var parent = cur.parentElement;
+    if (parent) {
+      var sameTag = Array.prototype.filter.call(parent.children, function (ch) {
+        return ch.tagName === cur.tagName;
+      });
+      if (sameTag.length > 1) {
+        tag += ":nth-of-type(" + (sameTag.indexOf(cur) + 1) + ")";
+      }
+    }
+    parts.unshift(tag);
+    cur = parent;
+  }
+  return parts.join(" > ");
+}
+
+function showMemoFormHint(msg) {
+  var hintEl = document.getElementById("memo-form-hint");
+  if (!hintEl) return;
+  hintEl.textContent = msg;
+  hintEl.classList.remove("hidden");
+}
+
+function hideMemoFormHint() {
+  var hintEl = document.getElementById("memo-form-hint");
+  if (hintEl) {
+    hintEl.textContent = "";
+    hintEl.classList.add("hidden");
+  }
+}
+
+function insertMentionChipInEditor(targetObj) {
+  var inp = document.getElementById("memo-input");
+  if (!inp || !targetObj) return;
+  var chip = document.createElement("span");
+  chip.className = "memo-at-chip";
+  chip.setAttribute("contenteditable", "false");
+  chip.setAttribute("data-comp-id", targetObj.comp_id || "");
+  chip.setAttribute("data-comp-name", targetObj.comp_name || "");
+  chip.setAttribute("data-fallback", targetObj.fallback_selector || "");
+  if (targetObj.page) chip.setAttribute("data-page", targetObj.page);
+  chip.textContent = "@[" + (targetObj.comp_name || targetObj.comp_id || "组件") + "]";
+  var spaceNode = document.createTextNode(" ");
+
+  var sel = window.getSelection();
+  var range = null;
+  if (sel && sel.rangeCount > 0) {
+    var candidate = sel.getRangeAt(0);
+    if (inp.contains(candidate.commonAncestorContainer)) {
+      range = candidate;
+    }
+  }
+  inp.focus();
+  if (range) {
+    range.deleteContents();
+    range.insertNode(spaceNode);
+    range.insertNode(chip);
+    range.setStartAfter(spaceNode);
+    range.collapse(true);
+    sel.removeAllRanges();
+    sel.addRange(range);
+  } else {
+    inp.appendChild(chip);
+    inp.appendChild(spaceNode);
+    if (sel) {
+      var endRange = document.createRange();
+      endRange.setStartAfter(spaceNode);
+      endRange.collapse(true);
+      sel.removeAllRanges();
+      sel.addRange(endRange);
+    }
+  }
+}
+
+function updateMemoFormCtx() {
+  var ctxEl = document.getElementById("memo-ctx");
+  if (ctxEl) {
+    ctxEl.textContent = UI_TEXT.ctxPrefix + (currentNode || "-") + " · " + (currentPage || "-");
+  }
+}
+
+function findSemanticComp(rawTarget, pageEl) {
+  if (!rawTarget || !pageEl || !rawTarget.closest) return null;
+  var compEl = rawTarget.closest("[data-comp-id], [data-anchor]");
+  if (compEl && !pageEl.contains(compEl)) compEl = null;
+  return compEl;
+}
+
+function handlePickSelect(rawTarget) {
+  if (!isMemoPickingActive) return;
+  var pageEl = (rawTarget && rawTarget.closest && rawTarget.closest(".page.active")) || document.querySelector(".page.active");
+  if (!pageEl) return;
+  var compEl = findSemanticComp(rawTarget, pageEl);
+  if (!compEl) return;
+
+  var compId = compEl.getAttribute("data-comp-id") || compEl.getAttribute("data-anchor") || "";
+  var compName = getCompDisplayName(compEl);
+  var fallbackSel = buildFallbackSelector(compEl, pageEl);
+  var pageId = pageEl.id || currentPage || "";
+
+  insertMentionChipInEditor({
+    page: pageId,
+    comp_id: compId,
+    comp_name: compName,
+    fallback_selector: fallbackSel
+  });
+  lastPickedEl = compEl;
+  updateMemoFormCtx();
+  positionPickOverlay(compEl, UI_TEXT.pickedPrefix + compName);
+}
+
+function handlePickHover(rawTarget) {
+  if (!isMemoPickingActive) return;
+  var pageEl = rawTarget && rawTarget.closest ? rawTarget.closest(".page.active") : null;
+  if (!pageEl) {
+    updatePickOverlay();
+    return;
+  }
+  var compEl = findSemanticComp(rawTarget, pageEl);
+  if (!compEl) {
+    updatePickOverlay();
+    return;
+  }
+  var name = getCompDisplayName(compEl);
+  positionPickOverlay(compEl, UI_TEXT.hoverPrefix + name);
+}
+
+getStageContainers().forEach(function (container) {
+  container.addEventListener("pointerdown", function (e) {
+    if (!isMemoPickingActive) return;
+    e.preventDefault();
+    e.stopPropagation();
+    e.stopImmediatePropagation();
+    if (e.button === 0 || e.pointerType !== "mouse") {
+      handlePickSelect(e.target);
+    }
+  }, { capture: true });
+
+  container.addEventListener("click", function (e) {
+    if (!isMemoPickingActive) return;
+    e.preventDefault();
+    e.stopPropagation();
+    e.stopImmediatePropagation();
+  }, { capture: true });
+
+  container.addEventListener("pointermove", function (e) {
+    if (!isMemoPickingActive) return;
+    handlePickHover(e.target);
+  }, { capture: true });
+
+  container.addEventListener("pointerleave", function () {
+    if (!isMemoPickingActive) return;
+    updatePickOverlay();
+  });
+
+  container.addEventListener("scroll", function () {
+    scheduleOverlaySync();
+  }, { capture: true, passive: true });
+});
+
+var specPanelRootEl = document.getElementById("spec-panel-root");
+if (specPanelRootEl) {
+  specPanelRootEl.addEventListener("scroll", function () {
+    scheduleOverlaySync();
+  }, { passive: true });
+}
+window.addEventListener("resize", function () {
+  scheduleOverlaySync();
+});
+
+// =========================================================================
+// Contenteditable Extraction, Memo Normalization, Revalidation & Export
+// =========================================================================
+function extractEditorContent(editorEl) {
+  var targets = [];
+  var seen = {};
+  var fullChunks = [];
+  var commentChunks = [];
+  var BLOCK_TAGS = { DIV: 1, P: 1, LI: 1, PRE: 1, BLOCKQUOTE: 1, H1: 1, H2: 1, H3: 1, H4: 1, H5: 1, H6: 1 };
+
+  function ensureNewline(arr) {
+    if (!arr.length) return;
+    var last = arr[arr.length - 1];
+    if (last && last.slice(-1) !== "\n") arr.push("\n");
+  }
+
+  function walk(node) {
+    if (!node) return;
+    if (node.nodeType === 3) {
+      var val = node.nodeValue || "";
+      fullChunks.push(val);
+      commentChunks.push(val);
+      return;
+    }
+    if (node.nodeType !== 1) return;
+    var el = node;
+    if (el.classList && el.classList.contains("memo-at-chip")) {
+      var cid = el.getAttribute("data-comp-id") || "";
+      var cname = el.getAttribute("data-comp-name") || cid || "组件";
+      var fb = el.getAttribute("data-fallback") || "";
+      var pg = el.getAttribute("data-page") || currentPage || "";
+      var key = (cid || fb) + "@" + pg;
+      if ((cid || fb) && !seen[key]) {
+        seen[key] = true;
+        targets.push({
+          page: pg,
+          comp_id: cid,
+          comp_name: cname,
+          fallback_selector: fb
+        });
+      }
+      fullChunks.push("@[" + cname + "]");
+      return;
+    }
+    var tag = el.tagName ? el.tagName.toUpperCase() : "";
+    if (tag === "BR") {
+      var parent = el.parentElement;
+      var pTag = parent && parent !== editorEl && parent.tagName ? parent.tagName.toUpperCase() : "";
+      if (BLOCK_TAGS[pTag] && el.nextSibling === null && el.previousSibling !== null) {
+        return;
+      }
+      fullChunks.push("\n");
+      commentChunks.push("\n");
+      return;
+    }
+    var isBlock = !!BLOCK_TAGS[tag];
+    if (isBlock) {
+      ensureNewline(fullChunks);
+      ensureNewline(commentChunks);
+    }
+    var children = el.childNodes;
+    for (var i = 0; i < children.length; i++) {
+      walk(children[i]);
+    }
+    if (isBlock) {
+      ensureNewline(fullChunks);
+      ensureNewline(commentChunks);
+    }
+  }
+
+  if (editorEl) {
+    var topNodes = editorEl.childNodes;
+    for (var i = 0; i < topNodes.length; i++) {
+      walk(topNodes[i]);
+    }
+  }
+
+  var text = fullChunks.join("").replace(/\u00a0/g, " ").replace(/\n{3,}/g, "\n\n").trim();
+  var commentOnly = commentChunks.join("").replace(/\u00a0/g, " ").trim();
+  return {
+    targets: targets,
+    text: text,
+    commentOnly: commentOnly,
+    hasValidComment: commentOnly.length > 0
+  };
+}
+
+function normalizeTarget(t, defaultPage) {
+  if (!t || typeof t !== "object") return null;
+  var cid = t.comp_id || t.compId || "";
+  var cname = t.comp_name || t.compName || cid || "";
+  var fb = t.fallback_selector || t.fallbackSelector || "";
+  var pg = t.page || defaultPage || "";
+  if (!cid && !fb) return null;
+  return {
+    page: pg,
+    comp_id: cid,
+    comp_name: cname,
+    fallback_selector: fb
+  };
+}
+
+function getMemoTargets(memo) {
+  if (!memo || typeof memo !== "object") return [];
+  var defPage = memo.page || "";
+  if (Array.isArray(memo.targets) && memo.targets.length > 0) {
+    return memo.targets.map(function (t) { return normalizeTarget(t, defPage); }).filter(Boolean);
+  }
+  var legacy = normalizeTarget({
+    page: defPage,
+    comp_id: memo.comp_id || memo.compId || "",
+    comp_name: memo.comp_name || memo.compName || "",
+    fallback_selector: memo.fallback_selector || memo.fallbackSelector || ""
+  }, defPage);
+  return legacy ? [legacy] : [];
+}
+
+function normalizeMemo(m) {
+  if (!m || typeof m !== "object") return null;
+  var page = m.page || "";
+  var targets = getMemoTargets(m);
+  if (!page && targets[0] && targets[0].page) page = targets[0].page;
+  var gran = targets.length > 0 ? "component" : "page";
+  var compIdStr = targets.map(function (t) { return t.comp_id; }).filter(Boolean).join(", ");
+  var compNameStr = targets.length > 0
+    ? targets.map(function (t) { return "@" + (t.comp_name || t.comp_id); }).join(" ")
+    : page;
+  var fbStr = targets.map(function (t) { return t.fallback_selector; }).filter(Boolean).join(", ");
+  return {
+    id: m.id || ("m_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6)),
+    version_hash: m.version_hash || m.versionHash || DOC_VERSION_HASH,
+    view: m.view || "flow",
+    node: m.node || "",
+    page: page,
+    vars: m.vars || {},
+    granularity: gran,
+    comp_id: compIdStr,
+    comp_name: compNameStr,
+    targets: targets,
+    fallback_selector: fbStr,
+    text: m.body || m.text || "",
+    time: m.time || ""
+  };
+}
+
+var memos = [];
+try {
+  var savedRaw = localStorage.getItem(MEMO_STORAGE_KEY);
+  if (savedRaw) {
+    var parsedSaved = JSON.parse(savedRaw);
+    if (Array.isArray(parsedSaved)) {
+      memos = parsedSaved.map(normalizeMemo).filter(Boolean);
+    }
+  }
+} catch (e) {
+  memos = [];
+}
+
+if (!memos.length && Array.isArray(INITIAL_MEMOS) && INITIAL_MEMOS.length) {
+  memos = INITIAL_MEMOS.map(normalizeMemo).filter(Boolean);
+}
+
+function persistMemos() {
+  try { localStorage.setItem(MEMO_STORAGE_KEY, JSON.stringify(memos)); } catch (e) {}
+}
+
+function validateSingleTarget(pageEl, compId, fallbackSelector) {
+  if (!pageEl || !pageEl.classList || !pageEl.classList.contains("page")) return false;
+  if (compId) {
+    var allComps = pageEl.querySelectorAll("[data-comp-id], [data-anchor]");
+    for (var i = 0; i < allComps.length; i++) {
+      if (allComps[i].getAttribute("data-comp-id") === compId ||
+          allComps[i].getAttribute("data-anchor") === compId) {
+        return true;
+      }
+    }
+  }
+  if (fallbackSelector) {
+    try {
+      if (pageEl.querySelectorAll(fallbackSelector).length > 0) return true;
+    } catch (e) {}
+  }
+  return false;
+}
+
+function validateMemoAnchor(memo) {
+  if (!memo) return false;
+  var targets = getMemoTargets(memo);
+  if (targets.length > 0) {
+    return targets.every(function (t) {
+      var tp = (t && t.page) || memo.page || "";
+      if (!tp) return false;
+      var tPageEl = document.getElementById(tp);
+      return validateSingleTarget(tPageEl, t.comp_id, t.fallback_selector);
+    });
+  }
+  if (!memo.page) return false;
+  var pageEl = document.getElementById(memo.page);
+  return !!(pageEl && pageEl.classList.contains("page"));
+}
+
+function renderMemos() {
+  var toggleBtn = document.getElementById("memo-toggle-btn");
+  if (toggleBtn) toggleBtn.textContent = UI_TEXT.memoToggle + " (" + memos.length + ")";
+  var listEl = document.getElementById("memo-list");
+  if (!listEl) return;
+  if (!memos.length) {
+    listEl.innerHTML = '<div class="memo-empty">' + UI_TEXT.memoEmpty + '</div>';
+    return;
+  }
+  var compTouchMap = {};
+  memos.forEach(function (m) {
+    getMemoTargets(m).forEach(function (t) {
+      if (!t.comp_id) return;
+      var k = (t.page || m.page || "") + "::" + t.comp_id;
+      compTouchMap[k] = (compTouchMap[k] || 0) + 1;
+    });
+  });
+  listEl.innerHTML = memos.map(function (m, i) {
+    var isValid = validateMemoAnchor(m);
+    var targets = getMemoTargets(m);
+    var hasMultiTouch = targets.some(function (t) {
+      return t.comp_id && compTouchMap[(t.page || m.page || "") + "::" + t.comp_id] > 1;
+    });
+    var compNameLabel = targets.length
+      ? targets.map(function (t) { return "@[" + (t.comp_name || t.comp_id) + "]"; }).join(" ")
+      : (m.page || m.node || "-");
+    var titleLabel = "[" + (m.node || m.page || "-") + "] " + compNameLabel;
+    var badgeHtml = isValid
+      ? (hasMultiTouch ? '<span class="memo-conflict-badge" title="' + escapeHtml(UI_TEXT.conflictTitle) + '">' + escapeHtml(UI_TEXT.conflictBadge) + '</span>' : "")
+      : '<span class="memo-invalid-badge">' + escapeHtml(UI_TEXT.invalidBadge) + '</span>';
+    var authorHtml = m.author ? '<span class="memo-author-pill">' + escapeHtml(m.author) + '</span>' : "";
+    var tagsHtml = "";
+    if (targets.length > 0) {
+      tagsHtml = '<div class="memo-item-tags">' + targets.map(function (t) {
+        var pgSuffix = (t.page && t.page !== m.page) ? (" (" + t.page + ")") : "";
+        return '<span class="memo-item-tag">@' + escapeHtml((t.comp_name || t.comp_id) + pgSuffix) + '</span>';
+      }).join("") + '</div>';
+    }
+    var metaText = targets.length > 0
+      ? ("component · " + targets.map(function (t) { return t.comp_id || t.fallback_selector; }).join(", "))
+      : ("page · " + (m.page || "-"));
+    return '<div class="memo-item' + (isValid ? "" : " invalid") + '">' +
+      '<div class="memo-item-hd">' +
+        '<div class="memo-item-ctx" onclick="jumpToMemo(' + i + ')" title="Jump">' + authorHtml + escapeHtml(titleLabel) + '</div>' +
+        badgeHtml +
+      '</div>' +
+      tagsHtml +
+      '<div class="memo-item-meta">' + escapeHtml(metaText) + '</div>' +
+      '<div class="memo-item-txt">' + escapeHtml(m.text) + '</div>' +
+      '<div class="memo-item-ft"><span>' + escapeHtml((m.author ? m.author + " · " : "") + (m.time || "")) + '</span>' +
+        '<button type="button" class="memo-del-btn" onclick="deleteMemoItem(' + i + ')">' + escapeHtml(UI_TEXT.delBtn) + '</button></div>' +
+    '</div>';
+  }).join("");
+}
+
+window.jumpToMemo = function (idx) {
+  var m = memos[idx];
+  if (!m) return;
+  if (m.vars) {
+    Object.keys(m.vars).forEach(function (k) { varValues[k] = m.vars[k]; });
+  }
+  if (m.view === "spec" && wbView !== "spec") switchWbView("spec");
+  else if (m.view === "flow" && wbView !== "flow") switchWbView("flow");
+  if (m.node && NODES[m.node]) setViewByNode(m.node);
+  var targetPg = (m.targets && m.targets[0] && m.targets[0].page) || m.page;
+  if (targetPg && PAGE_FRAME[targetPg]) showPage(targetPg);
+  renderGlobalVars();
+  renderScopedVars();
+};
+
+window.deleteMemoItem = function (idx) {
+  memos.splice(idx, 1);
+  persistMemos();
+  renderMemos();
+};
+
+window.toggleMemo = function (force) {
+  var d = document.getElementById("memo-drawer");
+  if (!d) return;
+  var on = force !== undefined ? force : d.classList.contains("hidden");
+  d.classList.toggle("hidden", !on);
+  var btn = document.getElementById("memo-toggle-btn");
+  if (btn) btn.classList.toggle("active", on);
+  if (!on) closeMemoForm();
+  requestAnimationFrame(updateSpecTether);
+  scheduleOverlaySync();
+};
+
+window.openMemoForCurrent = function () {
+  toggleMemo(true);
+  lastPickedEl = null;
+  hidePickOverlay();
+  hideMemoFormHint();
+  document.getElementById("memo-form").classList.remove("hidden");
+  setMemoPickingActive(true);
+  updateMemoFormCtx();
+  var inp = document.getElementById("memo-input");
+  if (inp) inp.focus();
+};
+
+window.closeMemoForm = function () {
+  var form = document.getElementById("memo-form");
+  if (form) form.classList.add("hidden");
+  var inp = document.getElementById("memo-input");
+  if (inp) inp.innerHTML = "";
+  hideMemoFormHint();
+  lastPickedEl = null;
+  setMemoPickingActive(false);
+};
+
+window.saveMemoItem = function () {
+  var inp = document.getElementById("memo-input");
+  var extracted = extractEditorContent(inp);
+  if (!extracted.hasValidComment) {
+    showMemoFormHint("请输入具体修改意见（仅选择 @组件 无法保存）");
+    if (inp) inp.focus();
+    return;
+  }
+  hideMemoFormHint();
+
+  var targets = extracted.targets;
+  var pageId = currentPage || (targets[0] && targets[0].page) || "";
+  var gran = targets.length > 0 ? "component" : "page";
+  var compIdStr = targets.map(function (t) { return t.comp_id; }).filter(Boolean).join(", ");
+  var compNameStr = targets.length > 0
+    ? targets.map(function (t) { return "@" + (t.comp_name || t.comp_id); }).join(" ")
+    : pageId;
+  var fallbackSel = targets.map(function (t) { return t.fallback_selector; }).filter(Boolean).join(", ");
+
+  var now = new Date();
+  var timeStr = now.toTimeString().slice(0, 5);
+  var reviewer = getReviewerName();
+
+  memos.unshift({
+    id: "m_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6),
+    author: reviewer,
+    version_hash: DOC_VERSION_HASH,
+    view: wbView,
+    node: currentNode || "",
+    page: pageId,
+    vars: Object.assign({}, varValues),
+    granularity: gran,
+    comp_id: compIdStr,
+    comp_name: compNameStr,
+    targets: targets,
+    fallback_selector: fallbackSel,
+    text: extracted.text,
+    time: timeStr
+  });
+  if (inp) inp.innerHTML = "";
+  persistMemos();
+  closeMemoForm();
+  renderMemos();
+};
+
+function cleanMemoEditorIfEmpty(el) {
+  if (!el) return;
+  if (el.querySelector(".memo-at-chip")) return;
+  var plain = (el.textContent || "").replace(/[\u00a0\u200b\r\n]/g, "").trim();
+  if (!plain && el.innerHTML !== "") {
+    el.innerHTML = "";
+  }
+}
+
+var memoInputEl = document.getElementById("memo-input");
+if (memoInputEl) {
+  memoInputEl.addEventListener("keydown", function (e) {
+    if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+      e.preventDefault();
+      saveMemoItem();
+    }
+  });
+  memoInputEl.addEventListener("paste", function (e) {
+    e.preventDefault();
+    var text = "";
+    if (e.clipboardData && e.clipboardData.getData) {
+      text = e.clipboardData.getData("text/plain");
+    } else if (window.clipboardData && window.clipboardData.getData) {
+      text = window.clipboardData.getData("Text");
+    }
+    if (!text) return;
+    var sel = window.getSelection();
+    if (sel && sel.rangeCount > 0) {
+      var range = sel.getRangeAt(0);
+      if (memoInputEl.contains(range.commonAncestorContainer)) {
+        range.deleteContents();
+        var textNode = document.createTextNode(text);
+        range.insertNode(textNode);
+        range.setStartAfter(textNode);
+        range.collapse(true);
+        sel.removeAllRanges();
+        sel.addRange(range);
+        hideMemoFormHint();
+        return;
+      }
+    }
+    memoInputEl.appendChild(document.createTextNode(text));
+    hideMemoFormHint();
+  });
+  memoInputEl.addEventListener("input", function () {
+    cleanMemoEditorIfEmpty(memoInputEl);
+    if ((memoInputEl.textContent || "").trim()) hideMemoFormHint();
+  });
+  memoInputEl.addEventListener("keyup", function (e) {
+    if (e.key === "Backspace" || e.key === "Delete") {
+      cleanMemoEditorIfEmpty(memoInputEl);
+    }
+  });
+}
+
+function buildMemosMarkdown(items) {
+  var validCount = items.filter(function (m) { return validateMemoAnchor(m); }).length;
+  var invalidCount = items.length - validCount;
+  var reviewer = getReviewerName();
+  var lines = [
+    "---",
+    "project: " + PROJECT_SLUG,
+    "reviewer: " + (reviewer || "anonymous"),
+    "version_hash: " + DOC_VERSION_HASH,
+    "exported_at: " + new Date().toISOString(),
+    "total_comments: " + items.length,
+    "valid_count: " + validCount,
+    "invalid_count: " + invalidCount,
+    "---",
+    "",
+    "# 评审反馈记录（Review Feedback）",
+    ""
+  ];
+  items.forEach(function (m, idx) {
+    var valid = validateMemoAnchor(m);
+    var statusStr = valid ? "valid" : "invalid";
+    var targets = getMemoTargets(m);
+    var targetHeading = targets.length
+      ? targets.map(function (t) { return "@[" + (t.comp_name || t.comp_id) + "]"; }).join(" ")
+      : (m.page || m.node || "page");
+    var gran = targets.length > 0 ? "component" : "page";
+    var compIdStr = targets.map(function (t) { return t.comp_id; }).filter(Boolean).join(", ");
+    var compNameStr = targets.map(function (t) { return t.comp_name; }).filter(Boolean).join(", ");
+    var fbStr = targets.map(function (t) { return t.fallback_selector; }).filter(Boolean).join(", ");
+    var itemAuthor = m.author || reviewer || "anonymous";
+
+    lines.push("## [FB-" + String(idx + 1).padStart(3, "0") + "] " + targetHeading + "（" + statusStr + "）");
+    if (!valid) {
+      lines.push("");
+      lines.push("> [!WARNING] 落点已失效");
+      lines.push("> 该条批注的 `targets` 中存在未命中当前原型的落点（命中数为 0），请人工核对后再修改。");
+    }
+    lines.push("");
+    lines.push("- **id**: `" + (m.id || ("fb_" + (idx + 1))) + "`");
+    lines.push("- **author**: `" + itemAuthor + "`");
+    lines.push("- **version_hash**: `" + (m.version_hash || m.versionHash || DOC_VERSION_HASH) + "`");
+    lines.push("- **status**: `" + statusStr + "`");
+    lines.push("- **view**: `" + (m.view || "flow") + "`");
+    lines.push("- **node**: `" + (m.node || "") + "`");
+    lines.push("- **page**: `" + (m.page || "") + "`");
+    lines.push("- **vars**: `" + JSON.stringify(m.vars || {}) + "`");
+    lines.push("- **granularity**: `" + gran + "`");
+    lines.push("- **comp_id**: `" + compIdStr + "`");
+    lines.push("- **comp_name**: `" + compNameStr + "`");
+    lines.push("- **targets**: `" + JSON.stringify(targets) + "`");
+    lines.push("- **fallback_selector**: `" + fbStr + "`");
+    lines.push("");
+    lines.push("**修改意见**：");
+    lines.push(m.text || "");
+    lines.push("");
+    lines.push("---");
+    lines.push("");
+  });
+  return lines.join("\n");
+}
+
+function buildMemosJsonl(items) {
+  var reviewer = getReviewerName();
+  return items.map(function (m) {
+    var valid = validateMemoAnchor(m);
+    var targets = getMemoTargets(m);
+    var gran = targets.length > 0 ? "component" : "page";
+    var compIdStr = targets.map(function (t) { return t.comp_id; }).filter(Boolean).join(", ");
+    var compNameStr = targets.map(function (t) { return t.comp_name; }).filter(Boolean).join(", ");
+    var fbStr = targets.map(function (t) { return t.fallback_selector; }).filter(Boolean).join(", ");
+    return JSON.stringify({
+      id: m.id || "",
+      author: m.author || reviewer || "anonymous",
+      version_hash: m.version_hash || m.versionHash || DOC_VERSION_HASH,
+      status: valid ? "valid" : "invalid",
+      view: m.view || "flow",
+      node: m.node || "",
+      page: m.page || "",
+      vars: m.vars || {},
+      granularity: gran,
+      comp_id: compIdStr,
+      comp_name: compNameStr,
+      targets: targets,
+      fallback_selector: fbStr,
+      text: m.text || "",
+      time: m.time || ""
+    });
+  }).join("\n");
+}
+
+var pendingExportAction = null;
+function runWithExportGuard(actionType) {
+  if (!memos.length) {
+    alert("当前没有可导出的评审备注。");
+    return;
+  }
+  renderMemos();
+  var invalidCount = memos.filter(function (m) { return !validateMemoAnchor(m); }).length;
+  var validCount = memos.length - invalidCount;
+  if (invalidCount > 0) {
+    pendingExportAction = actionType;
+    document.getElementById("export-guard-msg").textContent =
+      "检测到 " + invalidCount + " 条备注的原型落点已失效（可能因页面或组件结构变更），共 " + validCount + " 条有效备注。请选择处理方式：";
+    var validBtn = document.getElementById("export-valid-only-btn");
+    validBtn.disabled = validCount === 0;
+    validBtn.textContent = "仅导出有效备注 (" + validCount + " 条)";
+    document.getElementById("export-guard-modal").classList.remove("hidden");
+    return;
+  }
+  executeExport(actionType, memos);
+}
+
+window.closeExportGuard = function () {
+  pendingExportAction = null;
+  document.getElementById("export-guard-modal").classList.add("hidden");
+};
+
+window.confirmExportValidOnly = function () {
+  var actionType = pendingExportAction;
+  closeExportGuard();
+  var validItems = memos.filter(function (m) { return validateMemoAnchor(m); });
+  if (!validItems.length || !actionType) return;
+  executeExport(actionType, validItems);
+};
+
+window.confirmExportAllWithInvalid = function () {
+  var actionType = pendingExportAction;
+  closeExportGuard();
+  if (!memos.length || !actionType) return;
+  executeExport(actionType, memos);
+};
+
+function triggerDownload(content, mimeType, filename) {
+  var blob = new Blob([content], { type: mimeType });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+}
+
+function fallbackCopyText(text) {
+  var ta = document.createElement("textarea");
+  ta.value = text;
+  ta.style.position = "fixed";
+  ta.style.left = "-9999px";
+  document.body.appendChild(ta);
+  ta.select();
+  try { document.execCommand("copy"); } catch (e) {}
+  document.body.removeChild(ta);
+}
+
+function executeExport(actionType, items) {
+  var reviewer = getReviewerName().replace(/[^\w\u4e00-\u9fa5-]+/g, "-").replace(/^-+|-+$/g, "");
+  var suffix = reviewer ? ("-" + reviewer) : "";
+  if (actionType === "download_jsonl") {
+    triggerDownload(buildMemosJsonl(items), "application/x-ndjson;charset=utf-8", "review-feedback" + suffix + ".jsonl");
+    return;
+  }
+  var md = buildMemosMarkdown(items);
+  if (actionType === "copy") {
+    var btn = document.getElementById("copy-md-btn");
+    var done = function () {
+      if (btn) {
+        var orig = btn.textContent;
+        btn.textContent = "已复制";
+        setTimeout(function () { btn.textContent = orig; }, 1500);
+      }
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(md).then(done, function () { fallbackCopyText(md); done(); });
+    } else {
+      fallbackCopyText(md);
+      done();
+    }
+  } else if (actionType === "download") {
+    triggerDownload(md, "text/markdown;charset=utf-8", "review-feedback" + suffix + ".md");
+  }
+}
+
+window.importFeedbackFiles = function (fileList) {
+  if (!fileList || !fileList.length) return;
+  var existingSig = {};
+  memos.forEach(function (m) {
+    var sig = (m.id || "") + "|" + (m.author || "") + "|" + (m.page || "") + "|" + (m.comp_id || "") + "|" + (m.text || "");
+    existingSig[sig] = true;
+  });
+  var added = 0;
+  var remaining = fileList.length;
+  Array.prototype.forEach.call(fileList, function (file) {
+    var reader = new FileReader();
+    reader.onload = function (ev) {
+      var raw = String(ev.target.result || "");
+      var parsedItems = [];
+      if (/\.jsonl$/i.test(file.name) || raw.trim().charAt(0) === "{") {
+        raw.split(/\r?\n/).forEach(function (line) {
+          var s = line.trim();
+          if (!s) return;
+          try { parsedItems.push(JSON.parse(s)); } catch (e) {}
+        });
+      } else {
+        var blocks = raw.split(/^##\s+\[/m);
+        var fmAuthor = (raw.match(/^reviewer:\s*(.+)$/m) || [])[1] || "";
+        for (var bi = 1; bi < blocks.length; bi++) {
+          var blk = blocks[bi];
+          var getField = function (k) {
+            var m = blk.match(new RegExp("^-\\s+\\*\\*" + k + "\\*\\*:\\s*`([^`]*)`", "m"));
+            return m ? m[1] : "";
+          };
+          var targetsJson = getField("targets");
+          var tgts = [];
+          try { if (targetsJson) tgts = JSON.parse(targetsJson); } catch (e) {}
+          var varsJson = getField("vars");
+          var vobj = {};
+          try { if (varsJson) vobj = JSON.parse(varsJson); } catch (e) {}
+          var txtMatch = blk.split("**修改意见**：");
+          var bodyTxt = txtMatch.length > 1 ? txtMatch[1].split(/^---$/m)[0].trim() : "";
+          parsedItems.push({
+            id: getField("id") || ("imp_" + Date.now() + "_" + bi),
+            author: getField("author") || fmAuthor.trim() || file.name.replace(/\.(md|jsonl)$/i, ""),
+            version_hash: getField("version_hash"),
+            view: getField("view") || "flow",
+            node: getField("node"),
+            page: getField("page"),
+            vars: vobj,
+            comp_id: getField("comp_id"),
+            comp_name: getField("comp_name"),
+            targets: tgts,
+            text: bodyTxt,
+            time: "导入"
+          });
+        }
+      }
+      parsedItems.forEach(function (item) {
+        if (!item || !item.text) return;
+        var sig = (item.id || "") + "|" + (item.author || "") + "|" + (item.page || "") + "|" + (item.comp_id || "") + "|" + (item.text || "");
+        if (!existingSig[sig]) {
+          existingSig[sig] = true;
+          memos.push(item);
+          added++;
+        }
+      });
+      remaining--;
+      if (remaining === 0) {
+        persistMemos();
+        renderMemos();
+        var inp = document.getElementById("memo-import-file");
+        if (inp) inp.value = "";
+      }
+    };
+    reader.readAsText(file, "utf-8");
+  });
+};
+
+window.copyMemosMd = function () { runWithExportGuard("copy"); };
+window.downloadMemosMd = function () { runWithExportGuard("download"); };
+window.downloadMemosJsonl = function () { runWithExportGuard("download_jsonl"); };
+
+function applyHashState() {
+  isRestoringHash = true;
+  try {
+    var parsed = parseUrlHash();
+    var initNode = parsed.node || ENTRY_NODE;
+    setViewByNode(initNode);
+    if (parsed.view && parsed.view !== wbView && SPEC_CARDS && SPEC_CARDS.length) {
+      switchWbView(parsed.view);
+    }
+  } finally {
+    isRestoringHash = false;
+  }
+  syncUrlHash();
+}
+
+window.addEventListener("hashchange", applyHashState);
+
+initDeltaHighlights();
+initSpecMode();
+(function initReviewerInput() {
+  var ri = document.getElementById("memo-reviewer-input");
+  if (ri) ri.value = getReviewerName();
+})();
+renderMemos();
+applyHashState();
+fitBootZoom();
+
+</script>
+</body>
+</html>

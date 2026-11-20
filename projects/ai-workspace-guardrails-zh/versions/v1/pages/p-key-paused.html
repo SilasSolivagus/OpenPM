@@ -1,0 +1,104 @@
+<div class="page" id="p-key-paused" data-page="p-key-paused" data-page-id="p-key-paused">
+  <div class="wt-app-shell" data-comp-id="paused.shell.container" data-comp-name="熔断拦截页主布局" data-comp-role="container">
+    <aside class="wt-sidebar" data-comp-id="paused.sidebar.nav" data-comp-name="左侧控制台导航栏" data-comp-role="nav">
+      <div class="wt-brand-row">
+        <span class="wt-brand-mark">N</span>
+        <span>星云 AI 工作台</span>
+      </div>
+      <div class="wt-side-label">研发中心空间</div>
+      <button type="button" class="wt-side-item" onclick="goNode('F_USAGE_DASH')" data-comp-id="paused.nav_overview.btn" data-comp-name="概览菜单按钮" data-comp-role="nav">
+        <span>概览</span>
+      </button>
+      <button type="button" class="wt-side-item" onclick="goNode('F_USAGE_DASH')" data-comp-id="paused.nav_members.btn" data-comp-name="成员管理菜单按钮" data-comp-role="nav">
+        <span>成员管理</span>
+        <span class="wt-muted">42</span>
+      </button>
+      <button type="button" class="wt-side-item" onclick="goNode('F_KEY_PAUSED')" data-comp-id="paused.nav_keys.btn" data-comp-name="API密钥菜单按钮" data-comp-role="nav">
+        <span>API 密钥</span>
+        <span class="wt-pill-strong">[已暂停]</span>
+      </button>
+      <button type="button" class="wt-side-item active" onclick="goNode('F_KEY_PAUSED')" data-comp-id="paused.nav_guardrails.btn" data-comp-name="额度与风控菜单按钮" data-comp-role="nav">
+        <span>额度与风控</span>
+        <span class="wt-badge">[激活]</span>
+      </button>
+      <button type="button" class="wt-side-item" onclick="goNode('F_QUOTA_ACTIVE')" data-comp-id="paused.nav_audit.btn" data-comp-name="审计日志菜单按钮" data-comp-role="nav">
+        <span>审计日志</span>
+      </button>
+    </aside>
+
+    <main class="wt-main">
+      <div class="wt-between">
+        <div class="wt-col" style="gap: 2px;">
+          <div class="wt-row">
+            <strong style="font-size: 15px;">额度耗尽自动熔断拦截</strong>
+            <span class="wt-pill-strong">[已暂停 100%]</span>
+          </div>
+          <span class="wt-muted">错误码: <span class="wt-mono">HTTP 429 · workspace_hard_cap_exceeded</span></span>
+        </div>
+        <button type="button" class="wt-btn" onclick="goNode('F_USAGE_DASH')" data-comp-id="paused.back_dash.btn" data-comp-name="返回监控台按钮" data-comp-role="control">返回监控总览</button>
+      </div>
+
+      <div class="wt-alert wt-alert-danger" data-comp-id="paused.alert.banner" data-comp-name="保护性暂停警示横幅" data-comp-role="feedback">
+        [保护性暂停已生效] 密钥 <span class="wt-mono">sk-prod-...8f2a</span> 所在空间已达月度预算硬顶 $2,000.00 (100%)，新发起的推理请求已暂停计费与转发。
+      </div>
+
+      <div class="wt-kpi-grid">
+        <div class="wt-kpi-card">
+          <div class="wt-kpi-label"><span>当前空间水位</span><span class="wt-pill-strong">[100%]</span></div>
+          <div class="wt-kpi-val wt-mono">$2,000 / $2,000</div>
+          <div class="wt-meter"><div class="wt-meter-fill" style="width: 100%;"></div></div>
+          <div class="wt-kpi-sub">超支溢出金额: $0.00（零透支）</div>
+        </div>
+        <div class="wt-kpi-card">
+          <div class="wt-kpi-label"><span>已触发暂停密钥</span><span class="wt-badge">[受保护]</span></div>
+          <div class="wt-kpi-val">18 个</div>
+          <div class="wt-kpi-sub">含主密钥 <span class="wt-mono">sk-prod-...8f2a</span></div>
+        </div>
+        <div class="wt-kpi-card">
+          <div class="wt-kpi-label"><span>跨空间故障隔离</span><span class="wt-badge">[正常]</span></div>
+          <div class="wt-kpi-val" style="font-size: 15px;">其他项目零影响</div>
+          <div class="wt-kpi-sub">独立结算空间与个人配额正常可用</div>
+        </div>
+      </div>
+
+      <div class="wt-card" data-comp-id="paused.isolation.card" data-comp-name="熔断影响范围与隔离说明卡片" data-comp-role="container">
+        <div class="wt-card-hd wt-between">
+          <span>拦截影响范围与平滑恢复说明</span>
+          <span class="wt-muted">触发时间：2026-11-20 15:10:02</span>
+        </div>
+        <div class="wt-card-bd" style="padding: 0;">
+          <table class="wt-table">
+            <thead>
+              <tr>
+                <th>资源对象</th>
+                <th>当前状态</th>
+                <th>熔断隔离与恢复机制</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="wt-mono"><strong>sk-prod-...8f2a</strong> (智能客服)</td>
+                <td><span class="wt-pill-strong">[已暂停]</span></td>
+                <td>拒绝新请求并返回 429 重试头；审批通过后 10 秒内自动解封，无需重启服务或轮换密钥。</td>
+              </tr>
+              <tr>
+                <td class="wt-mono"><strong>sk-eval-...3c19</strong> (回归评测)</td>
+                <td><span class="wt-pill-strong">[已暂停]</span></td>
+                <td>离线批处理队列自动进入挂起态，保留已完成 Checkpoint 数据不丢失。</td>
+              </tr>
+              <tr>
+                <td class="wt-mono"><strong>其他独立团队空间</strong></td>
+                <td><span class="wt-badge">[正常]</span></td>
+                <td>企业下属其他业务线 Workspace 采用独立预算池物理隔离，不受本次熔断影响。</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="wt-card-ft wt-between">
+          <button type="button" class="wt-btn" onclick="goNode('F_GUARDRAIL_CFG')" data-comp-id="paused.edit_policy.btn" data-comp-name="调整风控硬顶策略按钮" data-comp-role="control">调整风控策略</button>
+          <button type="button" class="wt-btn wt-btn-primary" onclick="goNode('F_QUOTA_REQ')" data-comp-id="paused.emergency_req.btn" data-comp-name="一键发起紧急加额按钮" data-comp-role="control">一键发起紧急加额</button>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>

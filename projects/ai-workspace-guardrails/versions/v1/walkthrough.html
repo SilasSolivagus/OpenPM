@@ -1,0 +1,3790 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Acme AI Cloud · Spend Guardrails &amp; Quota Approval (v2.4)</title>
+<style>
+:root {
+  --wt-bg: #f7f7f7; --wt-white: #ffffff;
+  --wt-border: #c0c0c0; --wt-border-light: #e0e0e0;
+  --wt-text: #333333; --wt-dim: #888888; --wt-light: #aaaaaa;
+  --wt-fill: #e8e8e8; --wt-fill-dark: #d0d0d0; --wt-accent: #555555;
+  --wt-spot: #d97706; --wt-spot-bg: rgba(217, 119, 6, 0.08); --wt-spot-border: rgba(217, 119, 6, 0.55);
+  --wt-danger: #dc2626;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  height: 100%; background: var(--wt-bg); color: var(--wt-text);
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-size: 13px; line-height: 1.5; overflow: hidden;
+}
+button, input, textarea, select { font: inherit; color: inherit; }
+button {
+  cursor: pointer; border: 1px solid var(--wt-border); background: var(--wt-white);
+  color: var(--wt-text); border-radius: 5px; padding: 5px 10px; font-size: 12px;
+}
+button:hover:not(:disabled) { background: var(--wt-fill); }
+button:disabled { opacity: 0.45; cursor: default; }
+button.primary, button.primary:hover:not(:disabled) {
+  background: var(--wt-accent); color: var(--wt-white); border-color: var(--wt-accent);
+}
+.hidden { display: none !important; }
+
+/* Workbench Topbar */
+.wb-topbar {
+  height: 50px; background: var(--wt-white); border-bottom: 1px solid var(--wt-border);
+  display: flex; align-items: center; padding: 0 16px; gap: 12px;
+  position: relative; z-index: 200; user-select: none;
+}
+.fp-title { font-size: 15px; font-weight: 700; white-space: nowrap; }
+.seg-group {
+  display: inline-flex; align-items: center; background: var(--wt-bg);
+  border: 1px solid var(--wt-border); border-radius: 6px; padding: 2px; gap: 2px; flex-shrink: 0;
+}
+.seg-btn {
+  border: none; background: transparent; padding: 4px 10px; border-radius: 4px;
+  font-size: 12px; color: var(--wt-dim); white-space: nowrap;
+}
+.seg-btn:hover:not(.active) { background: var(--wt-fill); color: var(--wt-text); }
+.seg-btn.active, .seg-btn.active:hover {
+  background: var(--wt-accent); color: var(--wt-white); font-weight: 600;
+}
+.wb-global-vars { display: inline-flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.wb-gvar { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--wt-dim); white-space: nowrap; }
+.topbar-spacer { flex: 1; min-width: 8px; }
+#flow-node-ref {
+  font-size: 12px; color: var(--wt-dim); max-width: 240px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.fp-bar {
+  display: inline-flex; align-items: center; gap: 5px; font-size: 12px;
+  color: var(--wt-dim); flex-shrink: 0; white-space: nowrap;
+}
+.zb {
+  padding: 3px 9px; border: 1px solid var(--wt-border); border-radius: 4px;
+  cursor: pointer; background: var(--wt-white); user-select: none;
+  color: var(--wt-text); white-space: nowrap; font-size: 12px;
+}
+.zb:hover { background: var(--wt-fill); }
+.zb.active, .zb.active:hover {
+  border-color: var(--wt-spot); color: var(--wt-spot); background: var(--wt-spot-bg); font-weight: 600;
+}
+.zv { min-width: 42px; text-align: center; }
+.memo-toggle { white-space: nowrap; flex-shrink: 0; }
+.memo-toggle.active, .memo-toggle.active:hover {
+  background: var(--wt-accent); color: var(--wt-white); border-color: var(--wt-accent);
+}
+.wb-brand-link {
+  display: inline-flex; align-items: center; gap: 3px; padding: 3px 8px;
+  border: 1px solid var(--wt-border-light); border-radius: 4px; font-size: 11px;
+  color: var(--wt-dim); text-decoration: none; white-space: nowrap; flex-shrink: 0;
+}
+.wb-brand-link:hover { border-color: var(--wt-spot); color: var(--wt-spot); background: var(--wt-spot-bg); }
+
+/* Workbench Stage & Flow Canvas (True Side-by-Side Split, Zero Occlusion) */
+.wb-stage { position: relative; width: 100vw; height: calc(100vh - 50px); display: flex; overflow: hidden; }
+.flow-panel { flex: 1; min-width: 0; height: 100%; position: relative; overflow: hidden; display: flex; flex-direction: row; background: var(--wt-white); }
+.flow-panel.fs .inspector-drawer { display: none !important; }
+.flow-svg {
+  flex: 1; min-width: 280px; height: 100%; overflow: hidden; background: var(--wt-white);
+  cursor: grab; touch-action: none; user-select: none; position: relative;
+}
+.flow-svg:active { cursor: grabbing; }
+.flow-canvas-inner { position: absolute; left: 0; top: 0; transform-origin: 0 0; will-change: transform; }
+.flow-canvas-inner.smooth { transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1); }
+.flow-svg svg {
+  display: block; background: transparent; border: none; border-radius: 0;
+}
+.flow-svg g[data-node] { cursor: pointer; }
+.flow-svg g[data-node]:hover rect,
+.flow-svg g[data-node]:hover polygon { stroke: #333333; stroke-width: 2.5px; }
+.flow-svg polyline.branch-active { stroke: #111111 !important; stroke-width: 2.8px !important; }
+.flow-svg polyline.branch-dim { opacity: 0.32; }
+
+/* Delta Highlight Callouts (5% Amber #d97706 when body.show-delta is active) */
+body.show-delta .flow-svg g.wt-delta-node rect,
+body.show-delta .flow-svg g.wt-delta-node polygon {
+  stroke: var(--wt-spot); stroke-width: 2px;
+}
+body.show-delta .flow-svg g.wt-delta-node[data-change="modified"] rect,
+body.show-delta .flow-svg g.wt-delta-node[data-change="modified"] polygon {
+  stroke-dasharray: 5 3;
+}
+.flow-svg .wt-delta-dot { display: none; pointer-events: none; }
+body.show-delta .flow-svg .wt-delta-dot { display: block; }
+body.show-delta .wt-delta-target {
+  outline: 1.5px dashed var(--wt-spot-border); outline-offset: 2px;
+  box-shadow: 0 0 0 3px var(--wt-spot-bg);
+}
+
+/* Inspector Drawer & Device Frames (Docked Right Column, Non-Overlapping) */
+.inspector-drawer {
+  position: relative; flex-shrink: 0; width: min(706px, 58vw); height: 100%;
+  z-index: 90; background: var(--wt-white); border-left: 1px solid var(--wt-border);
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.inspector-drawer.wide-mode { width: min(1000px, 64vw); }
+.insp-head {
+  height: 46px; padding: 0 14px; border-bottom: 1px solid var(--wt-border-light);
+  background: var(--wt-bg); display: flex; align-items: center; gap: 8px; flex-shrink: 0;
+}
+.insp-badge {
+  font-size: 11px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  padding: 2px 7px; border: 1px solid var(--wt-border); border-radius: 4px;
+  background: var(--wt-white); color: var(--wt-dim);
+}
+#anno-node-title {
+  font-size: 14px; font-weight: 700; flex: 1;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.insp-body {
+  flex: 1; min-height: 0; display: flex; gap: 14px; padding: 14px;
+  background: var(--wt-bg); overflow: hidden; justify-content: center;
+}
+.stage { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; min-height: 0; max-height: 100%; }
+.frame-phone {
+  width: 375px; max-width: 100%; min-height: 660px; max-height: 100%; overflow-y: auto;
+  background: var(--wt-white); border: 1px solid var(--wt-border); border-radius: 14px; position: relative;
+}
+.frame-phone::-webkit-scrollbar { width: 0; }
+.frame-wide {
+  width: 100%; max-width: 690px; max-height: 100%; overflow-y: auto;
+  background: var(--wt-white); border: 1px solid var(--wt-border); border-radius: 8px; position: relative;
+}
+.pick-mode-on { outline: 2px solid var(--wt-spot); outline-offset: 2px; cursor: crosshair !important; }
+.pick-mode-on * { cursor: crosshair !important; }
+.page { display: none; padding-bottom: 24px; background: var(--wt-white); min-height: 100%; }
+.page.active { display: block; }
+
+/* Right Rule & Variable Panel */
+.anno-panel { width: 272px; flex-shrink: 0; max-height: 100%; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+.anno-card { padding: 11px 12px; border: 1px solid var(--wt-border-light); border-radius: 8px; background: var(--wt-white); }
+.anno-card-title {
+  font-size: 12px; font-weight: 700; color: var(--wt-text);
+  padding-bottom: 6px; margin-bottom: 8px; border-bottom: 1px solid var(--wt-border-light);
+}
+.anno-item { font-size: 12px; color: var(--wt-text); line-height: 1.65; margin-bottom: 8px; }
+.anno-item:last-child { margin-bottom: 0; }
+.anno-item b { display: block; color: var(--wt-text); margin-bottom: 2px; }
+.var-block { margin-bottom: 10px; }
+.var-block:last-child { margin-bottom: 0; }
+.var-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 5px; font-size: 12px; }
+.var-kind-tag {
+  font-size: 10px; padding: 1px 5px; border: 1px solid var(--wt-border-light);
+  border-radius: 3px; color: var(--wt-dim); background: var(--wt-bg);
+}
+.var-opts { display: flex; flex-wrap: wrap; gap: 5px; }
+.var-opt {
+  padding: 4px 9px; font-size: 11.5px; border-radius: 4px;
+  border: 1px solid var(--wt-border); background: var(--wt-white);
+}
+.var-opt.cur, .var-opt.cur:hover {
+  background: var(--wt-accent); color: var(--wt-white); border-color: var(--wt-accent); font-weight: 600;
+}
+.branch-go-btn { margin-top: 6px; width: 100%; font-size: 11.5px; padding: 4px 8px; }
+.st-group { display: flex; flex-direction: column; gap: 6px; }
+.st-btn {
+  width: 100%; padding: 7px 10px; text-align: left; border: 1px solid var(--wt-border);
+  border-radius: 5px; font-size: 12px; background: var(--wt-white); color: var(--wt-text); cursor: pointer;
+}
+.st-btn:hover { border-color: var(--wt-accent); }
+.st-btn.cur, .st-btn.cur:hover {
+  background: var(--wt-accent); color: var(--wt-white); border-color: var(--wt-accent);
+  cursor: default; font-weight: 600;
+}
+
+/* Spec Cards View */
+.spec-panel { flex: 1; min-width: 0; height: 100%; overflow-y: auto; padding: 24px 28px 60px; position: relative; }
+.spec-ws {
+  max-width: 1020px; margin: 0 auto; display: grid;
+  grid-template-columns: 375px minmax(380px, 1fr); gap: 44px; align-items: start; position: relative;
+}
+.spec-ws.wide-spec { max-width: 1240px; grid-template-columns: 690px minmax(340px, 1fr); gap: 32px; }
+@media (max-width: 960px) {
+  .spec-ws { grid-template-columns: 1fr; }
+  .spec-ws .spec-sticky { position: static; }
+}
+@media (max-width: 1140px) {
+  .spec-ws.wide-spec { grid-template-columns: 1fr; }
+  .spec-ws.wide-spec .spec-sticky { position: static; }
+}
+.spec-sticky { position: sticky; top: 4px; z-index: 20; }
+.spec-cards { display: flex; flex-direction: column; gap: 12px; padding-top: 8px; }
+.spec-card {
+  background: var(--wt-white); border: 1px solid var(--wt-border-light);
+  border-radius: 8px; padding: 13px 15px; cursor: pointer;
+}
+.spec-card.active { border-color: var(--wt-spot); border-width: 1.5px; box-shadow: 0 0 0 2px var(--wt-spot-bg); }
+.spec-card-hd { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.spec-idx {
+  font-size: 11px; font-weight: 700; padding: 1px 7px;
+  border: 1px solid var(--wt-border); border-radius: 4px; background: var(--wt-bg);
+}
+.spec-card-hd b { font-size: 13.5px; flex: 1; }
+.spec-card-bd { font-size: 12.5px; line-height: 1.65; color: var(--wt-text); }
+.tether-svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 45; overflow: visible; }
+.anchor-box {
+  position: absolute; pointer-events: none; border: 2px dashed var(--wt-spot);
+  border-radius: 6px; background: var(--wt-spot-bg); z-index: 44;
+}
+
+/* Memo Drawer (Minimalist Multi-Capsule Picking) */
+.memo-drawer {
+  width: 320px; flex-shrink: 0; height: 100%; background: var(--wt-white);
+  border-left: 1px solid var(--wt-border); display: flex; flex-direction: column; z-index: 120;
+}
+.memo-hd {
+  height: 46px; padding: 0 14px; border-bottom: 1px solid var(--wt-border-light);
+  background: var(--wt-bg); display: flex; align-items: center; justify-content: space-between;
+  flex-shrink: 0; gap: 6px;
+}
+.memo-reviewer-bar {
+  display: flex; align-items: center; gap: 8px; padding: 7px 12px;
+  border-bottom: 1px solid var(--wt-border-light); background: var(--wt-white);
+  font-size: 11.5px; color: var(--wt-dim); flex-shrink: 0;
+}
+.memo-reviewer-bar input {
+  flex: 1; min-width: 0; border: 1px solid var(--wt-border-light); border-radius: 4px;
+  padding: 3px 8px; font-size: 11.5px; color: var(--wt-text); background: var(--wt-bg);
+}
+.memo-reviewer-bar input:focus { outline: none; border-color: var(--wt-accent); background: var(--wt-white); }
+.memo-conflict-badge {
+  font-size: 10px; font-weight: 600; color: var(--wt-spot); background: var(--wt-spot-bg);
+  border: 1px solid var(--wt-spot-border); padding: 1px 6px; border-radius: 3px; flex-shrink: 0;
+}
+.memo-author-pill {
+  display: inline-block; font-size: 10.5px; font-weight: 600; color: var(--wt-text);
+  background: var(--wt-fill); border-radius: 3px; padding: 0 5px; margin-right: 4px;
+}
+.memo-form { padding: 12px; border-bottom: 1px solid var(--wt-border-light); flex-shrink: 0; background: #fafafa; }
+.memo-ctx {
+  display: block; font-size: 11px; color: var(--wt-dim); background: var(--wt-white);
+  border: 1px solid var(--wt-border-light); border-radius: 4px; padding: 4px 8px;
+  margin-bottom: 8px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.memo-editor {
+  width: 100%; min-height: 86px; max-height: 220px; overflow-y: auto;
+  border: 1px solid var(--wt-border); border-radius: 5px; padding: 7px 9px;
+  font-size: 12px; line-height: 1.55; margin-bottom: 6px; background: var(--wt-white);
+  color: var(--wt-text); outline: none; white-space: pre-wrap; word-break: break-word;
+}
+.memo-editor:focus { border-color: var(--wt-accent); }
+.memo-editor:empty::before { content: attr(data-placeholder); color: var(--wt-light); pointer-events: none; }
+.memo-form-hint {
+  font-size: 11.5px; font-weight: 600; color: var(--wt-text);
+  background: #f0f0f0; border: 1px solid var(--wt-accent);
+  border-radius: 4px; padding: 4px 8px; margin-bottom: 6px;
+}
+.memo-at-chip {
+  display: inline-flex; align-items: center; padding: 1px 6px; margin: 0 2px;
+  border-radius: 4px; background: var(--wt-fill); border: 1px solid var(--wt-border);
+  color: var(--wt-text); font-size: 11.5px; font-weight: 600; user-select: all;
+}
+.memo-list { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+.memo-empty { text-align: center; color: var(--wt-light); font-size: 12px; padding: 24px 12px; }
+.memo-item { border: 1px solid var(--wt-border-light); border-radius: 6px; padding: 10px; background: var(--wt-bg); }
+.memo-item.invalid { border-color: var(--wt-danger); background: #fef2f2; }
+.memo-item-hd { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 4px; }
+.memo-item-ctx {
+  font-size: 11px; font-weight: 600; color: var(--wt-accent); cursor: pointer;
+  flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.memo-item-ctx:hover { text-decoration: underline; }
+.memo-invalid-badge {
+  font-size: 10px; font-weight: 600; color: var(--wt-white); background: var(--wt-danger);
+  padding: 1px 6px; border-radius: 3px; flex-shrink: 0;
+}
+.memo-item-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 5px; }
+.memo-item-tag {
+  font-size: 10.5px; color: var(--wt-text); background: #f0f0f0; border: 1px solid var(--wt-accent);
+  font-weight: 600; border-radius: 999px; padding: 1px 6px;
+}
+.memo-item-meta {
+  font-size: 10.5px; color: var(--wt-dim); margin-bottom: 5px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.memo-item-txt { font-size: 12px; line-height: 1.6; white-space: pre-wrap; }
+.memo-item-ft {
+  margin-top: 7px; display: flex; justify-content: space-between; align-items: center;
+  font-size: 11px; color: var(--wt-light);
+}
+.memo-del-btn { border: none; background: transparent; color: var(--wt-dim); padding: 1px 5px; font-size: 11px; }
+.memo-del-btn:hover { color: var(--wt-danger); background: transparent; }
+.memo-export { padding: 10px 12px; border-top: 1px solid var(--wt-border-light); background: var(--wt-bg); display: flex; gap: 6px; }
+.memo-export button { flex: 1; padding: 5px 6px; font-size: 11.5px; white-space: nowrap; }
+
+#pick-highlight-overlay {
+  position: fixed; z-index: 9999; pointer-events: none;
+  border: 2px solid var(--wt-spot); background: var(--wt-spot-bg);
+  border-radius: 4px; display: none; transition: all 0.06s ease;
+}
+#pick-label-badge {
+  position: fixed; z-index: 10000; pointer-events: none;
+  background: #1f1f1f; color: #ffffff; font-size: 11.5px; font-weight: 600;
+  padding: 3px 8px; border-radius: 4px; white-space: nowrap; max-width: 300px;
+  overflow: hidden; text-overflow: ellipsis; box-shadow: 0 2px 8px rgba(0,0,0,0.22); display: none;
+}
+
+.guard-mask {
+  position: fixed; inset: 0; z-index: 10050; background: rgba(0,0,0,0.42);
+  display: flex; align-items: center; justify-content: center; padding: 16px;
+}
+.guard-modal {
+  width: 480px; max-width: 100%; background: var(--wt-white); border: 1px solid var(--wt-border);
+  border-radius: 10px; padding: 18px; box-shadow: 0 12px 32px rgba(0,0,0,0.18);
+}
+.guard-modal h3 { font-size: 15px; margin-bottom: 8px; color: var(--wt-danger); }
+.guard-modal p { font-size: 12.5px; line-height: 1.6; color: var(--wt-text); margin-bottom: 14px; }
+.guard-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 8px; }
+
+/* Neutral Wireframe Component Library (wt-* · 100% Grayscale) */
+.wt-stack { display: flex; flex-direction: column; gap: 10px; }
+.wt-row { display: flex; align-items: center; gap: 8px; }
+.wt-col { display: flex; flex-direction: column; gap: 6px; }
+.wt-between { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.wt-divider { height: 1px; background: var(--wt-border-light); margin: 8px 0; }
+.wt-muted { color: var(--wt-dim); font-size: 12px; }
+
+/* Navigation */
+.wt-navbar {
+  height: 44px; padding: 0 12px; display: flex; align-items: center; justify-content: space-between;
+  border-bottom: 1px solid var(--wt-border-light); background: var(--wt-white); font-weight: 600;
+}
+.wt-tabbar {
+  display: flex; border-top: 1px solid var(--wt-border-light); background: var(--wt-bg);
+}
+.wt-tabbar-item {
+  flex: 1; text-align: center; padding: 9px 4px; font-size: 11.5px; color: var(--wt-dim); cursor: pointer;
+}
+.wt-tabbar-item.active { color: var(--wt-text); font-weight: 700; }
+.wt-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--wt-border-light); padding: 0 12px; }
+.wt-tab {
+  padding: 8px 12px; font-size: 12.5px; color: var(--wt-dim); border: none;
+  background: transparent; border-bottom: 2px solid transparent; border-radius: 0;
+}
+.wt-tab.active { color: var(--wt-text); font-weight: 700; border-bottom-color: var(--wt-text); }
+.wt-breadcrumb { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--wt-dim); }
+
+/* Buttons */
+.wt-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+  padding: 6px 12px; border: 1px solid var(--wt-border); border-radius: 6px;
+  background: var(--wt-white); color: var(--wt-text); font-size: 12.5px; cursor: pointer;
+}
+.wt-btn:hover:not(:disabled) { background: var(--wt-fill); }
+.wt-btn-primary { background: var(--wt-accent); color: var(--wt-white); border-color: var(--wt-accent); }
+.wt-btn-primary:hover:not(:disabled) { background: #3f3f3f; }
+.wt-btn-ghost { background: transparent; border-color: transparent; }
+.wt-btn-danger { background: var(--wt-white); color: var(--wt-text); border-color: var(--wt-text); font-weight: 600; }
+.wt-btn-sm { padding: 3px 8px; font-size: 11.5px; }
+.wt-btn-block { width: 100%; }
+
+/* Cards & Lists */
+.wt-card {
+  border: 1px solid var(--wt-border-light); border-radius: 8px;
+  background: var(--wt-white); overflow: hidden;
+}
+.wt-card-hd {
+  padding: 10px 12px; border-bottom: 1px solid var(--wt-border-light);
+  background: var(--wt-bg); font-weight: 700; font-size: 12.5px;
+}
+.wt-card-bd { padding: 12px; }
+.wt-card-ft { padding: 8px 12px; border-top: 1px solid var(--wt-border-light); background: var(--wt-bg); }
+.wt-list { display: flex; flex-direction: column; }
+.wt-list-item {
+  padding: 10px 12px; border-bottom: 1px solid var(--wt-border-light);
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+}
+.wt-list-item:last-child { border-bottom: none; }
+.wt-avatar {
+  width: 32px; height: 32px; border-radius: 50%; background: var(--wt-fill);
+  border: 1px solid var(--wt-border); display: inline-flex; align-items: center;
+  justify-content: center; font-size: 12px; font-weight: 700; flex-shrink: 0;
+}
+.wt-badge, .wt-tag {
+  display: inline-block; padding: 1px 6px; font-size: 11px; border-radius: 4px;
+  border: 1px solid var(--wt-border); background: var(--wt-bg); color: var(--wt-dim);
+}
+.wt-chip {
+  display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px;
+  border-radius: 999px; border: 1px solid var(--wt-border); background: var(--wt-bg); font-size: 11.5px;
+}
+
+/* Forms */
+.wt-form { display: flex; flex-direction: column; gap: 10px; }
+.wt-field { display: flex; flex-direction: column; gap: 4px; }
+.wt-label { font-size: 12px; font-weight: 600; color: var(--wt-text); }
+.wt-input, .wt-textarea, .wt-select {
+  width: 100%; padding: 6px 9px; border: 1px solid var(--wt-border);
+  border-radius: 5px; background: var(--wt-white); font-size: 12.5px;
+}
+.wt-textarea { min-height: 72px; resize: vertical; }
+.wt-help { font-size: 11px; color: var(--wt-dim); }
+.wt-error {
+  font-size: 11px; color: var(--wt-text); font-weight: 600;
+  background: #f0f0f0; border: 1px solid var(--wt-accent); border-radius: 4px; padding: 2px 6px;
+}
+
+/* Tables */
+.wt-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.wt-table th, .wt-table td {
+  padding: 7px 9px; border: 1px solid var(--wt-border-light); text-align: left;
+}
+.wt-table th { background: var(--wt-bg); font-weight: 700; }
+
+/* Modals & Drawers */
+.wt-mask {
+  position: absolute; inset: 0; background: rgba(0, 0, 0, 0.36);
+  display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 20;
+}
+.wt-modal {
+  width: 100%; max-width: 320px; background: var(--wt-white);
+  border: 1px solid var(--wt-border); border-radius: 10px; overflow: hidden;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.16);
+}
+.wt-modal-hd {
+  padding: 10px 14px; border-bottom: 1px solid var(--wt-border-light);
+  font-weight: 700; display: flex; align-items: center; justify-content: space-between;
+}
+.wt-modal-bd { padding: 14px; font-size: 12.5px; }
+.wt-modal-ft {
+  padding: 10px 14px; border-top: 1px solid var(--wt-border-light);
+  display: flex; justify-content: flex-end; gap: 8px; background: var(--wt-bg);
+}
+
+/* Feedback & States */
+.wt-toast {
+  margin: 16px auto; max-width: 280px; padding: 9px 14px; border-radius: 6px;
+  background: #222222; color: #ffffff; text-align: center; font-size: 12px;
+}
+.wt-banner, .wt-alert {
+  padding: 8px 12px; border-radius: 6px; border: 1px solid var(--wt-border);
+  background: var(--wt-bg); font-size: 12px;
+}
+
+/* High-Density SaaS & Mobile Layout Primitives (wt-* · 100% Monochrome) */
+.wt-app-shell { display: grid; grid-template-columns: 148px minmax(0, 1fr); min-height: 520px; background: var(--wt-white); }
+.wt-sidebar {
+  border-right: 1px solid var(--wt-border-light); background: #fafafa; padding: 12px 8px;
+  display: flex; flex-direction: column; gap: 3px;
+}
+.wt-brand-row {
+  display: flex; align-items: center; gap: 7px; padding: 4px 8px 10px; margin-bottom: 4px;
+  border-bottom: 1px solid var(--wt-border-light); font-size: 12.5px; font-weight: 700;
+}
+.wt-brand-mark {
+  width: 20px; height: 20px; border-radius: 5px; background: var(--wt-accent); color: var(--wt-white);
+  display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700;
+}
+.wt-side-label { font-size: 10px; font-weight: 700; color: var(--wt-light); padding: 8px 8px 2px; text-transform: uppercase; letter-spacing: 0.4px; }
+.wt-side-item {
+  display: flex; align-items: center; justify-content: space-between; width: 100%; text-align: left;
+  padding: 6px 8px; border-radius: 5px; border: 1px solid transparent; background: transparent;
+  font-size: 12px; color: var(--wt-dim); cursor: pointer;
+}
+.wt-side-item:hover { background: var(--wt-fill); color: var(--wt-text); }
+.wt-side-item.active { background: var(--wt-white); border-color: var(--wt-border-light); color: var(--wt-text); font-weight: 600; }
+.wt-main { padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.wt-kpi-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.wt-kpi-card {
+  border: 1px solid var(--wt-border-light); border-radius: 7px; padding: 10px 12px;
+  background: var(--wt-white); display: flex; flex-direction: column; gap: 4px;
+}
+.wt-kpi-label { font-size: 11px; color: var(--wt-dim); display: flex; align-items: center; justify-content: space-between; }
+.wt-kpi-val { font-size: 18px; font-weight: 700; letter-spacing: -0.3px; color: var(--wt-text); }
+.wt-kpi-sub { font-size: 11px; color: var(--wt-dim); }
+.wt-meter { width: 100%; height: 6px; border-radius: 999px; background: var(--wt-fill); overflow: hidden; margin-top: 2px; }
+.wt-meter-fill { height: 100%; background: var(--wt-accent); border-radius: 999px; }
+.wt-mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; }
+.wt-pill-strong {
+  display: inline-flex; align-items: center; padding: 1px 7px; border-radius: 999px;
+  background: var(--wt-accent); color: var(--wt-white); font-size: 10.5px; font-weight: 600;
+}
+.wt-Split2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.wt-switch-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 8px 10px; border: 1px solid var(--wt-border-light); border-radius: 6px; background: #fafafa;
+}
+.wt-phone-shell { display: flex; flex-direction: column; min-height: 636px; justify-content: space-between; background: var(--wt-bg); }
+.wt-phone-statusbar {
+  height: 26px; padding: 0 16px; display: flex; align-items: center; justify-content: space-between;
+  font-size: 11px; font-weight: 600; color: var(--wt-text); background: var(--wt-white);
+}
+.wt-alert-danger {
+  border-color: var(--wt-accent); background: #f0f0f0; color: var(--wt-text); font-weight: 600;
+}
+.wt-empty { padding: 28px 16px; text-align: center; color: var(--wt-dim); font-size: 12px; }
+.wt-skeleton {
+  height: 14px; border-radius: 4px; background: var(--wt-fill);
+}
+
+</style>
+</head>
+<body class="show-delta">
+
+<header class="wb-topbar">
+  <div class="fp-title">Acme AI Cloud · Spend Guardrails &amp; Quota Approval (v2.4)</div>
+  <div class="seg-group hidden" id="view-switch">
+    <button type="button" class="seg-btn active" data-wbview="flow" onclick="switchWbView('flow')">Global Flow</button>
+    <button type="button" class="seg-btn" data-wbview="spec" onclick="switchWbView('spec')">Spec Tether</button>
+  </div>
+  <div class="wb-global-vars" id="global-vars-bar"></div>
+  <div class="topbar-spacer"></div>
+  <span id="flow-node-ref" aria-live="polite"></span>
+  <div class="fp-bar" id="zoom-bar">
+    <span class="zb" onclick="setZoom(-1)">&#65293;</span>
+    <span class="zv" id="zv">100%</span>
+    <span class="zb" onclick="setZoom(1)">&#65291;</span>
+    <span class="zb" onclick="setZoom(0)">Fit</span>
+    <span class="zb" id="fs-btn" onclick="toggleFs()">Full Canvas</span>
+  </div>
+  <button type="button" class="zb active" id="delta-toggle-btn" onclick="toggleDeltaHighlight()">Delta Highlight</button>
+  <button type="button" class="memo-toggle" id="memo-toggle-btn" onclick="toggleMemo()">Comments (0)</button>
+  <a class="wb-brand-link" href="https://github.com/SilasSolivagus/OpenPM" target="_blank" rel="noopener" title="Built with OpenPM · Star on GitHub">OpenPM &#9733;</a>
+</header>
+
+<div class="wb-stage">
+  <aside class="flow-panel" id="flow-panel-root">
+    <div class="flow-svg" id="flow-svg"><div class="flow-canvas-inner" id="flow-canvas-inner"><svg id="flowsvg" data-flowspec="1" viewBox="0 0 860 980" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#555555" />
+    </marker>
+  </defs>
+
+  <!-- Main Vertical Spine: F_USAGE_DASH -> F_GUARDRAIL_POLICY -> D_HARD_CAP -->
+  <polyline points="400,80 400,116" fill="none" stroke="#555555" stroke-width="1.8" data-from="F_USAGE_DASH" data-to="F_GUARDRAIL_POLICY" marker-end="url(#arrow)" />
+  <polyline points="400,172 400,208" fill="none" stroke="#555555" stroke-width="1.8" data-from="F_GUARDRAIL_POLICY" data-to="D_HARD_CAP" marker-end="url(#arrow)" />
+
+  <!-- Branches from D_HARD_CAP -->
+  <polyline points="400,292 400,408" fill="none" stroke="#555555" stroke-width="1.8" data-from="D_HARD_CAP" data-to="F_QUOTA_REQ" data-branch="within_cap" marker-end="url(#arrow)" />
+  <text x="278" y="352" font-size="11" fill="#555555">&lt; 100% Cap (Active)</text>
+
+  <polyline points="505,250 665,250 665,316" fill="none" stroke="#555555" stroke-width="1.8" data-from="D_HARD_CAP" data-to="F_KEY_PAUSED" data-branch="paused" marker-end="url(#arrow)" />
+  <text x="518" y="242" font-size="11" fill="#555555">100% Cap (Auto-Pause)</text>
+
+  <!-- Recovery Path: F_KEY_PAUSED -> F_QUOTA_REQ -->
+  <polyline points="665,372 665,422 510,422" fill="none" stroke="#555555" stroke-width="1.8" data-from="F_KEY_PAUSED" data-to="F_QUOTA_REQ" marker-end="url(#arrow)" />
+  <text x="530" y="414" font-size="11" fill="#555555">Request Unlock</text>
+
+  <!-- F_QUOTA_REQ -> D_THRESHOLD -->
+  <polyline points="400,464 400,502" fill="none" stroke="#555555" stroke-width="1.8" data-from="F_QUOTA_REQ" data-to="D_THRESHOLD" marker-end="url(#arrow)" />
+
+  <!-- Branches from D_THRESHOLD -->
+  <polyline points="295,544 160,544 160,876" fill="none" stroke="#555555" stroke-width="1.8" data-from="D_THRESHOLD" data-to="F_QUOTA_ACTIVE" data-branch="le_500" marker-end="url(#arrow)" />
+  <text x="168" y="536" font-size="11" fill="#555555">&lt;= $500 (Auto-Approve)</text>
+
+  <polyline points="400,586 400,636" fill="none" stroke="#555555" stroke-width="1.8" data-from="D_THRESHOLD" data-to="F_OWNER_REVIEW" data-branch="gt_500" marker-end="url(#arrow)" />
+  <text x="410" y="616" font-size="11" fill="#555555">&gt; $500 (Owner Review)</text>
+
+  <!-- F_OWNER_REVIEW -> D_OWNER_DECISION -->
+  <polyline points="400,692 400,730" fill="none" stroke="#555555" stroke-width="1.8" data-from="F_OWNER_REVIEW" data-to="D_OWNER_DECISION" marker-end="url(#arrow)" />
+
+  <!-- Branches from D_OWNER_DECISION -->
+  <polyline points="295,772 240,772 240,876" fill="none" stroke="#555555" stroke-width="1.8" data-from="D_OWNER_DECISION" data-to="F_QUOTA_ACTIVE" data-branch="approve" marker-end="url(#arrow)" />
+  <text x="248" y="764" font-size="11" fill="#555555">Approve &amp; Unlock</text>
+
+  <polyline points="505,772 630,772 630,876" fill="none" stroke="#555555" stroke-width="1.8" data-from="D_OWNER_DECISION" data-to="F_CAP_RETAINED" data-branch="reject" marker-end="url(#arrow)" />
+  <text x="515" y="764" font-size="11" fill="#888888">Reject &amp; Keep Cap</text>
+
+  <!-- Revise & Resubmit Loop: F_CAP_RETAINED -> F_QUOTA_REQ -->
+  <polyline points="740,905 812,905 812,450 510,450" fill="none" stroke="#555555" stroke-width="1.6" stroke-dasharray="5 3" data-from="F_CAP_RETAINED" data-to="F_QUOTA_REQ" marker-end="url(#arrow)" />
+  <text x="824" y="678" font-size="11" fill="#888888" writing-mode="tb">Revise &amp; Resubmit Request</text>
+
+  <!-- Flow Nodes (10 Total: 7 Process/State Nodes + 3 Decision Diamonds) -->
+  <g class="flow-node" data-node="F_USAGE_DASH" data-node-type="start" role="button" tabindex="0">
+    <rect x="290" y="24" width="220" height="56" rx="8" fill="#ffffff" stroke="#555555" stroke-width="1.8" />
+    <text x="400" y="48" text-anchor="middle" font-size="12.5" font-weight="700" fill="#222222">Usage &amp; Spend Dashboard</text>
+    <text x="400" y="66" text-anchor="middle" font-size="10.5" fill="#888888">F_USAGE_DASH · p-usage-dash</text>
+  </g>
+
+  <g class="flow-node" data-node="F_GUARDRAIL_POLICY" data-node-type="process" role="button" tabindex="0">
+    <rect x="290" y="116" width="220" height="56" rx="8" fill="#ffffff" stroke="#555555" stroke-width="1.8" />
+    <text x="400" y="140" text-anchor="middle" font-size="12.5" font-weight="700" fill="#222222">Guardrail Policy Drawer</text>
+    <text x="400" y="158" text-anchor="middle" font-size="10.5" fill="#888888">F_GUARDRAIL_POLICY · p-guardrail-modal</text>
+  </g>
+
+  <g class="flow-node flow-decision" data-node="D_HARD_CAP" data-node-type="decision" role="button" tabindex="0">
+    <polygon points="400,208 505,250 400,292 295,250" fill="#ededed" stroke="#555555" stroke-width="1.8" />
+    <text x="400" y="254" text-anchor="middle" font-size="11.5" font-weight="700" fill="#222222">Spend Hits 100% Cap?</text>
+  </g>
+
+  <g class="flow-node" data-node="F_KEY_PAUSED" data-node-type="process" role="button" tabindex="0">
+    <rect x="560" y="316" width="210" height="56" rx="8" fill="#ffffff" stroke="#555555" stroke-width="1.8" />
+    <text x="665" y="340" text-anchor="middle" font-size="12.5" font-weight="700" fill="#222222">API Key Auto-Paused</text>
+    <text x="665" y="358" text-anchor="middle" font-size="10.5" fill="#888888">F_KEY_PAUSED · p-key-paused</text>
+  </g>
+
+  <g class="flow-node" data-node="F_QUOTA_REQ" data-node-type="process" role="button" tabindex="0">
+    <rect x="290" y="408" width="220" height="56" rx="8" fill="#ffffff" stroke="#555555" stroke-width="1.8" />
+    <text x="400" y="432" text-anchor="middle" font-size="12.5" font-weight="700" fill="#222222">Quota Top-Up Request</text>
+    <text x="400" y="450" text-anchor="middle" font-size="10.5" fill="#888888">F_QUOTA_REQ · p-quota-request</text>
+  </g>
+
+  <g class="flow-node flow-decision" data-node="D_THRESHOLD" data-node-type="decision" role="button" tabindex="0">
+    <polygon points="400,502 505,544 400,586 295,544" fill="#ededed" stroke="#555555" stroke-width="1.8" />
+    <text x="400" y="548" text-anchor="middle" font-size="11.5" font-weight="700" fill="#222222">Top-Up &gt; $500 Limit?</text>
+  </g>
+
+  <g class="flow-node" data-node="F_OWNER_REVIEW" data-node-type="process" role="button" tabindex="0">
+    <rect x="290" y="636" width="220" height="56" rx="8" fill="#ffffff" stroke="#555555" stroke-width="1.8" />
+    <text x="400" y="660" text-anchor="middle" font-size="12.5" font-weight="700" fill="#222222">Owner Approval Console</text>
+    <text x="400" y="678" text-anchor="middle" font-size="10.5" fill="#888888">F_OWNER_REVIEW · p-owner-approval</text>
+  </g>
+
+  <g class="flow-node flow-decision" data-node="D_OWNER_DECISION" data-node-type="decision" role="button" tabindex="0">
+    <polygon points="400,730 505,772 400,814 295,772" fill="#ededed" stroke="#555555" stroke-width="1.8" />
+    <text x="400" y="776" text-anchor="middle" font-size="11.5" font-weight="700" fill="#222222">Owner Approves?</text>
+  </g>
+
+  <g class="flow-node" data-node="F_QUOTA_ACTIVE" data-node-type="end" role="button" tabindex="0">
+    <rect x="90" y="876" width="220" height="58" rx="8" fill="#ffffff" stroke="#555555" stroke-width="1.8" />
+    <text x="200" y="901" text-anchor="middle" font-size="12.5" font-weight="700" fill="#222222">Quota Active &amp; Keys Unlocked</text>
+    <text x="200" y="919" text-anchor="middle" font-size="10.5" fill="#888888">F_QUOTA_ACTIVE · p-quota-active</text>
+  </g>
+
+  <g class="flow-node" data-node="F_CAP_RETAINED" data-node-type="end" role="button" tabindex="0">
+    <rect x="520" y="876" width="220" height="58" rx="8" fill="#ffffff" stroke="#555555" stroke-width="1.8" />
+    <text x="630" y="901" text-anchor="middle" font-size="12.5" font-weight="700" fill="#222222">Cap Retained · Request Denied</text>
+    <text x="630" y="919" text-anchor="middle" font-size="10.5" fill="#888888">F_CAP_RETAINED · p-key-paused</text>
+  </g>
+
+<rect id="sel-ring" fill="rgba(217,119,6,0.08)" stroke="#d97706" stroke-width="2.5" stroke-dasharray="6 4" rx="8" visibility="hidden" pointer-events="none"/>
+</svg></div></div>
+    <div class="inspector-drawer" id="inspector-drawer">
+      <div class="insp-head">
+        <span class="insp-badge" id="insp-node-id"></span>
+        <span id="anno-node-title"></span>
+        <button type="button" onclick="openMemoForCurrent()">+ Comment</button>
+        <button type="button" onclick="toggleFs(true)">Hide ✕</button>
+      </div>
+      <div class="insp-body">
+        <div class="stage" id="flow-stage">
+          <div class="frame-phone" id="frame-phone">
+<div class="page" id="p-app-usage-dash" data-page="p-app-usage-dash" data-page-id="p-app-usage-dash">
+  <div class="wt-phone-shell">
+    <div>
+      <div class="wt-phone-statusbar">
+        <span>9:41</span>
+        <span>Acme Cloud · 5G [100%]</span>
+      </div>
+      <div class="wt-navbar">
+        <span>Acme AI · Usage</span>
+        <span class="wt-pill-strong">92% CAP</span>
+      </div>
+
+      <div style="padding: 12px;" class="wt-stack">
+        <div class="wt-card" data-comp-id="dash.kpi.grid" data-comp-name="Mobile Monthly Spend Summary Card">
+          <div class="wt-card-bd wt-stack">
+            <div class="wt-between">
+              <span class="wt-muted">Monthly Budget (Nov)</span>
+              <span class="wt-badge">Auto-Pause ON</span>
+            </div>
+            <div style="font-size: 20px; font-weight: 700;">$1,840.00 <span class="wt-muted" style="font-weight: 400;">/ $2,000</span></div>
+            <div class="wt-meter"><div class="wt-meter-fill" style="width: 92%;"></div></div>
+            <div class="wt-between wt-muted">
+              <span>18 Active Keys</span>
+              <span>2 Pending Top-Ups</span>
+            </div>
+          </div>
+          <div class="wt-card-ft wt-Split2">
+            <button type="button" class="wt-btn wt-btn-sm" data-comp-id="dash.guardrail.btn" data-comp-name="Configure Guardrails Button" onclick="goNode('F_GUARDRAIL_POLICY')">
+              Guardrails
+            </button>
+            <button type="button" class="wt-btn wt-btn-primary wt-btn-sm" data-comp-id="dash.request.btn" data-comp-name="Request Quota Top-Up Button" onclick="goNode('F_QUOTA_REQ')">
+              + Top-Up Quota
+            </button>
+          </div>
+        </div>
+
+        <div class="wt-alert wt-between" data-comp-id="dash.threshold.banner" data-comp-name="Mobile 92 Percent Spend Alert">
+          <span><b>[92%]</b> $160 left before auto-pause.</span>
+          <button type="button" class="wt-btn wt-btn-sm" data-comp-id="dash.simulate.pause.btn" data-comp-name="Preview 100 Percent Pause State Button" onclick="setVar('cap_status','paused'); goNode('F_KEY_PAUSED')">
+            100% State
+          </button>
+        </div>
+
+        <div class="wt-card" data-comp-id="dash.keys.card" data-comp-name="Mobile Top API Keys List">
+          <div class="wt-card-hd wt-between">
+            <span>Top Keys by Burn</span>
+            <span class="wt-muted">MTD</span>
+          </div>
+          <div class="wt-list">
+            <div class="wt-list-item">
+              <div>
+                <div style="font-weight: 600; font-size: 12.5px;">Core Agent Prod</div>
+                <div class="wt-mono wt-muted">sk-prod-...8f2a · $1,120.40</div>
+              </div>
+              <button type="button" class="wt-btn wt-btn-sm" data-comp-id="dash.row1.topup.btn" data-comp-name="Mobile Core Agent Top-Up Button" onclick="goNode('F_QUOTA_REQ')">Top Up</button>
+            </div>
+            <div class="wt-list-item">
+              <div>
+                <div style="font-weight: 600; font-size: 12.5px;">Code Review Bot</div>
+                <div class="wt-mono wt-muted">sk-prod-...3c19 · $468.90</div>
+              </div>
+              <span class="wt-badge">[ACTIVE]</span>
+            </div>
+            <div class="wt-list-item">
+              <div>
+                <div style="font-weight: 600; font-size: 12.5px;">RAG Eval Nightly</div>
+                <div class="wt-mono wt-muted">sk-eval-...91d0 · $250.70</div>
+              </div>
+              <button type="button" class="wt-btn wt-btn-sm" data-comp-id="dash.row3.review.btn" data-comp-name="Mobile Review Request Button" onclick="goNode('F_OWNER_REVIEW')">Review</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="wt-tabbar">
+      <div class="wt-tabbar-item active" role="button" tabindex="0" data-comp-id="app.dash.tab.usage" data-comp-name="Mobile Usage Tab" onclick="goNode('F_USAGE_DASH')">Usage</div>
+      <div class="wt-tabbar-item" role="button" tabindex="0" data-comp-id="app.dash.tab.keys" data-comp-name="Mobile Keys Tab" onclick="goNode('F_KEY_PAUSED')">Keys</div>
+      <div class="wt-tabbar-item" role="button" tabindex="0" data-comp-id="app.dash.tab.approvals" data-comp-name="Mobile Approvals Tab" onclick="goNode('F_OWNER_REVIEW')">Approvals (2)</div>
+      <div class="wt-tabbar-item" role="button" tabindex="0" data-comp-id="app.dash.tab.audit" data-comp-name="Mobile Audit Tab" onclick="goNode('F_QUOTA_ACTIVE')">Audit</div>
+    </div>
+  </div>
+</div>
+<div class="page" id="p-app-guardrail-modal" data-page="p-app-guardrail-modal" data-page-id="p-app-guardrail-modal">
+  <div class="wt-phone-shell">
+    <div>
+      <div class="wt-phone-statusbar">
+        <span>9:41</span>
+        <span>Acme Cloud · 5G [100%]</span>
+      </div>
+      <div class="wt-navbar">
+        <button type="button" class="wt-btn wt-btn-sm" data-comp-id="policy.cancel.btn" data-comp-name="Back from Guardrail Policy Button" onclick="goNode('F_USAGE_DASH')">&lt; Back</button>
+        <span>Guardrail Policy</span>
+        <span class="wt-badge">[ADMIN]</span>
+      </div>
+
+      <div style="padding: 12px;" class="wt-stack">
+        <div class="wt-card" data-comp-id="policy.drawer.card" data-comp-name="Mobile Guardrail Policy Card">
+          <div class="wt-card-hd">Budget Caps &amp; Auto-Approval</div>
+          <div class="wt-card-bd wt-form">
+            <div class="wt-field">
+              <label class="wt-label">Monthly Hard Cap (USD) *</label>
+              <input class="wt-input wt-mono" type="number" value="2000" data-comp-id="policy.cap.input" data-comp-name="Monthly Hard Cap Input" />
+              <div class="wt-help">92% utilized ($1,840 / $2,000)</div>
+            </div>
+
+            <div class="wt-field">
+              <label class="wt-label">Auto-Approve Threshold (USD) *</label>
+              <input class="wt-input wt-mono" type="number" value="500" data-comp-id="policy.threshold.input" data-comp-name="Auto-Approve Threshold Input" />
+              <div class="wt-help">Requests &lt;= $500 unlock keys instantly.</div>
+            </div>
+
+            <div class="wt-field">
+              <label class="wt-label">Action on 100% Hard Cap</label>
+              <div class="wt-Split2">
+                <button type="button" class="wt-btn wt-btn-primary wt-btn-sm" data-comp-id="policy.mode.pause.btn" data-comp-name="Auto-Pause Keys Toggle" onclick="setVar('enforcement_mode','auto_pause'); setVar('cap_status','paused')">
+                  Auto-Pause Keys
+                </button>
+                <button type="button" class="wt-btn wt-btn-sm" data-comp-id="policy.mode.alert.btn" data-comp-name="Alert Only Toggle" onclick="setVar('enforcement_mode','alert_only'); setVar('cap_status','within_cap')">
+                  Alert Only
+                </button>
+              </div>
+            </div>
+
+            <div class="wt-switch-row">
+              <div>
+                <div style="font-size: 12px; font-weight: 600;">Push &amp; Slack Webhook</div>
+                <div class="wt-help">80% / 90% / 100% triggers</div>
+              </div>
+              <select class="wt-select" style="width: 112px;" data-comp-id="policy.webhook.select" data-comp-name="Mobile Webhook Alert Select">
+                <option value="enabled" selected>[ON] All</option>
+                <option value="critical_only">100% Only</option>
+              </select>
+            </div>
+          </div>
+          <div class="wt-card-ft">
+            <button type="button" class="wt-btn wt-btn-primary wt-btn-block" data-comp-id="policy.save.btn" data-comp-name="Save Guardrail Policy Button" onclick="goNode('D_HARD_CAP')">
+              Save Policy
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="wt-tabbar">
+      <div class="wt-tabbar-item active" role="button" tabindex="0" data-comp-id="app.policy.tab.usage" data-comp-name="Mobile Policy Usage Tab" onclick="goNode('F_USAGE_DASH')">Usage</div>
+      <div class="wt-tabbar-item" role="button" tabindex="0" data-comp-id="app.policy.tab.keys" data-comp-name="Mobile Policy Keys Tab" onclick="goNode('F_KEY_PAUSED')">Keys</div>
+      <div class="wt-tabbar-item" role="button" tabindex="0" data-comp-id="app.policy.tab.approvals" data-comp-name="Mobile Policy Approvals Tab" onclick="goNode('F_OWNER_REVIEW')">Approvals</div>
+      <div class="wt-tabbar-item" role="button" tabindex="0" data-comp-id="app.policy.tab.audit" data-comp-name="Mobile Policy Audit Tab" onclick="goNode('F_QUOTA_ACTIVE')">Audit</div>
+    </div>
+  </div>
+</div>
+<div class="page" id="p-app-quota-request" data-page="p-app-quota-request" data-page-id="p-app-quota-request">
+  <div class="wt-phone-shell">
+    <div>
+      <div class="wt-phone-statusbar">
+        <span>9:41</span>
+        <span>Acme Cloud · 5G [100%]</span>
+      </div>
+      <div class="wt-navbar">
+        <button type="button" class="wt-btn wt-btn-sm" data-comp-id="req.back.btn" data-comp-name="Mobile Back to Usage Button" onclick="goNode('F_USAGE_DASH')">&lt; Back</button>
+        <span>Request Top-Up</span>
+        <span class="wt-mono wt-muted">REQ-2049</span>
+      </div>
+
+      <div style="padding: 12px;" class="wt-stack">
+        <div class="wt-card" data-comp-id="req.form.card" data-comp-name="Mobile Quota Request Form Card">
+          <div class="wt-card-bd wt-form">
+            <div class="wt-field">
+              <label class="wt-label">Project / API Key *</label>
+              <select class="wt-select" data-comp-id="req.project.select" data-comp-name="Mobile Target API Key Selector">
+                <option value="sk-prod-8f2a" selected>Core Agent Prod (sk-prod-...8f2a)</option>
+                <option value="sk-prod-3c19">Code Review Bot (sk-prod-...3c19)</option>
+              </select>
+            </div>
+
+            <div class="wt-field">
+              <label class="wt-label">Requested Extra Budget (USD) *</label>
+              <input class="wt-input wt-mono" type="number" value="800"
+                     data-comp-id="req.amount.input"
+                     data-comp-name="Requested Extra Budget Input"
+                     oninput="setVar('request_tier', (parseFloat(this.value) || 0) > 500 ? 'gt_500' : 'le_500')" />
+              <div class="wt-Split2" style="margin-top: 4px;">
+                <button type="button" class="wt-btn wt-btn-sm" data-comp-id="req.preset.300.btn" data-comp-name="Mobile Preset +$300 Auto Button"
+                        onclick="var el=this.parentNode.parentNode.querySelector('input'); if(el) el.value='300'; setVar('request_tier','le_500')">
+                  +$300 (Auto)
+                </button>
+                <button type="button" class="wt-btn wt-btn-sm" data-comp-id="req.preset.800.btn" data-comp-name="Mobile Preset +$800 Owner Review Button"
+                        onclick="var el=this.parentNode.parentNode.querySelector('input'); if(el) el.value='800'; setVar('request_tier','gt_500')">
+                  +$800 (Owner)
+                </button>
+              </div>
+            </div>
+
+            <div class="wt-alert" data-when-var="request_tier" data-when-val="gt_500">
+              <b>[OWNER REVIEW]</b> &gt; $500 ceiling; routes to jordan.lee.
+            </div>
+            <div class="wt-alert hidden" data-when-var="request_tier" data-when-val="le_500">
+              <b>[AUTO-APPROVE]</b> &lt;= $500 ceiling; unlocks keys instantly.
+            </div>
+
+            <div class="wt-field">
+              <label class="wt-label">Cost Center *</label>
+              <select class="wt-select" data-comp-id="req.costcenter.select" data-comp-name="Mobile Cost Center Selector">
+                <option value="cc-402" selected>CC-402 · Core AI R&amp;D</option>
+                <option value="cc-218">CC-218 · Dev Productivity</option>
+              </select>
+            </div>
+
+            <div class="wt-field">
+              <label class="wt-label">Justification *</label>
+              <textarea class="wt-textarea" style="min-height: 56px;" data-comp-id="req.reason.textarea" data-comp-name="Mobile Business Justification Textarea">Q4 customer cohort batch agent sessions (+42k runs).</textarea>
+            </div>
+          </div>
+          <div class="wt-card-ft">
+            <button type="button" class="wt-btn wt-btn-primary wt-btn-block" data-comp-id="req.submit.btn" data-comp-name="Submit Quota Request Button"
+                    onclick="goNode(getVar('request_tier') === 'le_500' ? 'F_QUOTA_ACTIVE' : 'F_OWNER_REVIEW')">
+              Submit Request
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="wt-tabbar">
+      <div class="wt-tabbar-item active" role="button" tabindex="0" data-comp-id="app.req.tab.usage" data-comp-name="Mobile Request Usage Tab" onclick="goNode('F_USAGE_DASH')">Usage</div>
+      <div class="wt-tabbar-item" role="button" tabindex="0" data-comp-id="app.req.tab.keys" data-comp-name="Mobile Request Keys Tab" onclick="goNode('F_KEY_PAUSED')">Keys</div>
+      <div class="wt-tabbar-item" role="button" tabindex="0" data-comp-id="app.req.tab.approvals" data-comp-name="Mobile Request Approvals Tab" onclick="goNode('F_OWNER_REVIEW')">Approvals</div>
+      <div class="wt-tabbar-item" role="button" tabindex="0" data-comp-id="app.req.tab.audit" data-comp-name="Mobile Request Audit Tab" onclick="goNode('F_QUOTA_ACTIVE')">Audit</div>
+    </div>
+  </div>
+</div>
+<div class="page" id="p-app-owner-approval" data-page="p-app-owner-approval" data-page-id="p-app-owner-approval">
+  <div class="wt-phone-shell">
+    <div>
+      <div class="wt-phone-statusbar">
+        <span>9:41</span>
+        <span>Acme Cloud · 5G [100%]</span>
+      </div>
+      <div class="wt-navbar">
+        <span>Owner Approval</span>
+        <span class="wt-pill-strong">REQ-2049</span>
+      </div>
+
+      <div style="padding: 12px;" class="wt-stack">
+        <div class="wt-card" data-comp-id="approve.summary.grid" data-comp-name="Mobile Approval Request Summary Card">
+          <div class="wt-card-hd wt-between">
+            <span>maya.chen · CC-402</span>
+            <span class="wt-badge">&gt; $500 TIER</span>
+          </div>
+          <div class="wt-card-bd wt-stack">
+            <div class="wt-between">
+              <span class="wt-muted">Requested Top-Up</span>
+              <b style="font-size: 16px;">+$800.00</b>
+            </div>
+            <div class="wt-between">
+              <span class="wt-muted">New Monthly Cap</span>
+              <span class="wt-mono">$2,000 -&gt; $2,800</span>
+            </div>
+            <div class="wt-between">
+              <span class="wt-muted">Paused Prod Key</span>
+              <span class="wt-mono">sk-prod-...8f2a</span>
+            </div>
+            <div class="wt-divider"></div>
+            <div style="font-size: 12px;">
+              <b>7d Burn:</b> $58.40/d -&gt; <b>$94.20/d</b> (0.5% err, healthy Q4 cohort traffic).
+            </div>
+            <div class="wt-field">
+              <label class="wt-label">Audit Comment *</label>
+              <input class="wt-input" type="text" value="Approved Q4 cohort capacity to Nov 30." data-comp-id="approve.comment.input" data-comp-name="Reviewer Audit Comment Input" />
+            </div>
+          </div>
+          <div class="wt-card-ft wt-Split2">
+            <button type="button" class="wt-btn wt-btn-danger" data-comp-id="approve.reject.btn" data-comp-name="Reject and Keep Cap Button"
+                    onclick="setVar('owner_decision','reject'); goNode('F_CAP_RETAINED')">
+              Reject
+            </button>
+            <button type="button" class="wt-btn wt-btn-primary" data-comp-id="approve.confirm.btn" data-comp-name="Approve and Unlock Keys Button"
+                    onclick="setVar('owner_decision','approve'); goNode('F_QUOTA_ACTIVE')">
+              Approve &amp; Unlock
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="wt-tabbar">
+      <div class="wt-tabbar-item" role="button" tabindex="0" data-comp-id="app.appv.tab.usage" data-comp-name="Mobile Approval Usage Tab" onclick="goNode('F_USAGE_DASH')">Usage</div>
+      <div class="wt-tabbar-item" role="button" tabindex="0" data-comp-id="app.appv.tab.keys" data-comp-name="Mobile Approval Keys Tab" onclick="goNode('F_KEY_PAUSED')">Keys</div>
+      <div class="wt-tabbar-item active" role="button" tabindex="0" data-comp-id="app.appv.tab.approvals" data-comp-name="Mobile Approval Queue Tab" onclick="goNode('F_OWNER_REVIEW')">Approvals (1)</div>
+      <div class="wt-tabbar-item" role="button" tabindex="0" data-comp-id="app.appv.tab.audit" data-comp-name="Mobile Approval Audit Tab" onclick="goNode('F_QUOTA_ACTIVE')">Audit</div>
+    </div>
+  </div>
+</div>
+<div class="page" id="p-app-key-paused" data-page="p-app-key-paused" data-page-id="p-app-key-paused">
+  <div class="wt-phone-shell">
+    <div>
+      <div class="wt-phone-statusbar">
+        <span>9:41</span>
+        <span>Acme Cloud · 5G [100%]</span>
+      </div>
+      <div class="wt-navbar">
+        <span>API Key Guardrail</span>
+        <span class="wt-pill-strong">[PAUSED]</span>
+      </div>
+
+      <div style="padding: 12px;" class="wt-stack">
+        <div class="wt-alert wt-alert-danger" data-comp-id="paused.cap.banner" data-comp-name="Mobile Hard-Cap Auto-Paused Banner">
+          <b>[100% CAP REACHED]</b> Key <span class="wt-mono">sk-prod-...8f2a</span> auto-paused at <b>$2,000 / $2,000</b>. Zero overage billed.
+        </div>
+
+        <div class="wt-alert hidden" data-when-var="owner_decision" data-when-val="reject" data-comp-id="paused.rejected.banner" data-comp-name="Mobile Owner Rejection Notice">
+          <b>[REQ-2049 DENIED]</b> Cap kept at $2,000. Revise amount &lt;= $500 or attach VP ticket.
+        </div>
+
+        <div class="wt-card" data-comp-id="paused.detail.card" data-comp-name="Mobile Paused Keys Diagnostics Card">
+          <div class="wt-card-hd wt-between">
+            <span>Gateway Enforcement</span>
+            <span class="wt-mono wt-muted">HTTP 429</span>
+          </div>
+          <div class="wt-list">
+            <div class="wt-list-item">
+              <div>
+                <div style="font-weight: 600;">Core Agent Prod</div>
+                <div class="wt-mono wt-muted">sk-prod-...8f2a</div>
+              </div>
+              <span class="wt-pill-strong">[PAUSED]</span>
+            </div>
+            <div class="wt-list-item">
+              <div>
+                <div style="font-weight: 600;">Code Review Bot</div>
+                <div class="wt-mono wt-muted">sk-prod-...3c19</div>
+              </div>
+              <span class="wt-pill-strong">[PAUSED]</span>
+            </div>
+            <div class="wt-list-item">
+              <div>
+                <div style="font-weight: 600;">Uptime Probe</div>
+                <div class="wt-mono wt-muted">sk-probe-...01a</div>
+              </div>
+              <span class="wt-badge">[EXEMPT]</span>
+            </div>
+          </div>
+          <div class="wt-card-ft wt-stack">
+            <button type="button" class="wt-btn wt-btn-primary wt-btn-block" data-comp-id="paused.unlock.btn" data-comp-name="Request Quota Top-Up to Unlock Button" onclick="goNode('F_QUOTA_REQ')">
+              Request Quota Top-Up &amp; Unlock
+            </button>
+            <button type="button" class="wt-btn wt-btn-block" data-comp-id="paused.retry.btn" data-comp-name="Mobile Back to Usage Button" onclick="goNode('F_USAGE_DASH')">
+              Back to Usage Overview
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="wt-tabbar">
+      <div class="wt-tabbar-item" role="button" tabindex="0" data-comp-id="app.paused.tab.usage" data-comp-name="Mobile Paused Usage Tab" onclick="goNode('F_USAGE_DASH')">Usage</div>
+      <div class="wt-tabbar-item active" role="button" tabindex="0" data-comp-id="app.paused.tab.keys" data-comp-name="Mobile Paused Keys Tab" onclick="goNode('F_KEY_PAUSED')">Keys</div>
+      <div class="wt-tabbar-item" role="button" tabindex="0" data-comp-id="app.paused.tab.approvals" data-comp-name="Mobile Paused Approvals Tab" onclick="goNode('F_OWNER_REVIEW')">Approvals</div>
+      <div class="wt-tabbar-item" role="button" tabindex="0" data-comp-id="app.paused.tab.audit" data-comp-name="Mobile Paused Audit Tab" onclick="goNode('F_QUOTA_ACTIVE')">Audit</div>
+    </div>
+  </div>
+</div>
+<div class="page" id="p-app-quota-active" data-page="p-app-quota-active" data-page-id="p-app-quota-active">
+  <div class="wt-phone-shell">
+    <div>
+      <div class="wt-phone-statusbar">
+        <span>9:41</span>
+        <span>Acme Cloud · 5G [100%]</span>
+      </div>
+      <div class="wt-navbar">
+        <span>Quota Active</span>
+        <span class="wt-pill-strong">[18/18 LIVE]</span>
+      </div>
+
+      <div style="padding: 12px;" class="wt-stack">
+        <div class="wt-alert" data-comp-id="active.owner.banner" data-comp-name="Mobile Quota Unlocked Banner">
+          <b>[KEYS UNLOCKED]</b> Monthly cap updated; <span class="wt-mono">sk-prod-...8f2a</span> restored globally in 1.8s.
+        </div>
+
+        <div class="wt-card" data-comp-id="active.kpi.grid" data-comp-name="Mobile Updated Cap Card">
+          <div class="wt-card-bd wt-stack">
+            <div class="wt-between">
+              <span class="wt-muted">Updated Monthly Cap</span>
+              <span class="wt-badge">[ACTIVE]</span>
+            </div>
+            <div style="font-size: 20px; font-weight: 700;" data-when-var="request_tier" data-when-val="gt_500">$2,800.00</div>
+            <div style="font-size: 20px; font-weight: 700;" class="hidden" data-when-var="request_tier" data-when-val="le_500">$2,300.00</div>
+            <div class="wt-meter"><div class="wt-meter-fill" style="width: 66%;"></div></div>
+            <div class="wt-muted">$1,840.00 utilized · Next Slack alert at 90%</div>
+          </div>
+        </div>
+
+        <div class="wt-card" data-comp-id="active.audit.card" data-comp-name="Mobile Audit Trail Log Card">
+          <div class="wt-card-hd">FinOps Audit Trail</div>
+          <div class="wt-list">
+            <div class="wt-list-item">
+              <div>
+                <div style="font-weight: 600;">quota.cap_updated</div>
+                <div class="wt-mono wt-muted">14:26 UTC · CC-402</div>
+              </div>
+              <span class="wt-mono">$2,800</span>
+            </div>
+            <div class="wt-list-item">
+              <div>
+                <div style="font-weight: 600;">quota.topup_requested</div>
+                <div class="wt-mono wt-muted">14:23 UTC · maya.chen</div>
+              </div>
+              <span class="wt-mono">REQ-2049</span>
+            </div>
+          </div>
+          <div class="wt-card-ft">
+            <button type="button" class="wt-btn wt-btn-primary wt-btn-block" data-comp-id="active.back.btn" data-comp-name="Back to Dashboard Button" onclick="goNode('F_USAGE_DASH')">
+              Back to Dashboard
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="wt-tabbar">
+      <div class="wt-tabbar-item" role="button" tabindex="0" data-comp-id="app.act.tab.usage" data-comp-name="Mobile Active Usage Tab" onclick="goNode('F_USAGE_DASH')">Usage</div>
+      <div class="wt-tabbar-item" role="button" tabindex="0" data-comp-id="app.act.tab.keys" data-comp-name="Mobile Active Keys Tab" onclick="goNode('F_KEY_PAUSED')">Keys</div>
+      <div class="wt-tabbar-item" role="button" tabindex="0" data-comp-id="app.act.tab.approvals" data-comp-name="Mobile Active Approvals Tab" onclick="goNode('F_OWNER_REVIEW')">Approvals</div>
+      <div class="wt-tabbar-item active" role="button" tabindex="0" data-comp-id="app.act.tab.audit" data-comp-name="Mobile Active Audit Tab" onclick="goNode('F_QUOTA_ACTIVE')">Audit</div>
+    </div>
+  </div>
+</div>
+          </div>
+          <div class="frame-wide hidden" id="frame-wide">
+<div class="page" id="p-usage-dash" data-page="p-usage-dash" data-page-id="p-usage-dash">
+  <div class="wt-app-shell">
+    <aside class="wt-sidebar" data-comp-id="dash.sidebar.nav" data-comp-name="Workspace Sidebar Navigation" data-comp-role="nav">
+      <div class="wt-brand-row">
+        <span class="wt-brand-mark">AC</span>
+        <span>Acme AI Cloud</span>
+      </div>
+      <div class="wt-side-label">Workspace</div>
+      <button type="button" class="wt-side-item" data-comp-id="dash.nav.overview.btn" data-comp-name="Overview Nav Item" onclick="goNode('F_USAGE_DASH')">
+        <span>Overview</span>
+      </button>
+      <button type="button" class="wt-side-item" data-comp-id="dash.nav.members.btn" data-comp-name="Members Nav Item" onclick="goNode('F_OWNER_REVIEW')">
+        <span>Members</span>
+        <span class="wt-badge">14</span>
+      </button>
+      <button type="button" class="wt-side-item" data-comp-id="dash.nav.keys.btn" data-comp-name="API Keys Nav Item" onclick="goNode('F_KEY_PAUSED')">
+        <span>API Keys</span>
+        <span class="wt-badge">18</span>
+      </button>
+      <button type="button" class="wt-side-item active" data-comp-id="dash.nav.usage.btn" data-comp-name="Usage and Limits Nav Item" onclick="goNode('F_USAGE_DASH')">
+        <span>Usage &amp; Limits</span>
+      </button>
+      <button type="button" class="wt-side-item" data-comp-id="dash.nav.audit.btn" data-comp-name="Audit Logs Nav Item" onclick="goNode('F_QUOTA_ACTIVE')">
+        <span>Audit Logs</span>
+      </button>
+      <div class="wt-divider"></div>
+      <div class="wt-side-label">Cycle</div>
+      <div class="wt-muted" style="padding: 2px 8px;">Nov 1 - Nov 30<br>Tier: Enterprise v2.4</div>
+    </aside>
+
+    <main class="wt-main">
+      <div class="wt-between">
+        <div>
+          <div class="wt-breadcrumb">Acme Corp / Billing &amp; FinOps / <b>Usage &amp; Limits</b></div>
+          <div style="font-size: 15px; font-weight: 700; margin-top: 2px;">Spend Guardrails &amp; API Key Usage</div>
+        </div>
+        <div class="wt-row">
+          <button type="button" class="wt-btn" data-comp-id="dash.guardrail.btn" data-comp-name="Configure Guardrails Button" data-comp-role="control" onclick="goNode('F_GUARDRAIL_POLICY')">
+            Configure Guardrails
+          </button>
+          <button type="button" class="wt-btn wt-btn-primary" data-comp-id="dash.request.btn" data-comp-name="Request Quota Top-Up Button" data-comp-role="control" onclick="goNode('F_QUOTA_REQ')">
+            + Request Quota Top-Up
+          </button>
+        </div>
+      </div>
+
+      <div class="wt-alert wt-between" data-comp-id="dash.threshold.banner" data-comp-name="92 Percent Spend Alert Banner" data-comp-role="feedback">
+        <span><b>[ALERT 92%]</b> Monthly workspace spend reached <b>$1,840.00 / $2,000.00</b>. Auto-pause triggers at 100% hard cap.</span>
+        <button type="button" class="wt-btn wt-btn-sm" data-comp-id="dash.simulate.pause.btn" data-comp-name="Simulate 100 Percent Cap Trigger Button" onclick="setVar('cap_status','paused'); goNode('F_KEY_PAUSED')">
+          Preview 100% Cap State
+        </button>
+      </div>
+
+      <div class="wt-kpi-grid" data-comp-id="dash.kpi.grid" data-comp-name="Workspace Spend KPI Grid" data-comp-role="container">
+        <div class="wt-kpi-card">
+          <div class="wt-kpi-label"><span>Monthly Spend</span><span class="wt-pill-strong">92%</span></div>
+          <div class="wt-kpi-val">$1,840 <span class="wt-muted" style="font-weight: 400;">/ $2,000</span></div>
+          <div class="wt-meter"><div class="wt-meter-fill" style="width: 92%;"></div></div>
+          <div class="wt-kpi-sub">$160.00 remaining · Auto-Pause ON</div>
+        </div>
+        <div class="wt-kpi-card">
+          <div class="wt-kpi-label"><span>Active API Keys</span><span class="wt-badge">[LIVE]</span></div>
+          <div class="wt-kpi-val">18 <span class="wt-muted" style="font-weight: 400;">keys</span></div>
+          <div class="wt-kpi-sub">4 prod · 9 staging · 5 eval</div>
+          <div class="wt-kpi-sub">Peak burn: $94.20 / day</div>
+        </div>
+        <div class="wt-kpi-card">
+          <div class="wt-kpi-label"><span>Pending Requests</span><span class="wt-badge">QUEUE</span></div>
+          <div class="wt-kpi-val">2 <span class="wt-muted" style="font-weight: 400;">open</span></div>
+          <div class="wt-kpi-sub">Auto-approve ceiling: &lt;= $500</div>
+          <div class="wt-kpi-sub">Owner SLA: &lt; 15 mins</div>
+        </div>
+      </div>
+
+      <div class="wt-card" data-comp-id="dash.keys.card" data-comp-name="Project API Key Spend Breakdown Table" data-comp-role="container">
+        <div class="wt-card-hd wt-between">
+          <span>API Key &amp; Member Spend Breakdown (MTD)</span>
+          <select class="wt-select" style="width: 156px; padding: 3px 7px; font-size: 11.5px;" data-comp-id="dash.filter.select" data-comp-name="Project Environment Filter Select">
+            <option value="all">All Environments (18)</option>
+            <option value="prod">Production Keys (4)</option>
+            <option value="staging">Staging &amp; Eval (14)</option>
+          </select>
+        </div>
+        <table class="wt-table">
+          <thead>
+            <tr>
+              <th>Project / Key Prefix</th>
+              <th>Owner</th>
+              <th>MTD Spend</th>
+              <th>Share</th>
+              <th>Status</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><b>Core Agent Prod</b><br><span class="wt-mono wt-muted">sk-prod-...8f2a</span></td>
+              <td>maya.chen</td>
+              <td class="wt-mono">$1,120.40</td>
+              <td>60.9%</td>
+              <td><span class="wt-pill-strong">[NEAR CAP]</span></td>
+              <td><button type="button" class="wt-btn wt-btn-sm" data-comp-id="dash.row1.topup.btn" data-comp-name="Core Agent Row Top-Up Button" onclick="goNode('F_QUOTA_REQ')">Top Up</button></td>
+            </tr>
+            <tr>
+              <td><b>Code Review Bot</b><br><span class="wt-mono wt-muted">sk-prod-...3c19</span></td>
+              <td>alex.rivera</td>
+              <td class="wt-mono">$468.90</td>
+              <td>25.5%</td>
+              <td><span class="wt-badge">[ACTIVE]</span></td>
+              <td><button type="button" class="wt-btn wt-btn-sm" data-comp-id="dash.row2.policy.btn" data-comp-name="Code Review Bot Limit Button" onclick="goNode('F_GUARDRAIL_POLICY')">Limits</button></td>
+            </tr>
+            <tr>
+              <td><b>RAG Eval Nightly</b><br><span class="wt-mono wt-muted">sk-eval-...91d0</span></td>
+              <td>devon.park</td>
+              <td class="wt-mono">$250.70</td>
+              <td>13.6%</td>
+              <td><span class="wt-badge">[ACTIVE]</span></td>
+              <td><button type="button" class="wt-btn wt-btn-sm" data-comp-id="dash.row3.review.btn" data-comp-name="Review Pending Request Button" onclick="goNode('F_OWNER_REVIEW')">Review Req</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </main>
+  </div>
+</div>
+<div class="page" id="p-guardrail-modal" data-page="p-guardrail-modal" data-page-id="p-guardrail-modal">
+  <div class="wt-app-shell">
+    <aside class="wt-sidebar">
+      <div class="wt-brand-row">
+        <span class="wt-brand-mark">AC</span>
+        <span>Acme AI Cloud</span>
+      </div>
+      <div class="wt-side-label">Workspace</div>
+      <button type="button" class="wt-side-item" data-comp-id="policy.nav.overview.btn" data-comp-name="Policy View Overview Nav Item" onclick="goNode('F_USAGE_DASH')">
+        <span>Overview</span>
+      </button>
+      <button type="button" class="wt-side-item" data-comp-id="policy.nav.members.btn" data-comp-name="Policy View Members Nav Item" onclick="goNode('F_OWNER_REVIEW')">
+        <span>Members</span>
+      </button>
+      <button type="button" class="wt-side-item" data-comp-id="policy.nav.keys.btn" data-comp-name="Policy View API Keys Nav Item" onclick="goNode('F_KEY_PAUSED')">
+        <span>API Keys</span>
+      </button>
+      <button type="button" class="wt-side-item active" data-comp-id="policy.nav.usage.btn" data-comp-name="Policy View Usage Nav Item" onclick="goNode('F_USAGE_DASH')">
+        <span>Usage &amp; Limits</span>
+      </button>
+      <button type="button" class="wt-side-item" data-comp-id="policy.nav.audit.btn" data-comp-name="Policy View Audit Logs Nav Item" onclick="goNode('F_QUOTA_ACTIVE')">
+        <span>Audit Logs</span>
+      </button>
+    </aside>
+
+    <main class="wt-main" style="position: relative;">
+      <div class="wt-between">
+        <div>
+          <div class="wt-breadcrumb">Usage &amp; Limits / <b>Guardrail Policy Drawer</b></div>
+          <div style="font-size: 15px; font-weight: 700;">Workspace Spend Guardrails &amp; Auto-Pause Policy</div>
+        </div>
+        <span class="wt-badge">[ADMIN ONLY]</span>
+      </div>
+
+      <div class="wt-card" data-comp-id="policy.drawer.card" data-comp-name="Budget Guardrail Policy Configuration Card" data-comp-role="modal">
+        <div class="wt-card-hd wt-between">
+          <span>Guardrail Rules · Cycle Nov 2026</span>
+          <span class="wt-mono wt-muted">Policy Rev #14</span>
+        </div>
+        <div class="wt-card-bd wt-form">
+          <div class="wt-Split2">
+            <div class="wt-field">
+              <label class="wt-label">Monthly Hard Cap (USD) *</label>
+              <input class="wt-input wt-mono" type="number" value="2000" min="100" step="100" data-comp-id="policy.cap.input" data-comp-name="Monthly Hard Cap Input" data-comp-role="control" />
+              <div class="wt-help">Current spend: $1,840.00 (92% utilized).</div>
+            </div>
+            <div class="wt-field">
+              <label class="wt-label">Tiered Auto-Approve Threshold (USD) *</label>
+              <input class="wt-input wt-mono" type="number" value="500" min="0" step="50" data-comp-id="policy.threshold.input" data-comp-name="Auto-Approve Threshold Input" data-comp-role="control" />
+              <div class="wt-help">Top-ups &lt;= $500 unlock immediately; &gt; $500 require Owner sign-off.</div>
+            </div>
+          </div>
+
+          <div class="wt-field">
+            <label class="wt-label">Action When Spend Reaches 100% Hard Cap</label>
+            <div class="wt-Split2">
+              <button type="button" class="wt-btn wt-btn-primary" data-comp-id="policy.mode.pause.btn" data-comp-name="Auto-Pause Keys Enforcement Toggle" onclick="setVar('enforcement_mode','auto_pause'); setVar('cap_status','paused')">
+                [SELECTED] Auto-Pause Keys (Zero Overage)
+              </button>
+              <button type="button" class="wt-btn" data-comp-id="policy.mode.alert.btn" data-comp-name="Alert Only Enforcement Toggle" onclick="setVar('enforcement_mode','alert_only'); setVar('cap_status','within_cap')">
+                Alert Only (Allow Soft Overage)
+              </button>
+            </div>
+            <div class="wt-help" data-when-var="enforcement_mode" data-when-val="auto_pause">
+              <b>Active Rule:</b> Edge gateways return <span class="wt-mono">HTTP 429 quota_hard_cap_exceeded</span> within 5s of hitting 100%.
+            </div>
+            <div class="wt-help hidden" data-when-var="enforcement_mode" data-when-val="alert_only">
+              <b>Advisory Rule:</b> Keys stay live past 100% cap while PagerDuty/Slack alerts fire every 15m.
+            </div>
+          </div>
+
+          <div class="wt-switch-row">
+            <div>
+              <div style="font-size: 12px; font-weight: 600;">Slack &amp; Signed Webhook Threshold Alerts</div>
+              <div class="wt-help">Dispatch events at 80%, 90%, and 100% spend to <span class="wt-mono">#finops-ai-alerts</span></div>
+            </div>
+            <select class="wt-select" style="width: 144px;" data-comp-id="policy.webhook.select" data-comp-name="Webhook Alert Channel Toggle">
+              <option value="enabled" selected>[ON] 80% / 90% / 100%</option>
+              <option value="critical_only">[ON] 100% Cap Only</option>
+              <option value="disabled">[OFF] Muted</option>
+            </select>
+          </div>
+
+          <div class="wt-switch-row">
+            <div>
+              <div style="font-size: 12px; font-weight: 600;">Exempt Health-Check Keys from Auto-Pause</div>
+              <div class="wt-help">Keep synthetic uptime probe key (<span class="wt-mono">sk-probe-...01a</span>, capped at $10/mo) active</div>
+            </div>
+            <input type="checkbox" checked style="width: 16px; height: 16px;" data-comp-id="policy.exempt.checkbox" data-comp-name="Exempt Health-Check Key Checkbox" />
+          </div>
+        </div>
+
+        <div class="wt-card-ft wt-between">
+          <button type="button" class="wt-btn" data-comp-id="policy.cancel.btn" data-comp-name="Cancel Policy Changes Button" onclick="goNode('F_USAGE_DASH')">
+            Cancel
+          </button>
+          <div class="wt-row">
+            <button type="button" class="wt-btn" data-comp-id="policy.test.webhook.btn" data-comp-name="Send Test Webhook Button" onclick="goNode('D_HARD_CAP')">
+              Inspect Cap Check (D_HARD_CAP)
+            </button>
+            <button type="button" class="wt-btn wt-btn-primary" data-comp-id="policy.save.btn" data-comp-name="Save Guardrail Policy Button" onclick="goNode('D_HARD_CAP')">
+              Save Policy
+            </button>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+<div class="page" id="p-quota-request" data-page="p-quota-request" data-page-id="p-quota-request">
+  <div class="wt-app-shell">
+    <aside class="wt-sidebar">
+      <div class="wt-brand-row">
+        <span class="wt-brand-mark">AC</span>
+        <span>Acme AI Cloud</span>
+      </div>
+      <div class="wt-side-label">Workspace</div>
+      <button type="button" class="wt-side-item" data-comp-id="req.nav.overview.btn" data-comp-name="Request View Overview Nav Item" onclick="goNode('F_USAGE_DASH')">
+        <span>Overview</span>
+      </button>
+      <button type="button" class="wt-side-item" data-comp-id="req.nav.members.btn" data-comp-name="Request View Members Nav Item" onclick="goNode('F_OWNER_REVIEW')">
+        <span>Members</span>
+      </button>
+      <button type="button" class="wt-side-item" data-comp-id="req.nav.keys.btn" data-comp-name="Request View API Keys Nav Item" onclick="goNode('F_KEY_PAUSED')">
+        <span>API Keys</span>
+      </button>
+      <button type="button" class="wt-side-item active" data-comp-id="req.nav.usage.btn" data-comp-name="Request View Usage Nav Item" onclick="goNode('F_USAGE_DASH')">
+        <span>Usage &amp; Limits</span>
+      </button>
+      <button type="button" class="wt-side-item" data-comp-id="req.nav.audit.btn" data-comp-name="Request View Audit Logs Nav Item" onclick="goNode('F_QUOTA_ACTIVE')">
+        <span>Audit Logs</span>
+      </button>
+    </aside>
+
+    <main class="wt-main">
+      <div class="wt-between">
+        <div>
+          <div class="wt-breadcrumb">Usage &amp; Limits / <b>Request Quota Top-Up</b></div>
+          <div style="font-size: 15px; font-weight: 700;">Developer Quota Top-Up Request (REQ-2049)</div>
+        </div>
+        <span class="wt-badge">Requester: maya.chen</span>
+      </div>
+
+      <div class="wt-card" data-comp-id="req.form.card" data-comp-name="Quota Top-Up Request Form Card" data-comp-role="container">
+        <div class="wt-card-hd wt-between">
+          <span>Budget Increment &amp; Cost-Center Attribution</span>
+          <span class="wt-muted">Current Cap: $2,000.00 / mo</span>
+        </div>
+        <div class="wt-card-bd wt-form">
+          <div class="wt-Split2">
+            <div class="wt-field">
+              <label class="wt-label">Target Project &amp; API Key *</label>
+              <select class="wt-select" data-comp-id="req.project.select" data-comp-name="Target API Key Selector">
+                <option value="sk-prod-8f2a" selected>Core Agent Prod (sk-prod-...8f2a)</option>
+                <option value="sk-prod-3c19">Code Review Bot (sk-prod-...3c19)</option>
+                <option value="sk-eval-91d0">RAG Eval Nightly (sk-eval-...91d0)</option>
+              </select>
+            </div>
+            <div class="wt-field">
+              <label class="wt-label">Cost Center *</label>
+              <select class="wt-select" data-comp-id="req.costcenter.select" data-comp-name="Cost Center Selector">
+                <option value="cc-402" selected>CC-402 · Core AI Product R&amp;D</option>
+                <option value="cc-218">CC-218 · Developer Productivity</option>
+                <option value="cc-509">CC-509 · Customer Pilots</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="wt-field">
+            <label class="wt-label">Requested Extra Monthly Budget (USD) *</label>
+            <div class="wt-row">
+              <input class="wt-input wt-mono" type="number" value="800" min="50" step="50"
+                     data-comp-id="req.amount.input"
+                     data-comp-name="Requested Extra Budget Input"
+                     data-comp-role="control"
+                     oninput="setVar('request_tier', (parseFloat(this.value) || 0) > 500 ? 'gt_500' : 'le_500')" />
+              <button type="button" class="wt-btn wt-btn-sm" data-comp-id="req.preset.300.btn" data-comp-name="Preset +$300 Auto-Approve Button"
+                      onclick="var el=this.parentNode.querySelector('input'); if(el) el.value='300'; setVar('request_tier','le_500')">
+                +$300 (&lt;= $500 Auto)
+              </button>
+              <button type="button" class="wt-btn wt-btn-sm" data-comp-id="req.preset.800.btn" data-comp-name="Preset +$800 Owner Review Button"
+                      onclick="var el=this.parentNode.querySelector('input'); if(el) el.value='800'; setVar('request_tier','gt_500')">
+                +$800 (&gt; $500 Review)
+              </button>
+            </div>
+          </div>
+
+          <div class="wt-alert" data-when-var="request_tier" data-when-val="gt_500" data-comp-id="req.route.owner.alert" data-comp-name="Owner Approval Routing Notice">
+            <b>[OWNER REVIEW REQUIRED]</b> Requested top-up exceeds the <b>$500</b> auto-approve ceiling (New Cap: <b>$2,800/mo</b>). Will route to Workspace Owner (<b>jordan.lee</b>) via Slack &amp; Console.
+          </div>
+          <div class="wt-alert hidden" data-when-var="request_tier" data-when-val="le_500" data-comp-id="req.route.auto.alert" data-comp-name="Instant Auto-Approve Routing Notice">
+            <b>[INSTANT AUTO-APPROVE]</b> Requested top-up is within the <b>&lt;= $500</b> guardrail ceiling (New Cap: <b>$2,300/mo</b>). Keys unlock immediately on submit.
+          </div>
+
+          <div class="wt-field">
+            <label class="wt-label">Business Justification &amp; Expected Burn Duration *</label>
+            <textarea class="wt-textarea" data-comp-id="req.reason.textarea" data-comp-name="Business Justification Textarea">Scaling enterprise onboarding batch inference for Q4 customer cohort (+42k agent sessions through Nov 30).</textarea>
+          </div>
+        </div>
+
+        <div class="wt-card-ft wt-between">
+          <button type="button" class="wt-btn" data-comp-id="req.back.btn" data-comp-name="Back to Dashboard Button" onclick="goNode('F_USAGE_DASH')">
+            Back
+          </button>
+          <div class="wt-row">
+            <button type="button" class="wt-btn" data-comp-id="req.check.tier.btn" data-comp-name="Inspect Threshold Rule Button" onclick="goNode('D_THRESHOLD')">
+              Inspect Threshold Check
+            </button>
+            <button type="button" class="wt-btn wt-btn-primary" data-comp-id="req.submit.btn" data-comp-name="Submit Quota Request Button"
+                    onclick="goNode(getVar('request_tier') === 'le_500' ? 'F_QUOTA_ACTIVE' : 'F_OWNER_REVIEW')">
+              Submit Request
+            </button>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+<div class="page" id="p-owner-approval" data-page="p-owner-approval" data-page-id="p-owner-approval">
+  <div class="wt-app-shell">
+    <aside class="wt-sidebar">
+      <div class="wt-brand-row">
+        <span class="wt-brand-mark">AC</span>
+        <span>Acme AI Cloud</span>
+      </div>
+      <div class="wt-side-label">Workspace</div>
+      <button type="button" class="wt-side-item" data-comp-id="approve.nav.overview.btn" data-comp-name="Approval View Overview Nav Item" onclick="goNode('F_USAGE_DASH')">
+        <span>Overview</span>
+      </button>
+      <button type="button" class="wt-side-item" data-comp-id="approve.nav.members.btn" data-comp-name="Approval View Members Nav Item" onclick="goNode('F_OWNER_REVIEW')">
+        <span>Members</span>
+      </button>
+      <button type="button" class="wt-side-item" data-comp-id="approve.nav.keys.btn" data-comp-name="Approval View API Keys Nav Item" onclick="goNode('F_KEY_PAUSED')">
+        <span>API Keys</span>
+      </button>
+      <button type="button" class="wt-side-item active" data-comp-id="approve.nav.usage.btn" data-comp-name="Approval View Usage Nav Item" onclick="goNode('F_USAGE_DASH')">
+        <span>Usage &amp; Limits</span>
+        <span class="wt-pill-strong">1</span>
+      </button>
+      <button type="button" class="wt-side-item" data-comp-id="approve.nav.audit.btn" data-comp-name="Approval View Audit Logs Nav Item" onclick="goNode('F_QUOTA_ACTIVE')">
+        <span>Audit Logs</span>
+      </button>
+    </aside>
+
+    <main class="wt-main">
+      <div class="wt-between">
+        <div>
+          <div class="wt-breadcrumb">Usage &amp; Limits / Approvals / <b>REQ-2049</b></div>
+          <div style="font-size: 15px; font-weight: 700;">Workspace Owner Quota Approval Console</div>
+        </div>
+        <span class="wt-pill-strong">[PENDING OWNER SIGN-OFF]</span>
+      </div>
+
+      <div class="wt-kpi-grid" data-comp-id="approve.summary.grid" data-comp-name="Request Impact Summary Grid">
+        <div class="wt-kpi-card">
+          <div class="wt-kpi-label"><span>Requested Increment</span><span class="wt-badge">&gt; $500</span></div>
+          <div class="wt-kpi-val">+$800.00</div>
+          <div class="wt-kpi-sub">By maya.chen · CC-402</div>
+        </div>
+        <div class="wt-kpi-card">
+          <div class="wt-kpi-label"><span>Projected Monthly Cap</span><span class="wt-badge">NOV</span></div>
+          <div class="wt-kpi-val">$2,800 <span class="wt-muted" style="font-weight: 400;">(was $2k)</span></div>
+          <div class="wt-kpi-sub">Post-approval utilization: 65.7%</div>
+        </div>
+        <div class="wt-kpi-card">
+          <div class="wt-kpi-label"><span>Blocked Prod Keys</span><span class="wt-badge">IMPACT</span></div>
+          <div class="wt-kpi-val">1 <span class="wt-muted" style="font-weight: 400;">key paused</span></div>
+          <div class="wt-kpi-sub">sk-prod-...8f2a (Core Agent)</div>
+        </div>
+      </div>
+
+      <div class="wt-card" data-comp-id="approve.burn.card" data-comp-name="Burn-Rate Comparison Table Card">
+        <div class="wt-card-hd wt-between">
+          <span>7-Day Burn-Rate &amp; Justification Verification</span>
+          <span class="wt-muted">Submitted 4 mins ago</span>
+        </div>
+        <div class="wt-card-bd wt-stack">
+          <div class="wt-banner">
+            <b>Justification (maya.chen):</b> "Scaling enterprise onboarding batch inference for Q4 customer cohort (+42k agent sessions through Nov 30)."
+          </div>
+          <table class="wt-table">
+            <thead>
+              <tr>
+                <th>Metric</th>
+                <th>Prior 7d Avg</th>
+                <th>Current 24h</th>
+                <th>Forecast to Nov 30</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Daily Token Spend (<span class="wt-mono">sk-prod-...8f2a</span>)</td>
+                <td class="wt-mono">$58.40 / day</td>
+                <td class="wt-mono">$94.20 / day</td>
+                <td class="wt-mono">$2,685.00 est.</td>
+              </tr>
+              <tr>
+                <td>Error / Retry Rate (429s excluded)</td>
+                <td class="wt-mono">0.4%</td>
+                <td class="wt-mono">0.5%</td>
+                <td><span class="wt-badge">[HEALTHY TRAFFIC]</span></td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="wt-field">
+            <label class="wt-label">Owner Audit Note (Recorded in FinOps Log) *</label>
+            <input class="wt-input" type="text" value="Verified Q4 cohort launch traffic; approved $2,800 ceiling through Nov 30."
+                   data-comp-id="approve.comment.input"
+                   data-comp-name="Reviewer Audit Comment Input" />
+          </div>
+        </div>
+
+        <div class="wt-card-ft wt-between">
+          <button type="button" class="wt-btn wt-btn-danger" data-comp-id="approve.reject.btn" data-comp-name="Reject and Keep Cap Button"
+                  onclick="setVar('owner_decision','reject'); goNode('F_CAP_RETAINED')">
+            Reject &amp; Keep $2,000 Cap
+          </button>
+          <div class="wt-row">
+            <button type="button" class="wt-btn" data-comp-id="approve.inspect.btn" data-comp-name="Inspect Decision Diamond Button" onclick="goNode('D_OWNER_DECISION')">
+              Inspect Decision
+            </button>
+            <button type="button" class="wt-btn wt-btn-primary" data-comp-id="approve.confirm.btn" data-comp-name="Approve and Unlock Keys Button"
+                    onclick="setVar('owner_decision','approve'); goNode('F_QUOTA_ACTIVE')">
+              Approve +$800 &amp; Unlock Keys
+            </button>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+<div class="page" id="p-key-paused" data-page="p-key-paused" data-page-id="p-key-paused">
+  <div class="wt-app-shell">
+    <aside class="wt-sidebar">
+      <div class="wt-brand-row">
+        <span class="wt-brand-mark">AC</span>
+        <span>Acme AI Cloud</span>
+      </div>
+      <div class="wt-side-label">Workspace</div>
+      <button type="button" class="wt-side-item" data-comp-id="paused.nav.overview.btn" data-comp-name="Paused View Overview Nav Item" onclick="goNode('F_USAGE_DASH')">
+        <span>Overview</span>
+      </button>
+      <button type="button" class="wt-side-item" data-comp-id="paused.nav.members.btn" data-comp-name="Paused View Members Nav Item" onclick="goNode('F_OWNER_REVIEW')">
+        <span>Members</span>
+      </button>
+      <button type="button" class="wt-side-item active" data-comp-id="paused.nav.keys.btn" data-comp-name="Paused View API Keys Nav Item" onclick="goNode('F_KEY_PAUSED')">
+        <span>API Keys</span>
+        <span class="wt-pill-strong">PAUSED</span>
+      </button>
+      <button type="button" class="wt-side-item" data-comp-id="paused.nav.usage.btn" data-comp-name="Paused View Usage Nav Item" onclick="goNode('F_USAGE_DASH')">
+        <span>Usage &amp; Limits</span>
+      </button>
+      <button type="button" class="wt-side-item" data-comp-id="paused.nav.audit.btn" data-comp-name="Paused View Audit Logs Nav Item" onclick="goNode('F_QUOTA_ACTIVE')">
+        <span>Audit Logs</span>
+      </button>
+    </aside>
+
+    <main class="wt-main">
+      <div class="wt-between">
+        <div>
+          <div class="wt-breadcrumb">Acme Corp / API Keys / <b>Hard-Cap Enforcement State</b></div>
+          <div style="font-size: 15px; font-weight: 700;">Hard Cap Reached · Production Key Auto-Paused</div>
+        </div>
+        <span class="wt-pill-strong">[100% HARD CAP]</span>
+      </div>
+
+      <div class="wt-alert wt-alert-danger" data-comp-id="paused.cap.banner" data-comp-name="Hard-Cap Auto-Paused Alert Banner">
+        <div><b>[PAUSED AT 100% CAP]</b> API key <span class="wt-mono">sk-prod-...8f2a</span> paused at <b>$2,000.00 / $2,000.00</b> monthly hard cap. Zero overage billed; edge gateways return <span class="wt-mono">HTTP 429 quota_hard_cap_exceeded</span>.</div>
+      </div>
+
+      <div class="wt-alert hidden" data-when-var="owner_decision" data-when-val="reject" data-comp-id="paused.rejected.banner" data-comp-name="Owner Rejection Feedback Banner">
+        <b>[REQUEST REQ-2049 DENIED BY OWNER]</b> Cap retained at <b>$2,000.00</b>. Reviewer note: "Please scope request to &lt;= $500 staging top-up or attach VP ticket before re-submitting."
+      </div>
+
+      <div class="wt-card" data-comp-id="paused.detail.card" data-comp-name="Paused Key Diagnostics and Recovery Card">
+        <div class="wt-card-hd wt-between">
+          <span>Affected Keys &amp; Runtime Guardrail Diagnostics</span>
+          <span class="wt-mono wt-muted">Triggered 14:22:08 UTC</span>
+        </div>
+        <div class="wt-card-bd wt-stack">
+          <div class="wt-meter"><div class="wt-meter-fill" style="width: 100%;"></div></div>
+          <div class="wt-between wt-muted">
+            <span>Utilized: $2,000.00 / $2,000.00 (100.0%)</span>
+            <span>Unbilled Blocked Calls: 1,420 reqs</span>
+          </div>
+
+          <table class="wt-table">
+            <thead>
+              <tr>
+                <th>API Key</th>
+                <th>Project</th>
+                <th>Gateway Status</th>
+                <th>Exempt Rule</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="wt-mono">sk-prod-...8f2a</td>
+                <td>Core Agent Prod</td>
+                <td><span class="wt-pill-strong">[PAUSED · 429]</span></td>
+                <td>Standard Enforced</td>
+              </tr>
+              <tr>
+                <td class="wt-mono">sk-prod-...3c19</td>
+                <td>Code Review Bot</td>
+                <td><span class="wt-pill-strong">[PAUSED · 429]</span></td>
+                <td>Standard Enforced</td>
+              </tr>
+              <tr>
+                <td class="wt-mono">sk-probe-...01a</td>
+                <td>Synthetic Uptime Probe</td>
+                <td><span class="wt-badge">[ACTIVE · EXEMPT]</span></td>
+                <td>Health-Check Cap ($10)</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="wt-card-ft wt-between">
+          <button type="button" class="wt-btn" data-comp-id="paused.retry.btn" data-comp-name="Retry Gateway Health Check Button" onclick="goNode('F_USAGE_DASH')">
+            Back to Usage Dashboard
+          </button>
+          <div class="wt-row">
+            <button type="button" class="wt-btn" data-comp-id="paused.quick300.btn" data-comp-name="Emergency +$300 Auto-Unlock Button"
+                    onclick="setVar('request_tier','le_500'); goNode('F_QUOTA_REQ')">
+              Quick +$300 Unlock (&lt;= $500 Auto)
+            </button>
+            <button type="button" class="wt-btn wt-btn-primary" data-comp-id="paused.unlock.btn" data-comp-name="Request Quota Top-Up to Unlock Button"
+                    onclick="goNode('F_QUOTA_REQ')">
+              Request Quota Top-Up &amp; Unlock
+            </button>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+<div class="page" id="p-quota-active" data-page="p-quota-active" data-page-id="p-quota-active">
+  <div class="wt-app-shell">
+    <aside class="wt-sidebar">
+      <div class="wt-brand-row">
+        <span class="wt-brand-mark">AC</span>
+        <span>Acme AI Cloud</span>
+      </div>
+      <div class="wt-side-label">Workspace</div>
+      <button type="button" class="wt-side-item" data-comp-id="active.nav.overview.btn" data-comp-name="Active View Overview Nav Item" onclick="goNode('F_USAGE_DASH')">
+        <span>Overview</span>
+      </button>
+      <button type="button" class="wt-side-item" data-comp-id="active.nav.members.btn" data-comp-name="Active View Members Nav Item" onclick="goNode('F_OWNER_REVIEW')">
+        <span>Members</span>
+      </button>
+      <button type="button" class="wt-side-item" data-comp-id="active.nav.keys.btn" data-comp-name="Active View API Keys Nav Item" onclick="goNode('F_KEY_PAUSED')">
+        <span>API Keys</span>
+      </button>
+      <button type="button" class="wt-side-item" data-comp-id="active.nav.usage.btn" data-comp-name="Active View Usage Nav Item" onclick="goNode('F_USAGE_DASH')">
+        <span>Usage &amp; Limits</span>
+      </button>
+      <button type="button" class="wt-side-item active" data-comp-id="active.nav.audit.btn" data-comp-name="Active View Audit Logs Nav Item" onclick="goNode('F_QUOTA_ACTIVE')">
+        <span>Audit Logs</span>
+      </button>
+    </aside>
+
+    <main class="wt-main">
+      <div class="wt-between">
+        <div>
+          <div class="wt-breadcrumb">Acme Corp / Audit Logs / <b>Quota Updated</b></div>
+          <div style="font-size: 15px; font-weight: 700;">Monthly Cap Updated &amp; API Keys Active</div>
+        </div>
+        <span class="wt-pill-strong">[ALL KEYS ACTIVE]</span>
+      </div>
+
+      <div class="wt-alert" data-when-var="request_tier" data-when-val="gt_500" data-comp-id="active.owner.banner" data-comp-name="Owner Approved Confirmation Banner">
+        <b>[APPROVED &amp; UNLOCKED]</b> Workspace Owner (<b>jordan.lee</b>) approved <b>REQ-2049 (+$800.00)</b>. Monthly cap raised to <b>$2,800.00</b>; <span class="wt-mono">sk-prod-...8f2a</span> restored in 1.8s.
+      </div>
+      <div class="wt-alert hidden" data-when-var="request_tier" data-when-val="le_500" data-comp-id="active.auto.banner" data-comp-name="Auto-Approved Confirmation Banner">
+        <b>[AUTO-APPROVED IN 1.2s]</b> Guardrail policy auto-approved <b>REQ-2049 (+$300.00 &lt;= $500 limit)</b>. Monthly cap raised to <b>$2,300.00</b>; all 18 keys active.
+      </div>
+
+      <div class="wt-kpi-grid" data-comp-id="active.kpi.grid" data-comp-name="Updated Quota KPI Grid">
+        <div class="wt-kpi-card">
+          <div class="wt-kpi-label"><span>Updated Monthly Cap</span><span class="wt-badge">[LIVE]</span></div>
+          <div class="wt-kpi-val" data-when-var="request_tier" data-when-val="gt_500">$2,800.00</div>
+          <div class="wt-kpi-val hidden" data-when-var="request_tier" data-when-val="le_500">$2,300.00</div>
+          <div class="wt-meter"><div class="wt-meter-fill" style="width: 66%;"></div></div>
+          <div class="wt-kpi-sub">$1,840.00 spent · Headroom restored</div>
+        </div>
+        <div class="wt-kpi-card">
+          <div class="wt-kpi-label"><span>Gateway Key State</span><span class="wt-badge">18/18</span></div>
+          <div class="wt-kpi-val">[ACTIVE]</div>
+          <div class="wt-kpi-sub">Propagation latency: 1.8s global</div>
+        </div>
+        <div class="wt-kpi-card">
+          <div class="wt-kpi-label"><span>Next Alert Trigger</span><span class="wt-badge">90%</span></div>
+          <div class="wt-kpi-val">$2,520.00</div>
+          <div class="wt-kpi-sub">Slack #finops-ai-alerts armed</div>
+        </div>
+      </div>
+
+      <div class="wt-card" data-comp-id="active.audit.card" data-comp-name="Immutable FinOps Audit Trail Card">
+        <div class="wt-card-hd wt-between">
+          <span>FinOps Immutable Audit Trail</span>
+          <span class="wt-mono wt-muted">Retention: 365 Days</span>
+        </div>
+        <table class="wt-table">
+          <thead>
+            <tr>
+              <th>Timestamp (UTC)</th>
+              <th>Event</th>
+              <th>Actor</th>
+              <th>Cap Delta</th>
+              <th>Cost Center</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="wt-mono">14:26:19</td>
+              <td><b>quota.cap_updated</b> · Keys Unlocked</td>
+              <td>jordan.lee / Policy</td>
+              <td class="wt-mono">$2,000 -&gt; $2,800</td>
+              <td class="wt-mono">CC-402</td>
+            </tr>
+            <tr>
+              <td class="wt-mono">14:23:04</td>
+              <td><b>quota.topup_requested</b> (REQ-2049)</td>
+              <td>maya.chen</td>
+              <td class="wt-mono">+$800.00 req</td>
+              <td class="wt-mono">CC-402</td>
+            </tr>
+            <tr>
+              <td class="wt-mono">14:22:08</td>
+              <td><b>guardrail.hard_cap_paused</b></td>
+              <td>system.edge</td>
+              <td class="wt-mono">100% ($2,000)</td>
+              <td class="wt-mono">ALL</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="wt-card-ft wt-between">
+          <button type="button" class="wt-btn" data-comp-id="active.policy.btn" data-comp-name="Edit Guardrail Policy Button" onclick="goNode('F_GUARDRAIL_POLICY')">
+            Adjust Guardrail Policy
+          </button>
+          <button type="button" class="wt-btn wt-btn-primary" data-comp-id="active.back.btn" data-comp-name="Back to Dashboard Button" onclick="goNode('F_USAGE_DASH')">
+            Back to Dashboard
+          </button>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+          </div>
+        </div>
+        <aside class="anno-panel">
+          <div class="anno-card hidden" id="vars-card">
+            <div class="anno-card-title">Branch & State Controls</div>
+            <div id="vars-body"></div>
+          </div>
+          <div class="anno-card hidden" id="state-card">
+            <div class="anno-card-title">Page State</div>
+            <div id="state-body"></div>
+          </div>
+          <div class="anno-card">
+            <div class="anno-card-title">Node Spec</div>
+            <div id="anno-body"></div>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </aside>
+
+  <section class="spec-panel hidden" id="spec-panel-root">
+    <div class="spec-ws" id="spec-ws">
+      <svg class="tether-svg" id="tether-svg"></svg>
+      <div class="anchor-box hidden" id="anchor-box"></div>
+      <div class="spec-sticky" id="spec-stage-slot"></div>
+      <div class="spec-cards" id="spec-cards"></div>
+    </div>
+  </section>
+
+  <aside class="memo-drawer hidden" id="memo-drawer">
+    <div class="memo-hd">
+      <b>Review Comments</b>
+      <div style="display:flex;gap:6px">
+        <button type="button" onclick="document.getElementById('memo-import-file').click()" title="Import & merge multiple reviewers' .jsonl or .md files">Merge</button>
+        <button type="button" onclick="openMemoForCurrent()">+ New</button>
+      </div>
+    </div>
+    <div class="memo-reviewer-bar">
+      <span>Reviewer</span>
+      <input id="memo-reviewer-input" type="text" placeholder="Optional: e.g. Alex (FE) / Sam (QA)" oninput="saveReviewerName(this.value)" />
+      <input id="memo-import-file" type="file" multiple accept=".jsonl,.md,.json" class="hidden" onchange="importFeedbackFiles(this.files)" />
+    </div>
+    <div class="memo-form hidden" id="memo-form">
+      <div class="memo-ctx" id="memo-ctx"></div>
+      <div id="memo-input" class="memo-editor" contenteditable="true" data-placeholder="Click any element in the prototype to insert an @component chip, then type feedback (Cmd/Ctrl+Enter to save)"></div>
+      <div class="memo-form-hint hidden" id="memo-form-hint"></div>
+      <div style="display:flex;justify-content:flex-end;gap:6px">
+        <button type="button" onclick="closeMemoForm()">Cancel</button>
+        <button type="button" class="primary" onclick="saveMemoItem()">Save</button>
+      </div>
+    </div>
+    <div class="memo-list" id="memo-list"></div>
+    <div class="memo-export">
+      <button type="button" id="copy-md-btn" onclick="copyMemosMd()">Copy MD</button>
+      <button type="button" class="primary" onclick="downloadMemosMd()">Export .md</button>
+      <button type="button" onclick="downloadMemosJsonl()">Export .jsonl</button>
+    </div>
+  </aside>
+</div>
+
+<div id="pick-highlight-overlay"></div>
+<div id="pick-label-badge"></div>
+
+<div class="guard-mask hidden" id="export-guard-modal">
+  <div class="guard-modal">
+    <h3>存在落点已失效的备注</h3>
+    <p id="export-guard-msg"></p>
+    <div class="guard-actions">
+      <button type="button" onclick="closeExportGuard()">取消（去处理）</button>
+      <button type="button" id="export-all-with-invalid-btn" onclick="confirmExportAllWithInvalid()">仍导出全部（含失效标记）</button>
+      <button type="button" class="primary" id="export-valid-only-btn" onclick="confirmExportValidOnly()">仅导出有效备注</button>
+    </div>
+  </div>
+</div>
+
+<script>
+var META = {"project": "ai-workspace-guardrails", "title": "Acme AI Cloud · Spend Guardrails & Quota Approval (v2.4)", "doc_version": "v2.4", "lang": "en", "platform_default": "web", "entry_node": "F_USAGE_DASH", "prd_source": "prd.md"};
+var ENTRY_NODE = "F_USAGE_DASH";
+var NODES = {"F_USAGE_DASH": {"page": "p-usage-dash", "title": "Usage & Spend Dashboard", "change": "unchanged", "anno": [["Real-Time Workspace Spend", "Displays MTD spend ($1,840 / $2,000 at 92%), 18 active API keys, and per-project burn share."], ["Dual Entry Actions", "Admins open Guardrail Policy Drawer; developers trigger proactive or emergency Quota Top-Up requests."]]}, "F_GUARDRAIL_POLICY": {"page": "p-guardrail-modal", "title": "Guardrail Policy Drawer", "change": "new", "anno": [["Hard Cap & Auto-Approve Ceiling (v2.4 New)", "Sets workspace monthly hard cap ($2,000) and tiered instant auto-approval threshold ($500)."], ["Health-Check Key Exemption", "Allows synthetic uptime probes (capped at $10/mo) to stay online when production keys auto-pause."]]}, "D_HARD_CAP": {"page": "p-guardrail-modal", "title": "Spend Hits 100% Cap?", "isDecision": true, "branchVar": "cap_status", "change": "new", "anno": [["Deterministic Gateway Enforcement", "When spend reaches 100% with Auto-Pause enabled, edge gateways pause non-exempt keys within 5s (HTTP 429)."]]}, "F_KEY_PAUSED": {"page": "p-key-paused", "title": "API Key Auto-Paused", "change": "new", "anno": [["Zero-Overage Pause State (v2.4 New)", "Blocks further billable token burn on sk-prod-...8f2a and surfaces one-click emergency top-up recovery."]]}, "F_QUOTA_REQ": {"page": "p-quota-request", "title": "Quota Top-Up Request", "change": "modified", "anno": [["Live Tier Preview (v2.4 Modified)", "Typing an amount or clicking +$300 / +$800 dynamically updates request_tier and previews routing before submit."]]}, "D_THRESHOLD": {"page": "p-quota-request", "title": "Top-Up > $500 Limit?", "isDecision": true, "branchVar": "request_tier", "change": "new", "anno": [["Tiered Auto-Approval Routing", "Requests <= $500 with an active cost center auto-approve in < 2s; requests > $500 route to Workspace Owner."]]}, "F_OWNER_REVIEW": {"page": "p-owner-approval", "title": "Owner Approval Console", "change": "unchanged", "anno": [["Burn-Rate Context & Audit Sign-Off", "Presents 7-day daily spend comparison, error rates, and requester justification alongside mandatory audit comment."]]}, "D_OWNER_DECISION": {"page": "p-owner-approval", "title": "Owner Approves?", "isDecision": true, "branchVar": "owner_decision", "change": "modified", "anno": [["Approve vs Retain Cap", "Approval atomically increments cap and unpauses keys; rejection retains $2,000 cap and loops back for revision."]]}, "F_QUOTA_ACTIVE": {"page": "p-quota-active", "title": "Quota Active & Keys Unlocked", "change": "unchanged", "anno": [["Global Unpause & FinOps Log", "Confirms updated monthly cap ($2,800 or $2,300), restored 18/18 active keys, and immutable 365-day audit entry."]]}, "F_CAP_RETAINED": {"page": "p-key-paused", "title": "Cap Retained · Request Denied", "change": "unchanged", "anno": [["Rejected Request Loop", "Keeps $2,000 cap intact, displays owner feedback note, and lets developer revise top-up amount to resubmit."]]}};
+var PAGE_FRAME = {"p-usage-dash": "wide", "p-guardrail-modal": "wide", "p-quota-request": "wide", "p-owner-approval": "wide", "p-key-paused": "wide", "p-quota-active": "wide", "p-app-usage-dash": "phone", "p-app-guardrail-modal": "phone", "p-app-quota-request": "phone", "p-app-owner-approval": "phone", "p-app-key-paused": "phone", "p-app-quota-active": "phone"};
+var VARIANT_MAP = {"p-usage-dash": {"base": "p-usage-dash", "variants": {"wide": "p-usage-dash", "web": "p-usage-dash", "phone": "p-app-usage-dash", "app": "p-app-usage-dash"}}, "p-app-usage-dash": {"base": "p-usage-dash", "variants": {"wide": "p-usage-dash", "web": "p-usage-dash", "phone": "p-app-usage-dash", "app": "p-app-usage-dash"}}, "p-guardrail-modal": {"base": "p-guardrail-modal", "variants": {"wide": "p-guardrail-modal", "web": "p-guardrail-modal", "phone": "p-app-guardrail-modal", "app": "p-app-guardrail-modal"}}, "p-app-guardrail-modal": {"base": "p-guardrail-modal", "variants": {"wide": "p-guardrail-modal", "web": "p-guardrail-modal", "phone": "p-app-guardrail-modal", "app": "p-app-guardrail-modal"}}, "p-quota-request": {"base": "p-quota-request", "variants": {"wide": "p-quota-request", "web": "p-quota-request", "phone": "p-app-quota-request", "app": "p-app-quota-request"}}, "p-app-quota-request": {"base": "p-quota-request", "variants": {"wide": "p-quota-request", "web": "p-quota-request", "phone": "p-app-quota-request", "app": "p-app-quota-request"}}, "p-owner-approval": {"base": "p-owner-approval", "variants": {"wide": "p-owner-approval", "web": "p-owner-approval", "phone": "p-app-owner-approval", "app": "p-app-owner-approval"}}, "p-app-owner-approval": {"base": "p-owner-approval", "variants": {"wide": "p-owner-approval", "web": "p-owner-approval", "phone": "p-app-owner-approval", "app": "p-app-owner-approval"}}, "p-key-paused": {"base": "p-key-paused", "variants": {"wide": "p-key-paused", "web": "p-key-paused", "phone": "p-app-key-paused", "app": "p-app-key-paused"}}, "p-app-key-paused": {"base": "p-key-paused", "variants": {"wide": "p-key-paused", "web": "p-key-paused", "phone": "p-app-key-paused", "app": "p-app-key-paused"}}, "p-quota-active": {"base": "p-quota-active", "variants": {"wide": "p-quota-active", "web": "p-quota-active", "phone": "p-app-quota-active", "app": "p-app-quota-active"}}, "p-app-quota-active": {"base": "p-quota-active", "variants": {"wide": "p-quota-active", "web": "p-quota-active", "phone": "p-app-quota-active", "app": "p-app-quota-active"}}};
+var STATE_GROUPS = {};
+var VARS = [{"id": "platform", "label": "Platform", "kind": "global", "default": "web", "options": [{"id": "web", "label": "Web Console"}, {"id": "app", "label": "Mobile App 375px"}]}, {"id": "enforcement_mode", "label": "100% Cap Action", "kind": "local", "default": "auto_pause", "pages": ["p-guardrail-modal", "p-app-guardrail-modal"], "options": [{"id": "auto_pause", "label": "Auto-Pause Keys"}, {"id": "alert_only", "label": "Alert Only"}]}, {"id": "cap_status", "label": "Monthly Cap State", "kind": "branch", "default": "paused", "diamond": "D_HARD_CAP", "nodes": ["F_USAGE_DASH", "F_GUARDRAIL_POLICY", "D_HARD_CAP", "F_KEY_PAUSED"], "options": [{"id": "within_cap", "label": "< 100% Cap (Active)", "target": "F_QUOTA_REQ"}, {"id": "paused", "label": "100% Cap (Auto-Pause)", "target": "F_KEY_PAUSED"}]}, {"id": "request_tier", "label": "Top-Up Amount Tier", "kind": "branch", "default": "gt_500", "diamond": "D_THRESHOLD", "nodes": ["F_QUOTA_REQ", "D_THRESHOLD", "F_OWNER_REVIEW", "F_QUOTA_ACTIVE"], "options": [{"id": "le_500", "label": "<= $500 (Auto-Approve)", "target": "F_QUOTA_ACTIVE"}, {"id": "gt_500", "label": "> $500 (Owner Review)", "target": "F_OWNER_REVIEW"}]}, {"id": "owner_decision", "label": "Owner Review Decision", "kind": "branch", "default": "approve", "diamond": "D_OWNER_DECISION", "nodes": ["F_OWNER_REVIEW", "D_OWNER_DECISION", "F_QUOTA_ACTIVE", "F_CAP_RETAINED"], "options": [{"id": "approve", "label": "Approve & Unlock", "target": "F_QUOTA_ACTIVE"}, {"id": "reject", "label": "Reject & Keep Cap", "target": "F_CAP_RETAINED"}]}];
+var SPEC_CARDS = [{"id": "SC-01", "title": "Tiered Auto-Approval Guardrail ($500 Threshold)", "page": "p-guardrail-modal", "anchor": "policy.threshold.input", "body": "Workspace admins configure an instant auto-approval ceiling (default $500). Top-up requests <= $500 under a verified cost center skip manual queue and unlock keys in < 2s."}, {"id": "SC-02", "title": "Live Threshold Routing Preview on Amount Input", "page": "p-quota-request", "anchor": "req.amount.input", "body": "Entering a top-up amount or selecting +$300 / +$800 presets dynamically updates request_tier and previews whether the request will auto-approve or route to Workspace Owner."}, {"id": "SC-03", "title": "Zero-Overage Hard-Cap Pause & 1-Click Recovery", "page": "p-key-paused", "anchor": "paused.unlock.btn", "body": "Reaching 100% of the monthly hard cap pauses non-exempt API keys within 5s (HTTP 429 quota_hard_cap_exceeded) while keeping synthetic health probes online and deep-linking to emergency top-up."}, {"id": "SC-04", "title": "Atomic Cap Increment & Edge Key Unpause", "page": "p-owner-approval", "anchor": "approve.confirm.btn", "body": "Owner approval atomically raises the monthly hard cap ($2,000 -> $2,800), restores paused keys across all edge gateways, and appends a signed 365-day FinOps audit trail record."}];
+var INITIAL_MEMOS = [];
+var currentNode = null;
+var currentState = null;
+var currentPage = null;
+var varValues = {};
+var wbView = "flow";
+var activeSpecId = null;
+
+(VARS || []).forEach(function (v) {
+  if (v && v.id && v.options && v.options.length) {
+    varValues[v.id] = v.default || v.options[0].id;
+  }
+});
+
+function computeDocVersionHash() {
+  var parts = [];
+  parts.push(Object.keys(NODES || {}).sort().map(function (k) {
+    var n = NODES[k] || {};
+    return k + ":" + (n.page || "") + ":" + (n.branchVar || "");
+  }).join(","));
+  parts.push((VARS || []).map(function (v) {
+    return v.id + ":" + (v.options || []).map(function (o) {
+      return o.id + ">" + (o.target || "");
+    }).join("/");
+  }).join(","));
+  parts.push((SPEC_CARDS || []).map(function (c) {
+    return c.id + ":" + (c.page || "") + ":" + (c.anchor || "");
+  }).join(","));
+  document.querySelectorAll(".page").forEach(function (pg) {
+    var comps = Array.prototype.slice.call(pg.querySelectorAll("[data-comp-id]"))
+      .map(function (el) { return el.getAttribute("data-comp-id"); });
+    parts.push((pg.id || "") + "=" + comps.join(","));
+  });
+  var raw = parts.join("|");
+  var h = 2166136261;
+  for (var i = 0; i < raw.length; i++) {
+    h ^= raw.charCodeAt(i);
+    h = (h * 16777619) >>> 0;
+  }
+  return ("00000000" + h.toString(16)).slice(-8);
+}
+
+var DOC_VERSION_HASH = computeDocVersionHash();
+var PROJECT_SLUG = (typeof META === "object" && META && META.project) ? String(META.project) : "default";
+var IS_EN = (typeof META === "object" && META && String(META.lang || "").toLowerCase().indexOf("en") === 0);
+var UI_TEXT = IS_EN ? {
+  branchTag: "Branch",
+  localTag: "Scoped",
+  jumpTo: "Jump to: ",
+  noAnno: "No node specification notes.",
+  showDetail: "Show Inspector",
+  fullCanvas: "Full Canvas",
+  ctxPrefix: "Context: ",
+  pickedPrefix: "Inserted @",
+  hoverPrefix: "Click to mention @",
+  memoToggle: "Comments",
+  memoEmpty: "No review comments yet.<br>Click '+ New' and click any UI element to insert an @chip.",
+  invalidBadge: "Stale Anchor",
+  conflictBadge: "Multi-Review",
+  conflictTitle: "Multiple comments target this same component",
+  delBtn: "Delete",
+  emptyHint: "Please write your comment after the @component chip.",
+  copied: "Copied",
+  noMemosAlert: "No review comments to export."
+} : {
+  branchTag: "分支条件",
+  localTag: "局部组件",
+  jumpTo: "跳转至：",
+  noAnno: "暂无节点规则说明",
+  showDetail: "显示详情",
+  fullCanvas: "全屏画布",
+  ctxPrefix: "当前上下文：",
+  pickedPrefix: "已插入 @",
+  hoverPrefix: "点击添加 @",
+  memoToggle: "评审备注",
+  memoEmpty: "暂无评审备注。<br>点击「+ 新增」后，可直接点选原型组件添加 @ 胶囊。",
+  invalidBadge: "落点已失效",
+  conflictBadge: "同组件多方意见",
+  conflictTitle: "多条备注指向同一组件",
+  delBtn: "删除",
+  emptyHint: "请输入具体修改意见（仅选择 @组件 无法保存）",
+  copied: "已复制",
+  noMemosAlert: "当前没有可导出的评审备注。"
+};
+var MEMO_STORAGE_KEY = "wt_memos_" + PROJECT_SLUG;
+var REVIEWER_STORAGE_KEY = "wt_reviewer_name";
+
+function getReviewerName() {
+  var el = document.getElementById("memo-reviewer-input");
+  if (el && el.value.trim()) return el.value.trim();
+  try { return (localStorage.getItem(REVIEWER_STORAGE_KEY) || "").trim(); } catch (e) { return ""; }
+}
+
+window.saveReviewerName = function (val) {
+  try { localStorage.setItem(REVIEWER_STORAGE_KEY, String(val || "").trim()); } catch (e) {}
+};
+
+function escapeHtml(str) {
+  return String(str || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function resolveVariantPage(pageId, platVal) {
+  if (!pageId || typeof VARIANT_MAP !== "object" || !VARIANT_MAP || !VARIANT_MAP[pageId]) {
+    return pageId;
+  }
+  var plat = platVal !== undefined ? platVal : varValues.platform;
+  if (!plat) return pageId;
+  var vmap = VARIANT_MAP[pageId].variants || {};
+  if (vmap[plat] && PAGE_FRAME[vmap[plat]]) return vmap[plat];
+  var pStr = String(plat).toLowerCase();
+  var targetFrame = "";
+  if (/^(pc|web|web[-_]?admin|desktop|wide|admin|pad)$/.test(pStr)) {
+    targetFrame = "wide";
+  } else if (/^(app|h5|mobile|phone|mp|mini[-_]?program|ios|android)$/.test(pStr)) {
+    targetFrame = "phone";
+  }
+  if (targetFrame && vmap[targetFrame] && PAGE_FRAME[vmap[targetFrame]]) {
+    return vmap[targetFrame];
+  }
+  return pageId;
+}
+
+function initDeltaHighlights() {
+  Object.keys(NODES || {}).forEach(function (nodeId) {
+    var n = NODES[nodeId];
+    var chg = n && n.change;
+    if (chg !== "new" && chg !== "modified") return;
+    var g = document.querySelector('.flow-svg g[data-node="' + nodeId + '"]');
+    if (!g) return;
+    g.classList.add("wt-delta-node");
+    g.setAttribute("data-change", chg);
+    if (!g.querySelector(".wt-delta-dot")) {
+      var dotX = null;
+      var dotY = null;
+      var rectEl = g.querySelector("rect");
+      var polyEl = g.querySelector("polygon");
+      if (rectEl) {
+        var rx = parseFloat(rectEl.getAttribute("x"));
+        var ry = parseFloat(rectEl.getAttribute("y"));
+        var rw = parseFloat(rectEl.getAttribute("width"));
+        if (!isNaN(rx) && !isNaN(ry) && !isNaN(rw)) {
+          dotX = rx + rw - 2;
+          dotY = ry + 2;
+        }
+      } else if (polyEl) {
+        var nums = (polyEl.getAttribute("points") || "").match(/-?\d+(?:\.\d+)?/g);
+        if (nums && nums.length >= 4) {
+          dotX = (parseFloat(nums[0]) + parseFloat(nums[2])) / 2;
+          dotY = (parseFloat(nums[1]) + parseFloat(nums[3])) / 2;
+        }
+      }
+      if (dotX === null || dotY === null) {
+        try {
+          var bb = g.getBBox();
+          dotX = bb.x + bb.width - 3;
+          dotY = bb.y + 3;
+        } catch (e) {}
+      }
+      if (dotX !== null && dotY !== null) {
+        var dot = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+        dot.setAttribute("class", "wt-delta-dot");
+        dot.setAttribute("cx", String(dotX));
+        dot.setAttribute("cy", String(dotY));
+        dot.setAttribute("r", "4.5");
+        dot.setAttribute("fill", "#d97706");
+        dot.setAttribute("stroke", "#ffffff");
+        dot.setAttribute("stroke-width", "1.5");
+        g.appendChild(dot);
+      }
+    }
+  });
+
+  (SPEC_CARDS || []).forEach(function (card) {
+    if (!card || !card.anchor) return;
+    var pageIds = [];
+    if (card.page) {
+      pageIds.push(card.page);
+      if (typeof VARIANT_MAP === "object" && VARIANT_MAP && VARIANT_MAP[card.page]) {
+        var vmap = VARIANT_MAP[card.page].variants || {};
+        Object.keys(vmap).forEach(function (k) {
+          if (vmap[k] && pageIds.indexOf(vmap[k]) < 0) pageIds.push(vmap[k]);
+        });
+      }
+    }
+    var roots = pageIds.length
+      ? pageIds.map(function (pid) { return document.getElementById(pid); }).filter(Boolean)
+      : Array.prototype.slice.call(document.querySelectorAll(".page"));
+    roots.forEach(function (root) {
+      root.querySelectorAll("[data-comp-id], [data-anchor]").forEach(function (el) {
+        if (el.getAttribute("data-comp-id") === card.anchor ||
+            el.getAttribute("data-anchor") === card.anchor) {
+          el.classList.add("wt-delta-target");
+        }
+      });
+    });
+  });
+}
+
+window.toggleDeltaHighlight = function (force) {
+  var on = force !== undefined ? !!force : !document.body.classList.contains("show-delta");
+  document.body.classList.toggle("show-delta", on);
+  var btn = document.getElementById("delta-toggle-btn");
+  if (btn) btn.classList.toggle("active", on);
+};
+
+function checkVarWhen(v) {
+  if (!v.when) return true;
+  for (var k in v.when) {
+    var expected = v.when[k];
+    var actual = varValues[k];
+    if (Array.isArray(expected)) {
+      if (expected.indexOf(actual) < 0) return false;
+    } else if (actual !== expected) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function isVarApplicable(v) {
+  if (!v || !checkVarWhen(v)) return false;
+  if (v.kind === "global") return true;
+  if (currentNode && NODES[currentNode] && NODES[currentNode].isDecision) {
+    if (v.diamond === currentNode || v.id === NODES[currentNode].branchVar) return true;
+  }
+  var hasNodes = Array.isArray(v.nodes) && v.nodes.length > 0;
+  var hasPages = Array.isArray(v.pages) && v.pages.length > 0;
+  if (!hasNodes && !hasPages) return true;
+  var nMatch = hasNodes ? v.nodes.indexOf(currentNode) >= 0 : false;
+  var pMatch = hasPages ? v.pages.indexOf(currentPage) >= 0 : false;
+  return nMatch || pMatch;
+}
+
+function syncDeclarativePageVars() {
+  document.querySelectorAll("[data-when-var]").forEach(function (el) {
+    var varId = el.getAttribute("data-when-var");
+    var expected = el.getAttribute("data-when-val");
+    if (!varId || expected === null) return;
+    var vals = expected.split(",").map(function (s) { return s.trim(); });
+    el.classList.toggle("hidden", vals.indexOf(String(varValues[varId])) < 0);
+  });
+}
+
+function renderGlobalVars() {
+  var bar = document.getElementById("global-vars-bar");
+  if (!bar) return;
+  var globals = (VARS || []).filter(function (v) {
+    return v.kind === "global" && checkVarWhen(v);
+  });
+  bar.innerHTML = globals.map(function (v) {
+    var btns = (v.options || []).map(function (o) {
+      var active = varValues[v.id] === o.id ? " active" : "";
+      return '<button type="button" class="seg-btn' + active + '" onclick="setVar(\'' +
+        escapeHtml(v.id) + '\',\'' + escapeHtml(o.id) + '\')">' +
+        escapeHtml(o.label) + '</button>';
+    }).join("");
+    return '<div class="wb-gvar"><span>' + escapeHtml(v.label) + '</span>' +
+      '<div class="seg-group">' + btns + '</div></div>';
+  }).join("");
+}
+
+function renderScopedVars() {
+  var card = document.getElementById("vars-card");
+  var body = document.getElementById("vars-body");
+  if (!card || !body) return;
+
+  var scoped = (VARS || []).filter(function (v) {
+    return v.kind !== "global" && isVarApplicable(v);
+  });
+
+  var activeBranches = [];
+  (VARS || []).forEach(function (v) {
+    if (v.kind === "branch" && v.diamond && checkVarWhen(v)) {
+      var cur = (v.options || []).find(function (o) { return o.id === varValues[v.id]; });
+      if (cur && cur.target) {
+        activeBranches.push({ diamond: v.diamond, target: cur.target, optId: cur.id });
+      }
+    }
+  });
+  highlightBranchEdges(activeBranches);
+
+  if (!scoped.length) {
+    body.innerHTML = "";
+    card.classList.add("hidden");
+    return;
+  }
+
+  body.innerHTML = scoped.map(function (v) {
+    var tag = v.kind === "branch" ? UI_TEXT.branchTag : UI_TEXT.localTag;
+    var curOpt = (v.options || []).find(function (o) { return o.id === varValues[v.id]; });
+    var optsHtml = (v.options || []).map(function (o) {
+      var curCls = varValues[v.id] === o.id ? " cur" : "";
+      return '<button type="button" class="var-opt' + curCls + '" onclick="setVar(\'' +
+        escapeHtml(v.id) + '\',\'' + escapeHtml(o.id) + '\')">' +
+        escapeHtml(o.label) + '</button>';
+    }).join("");
+    var goHtml = (v.kind === "branch" && curOpt && curOpt.target && NODES[curOpt.target])
+      ? '<button type="button" class="branch-go-btn" onclick="goBranch(\'' +
+        escapeHtml(v.id) + '\')">' + UI_TEXT.jumpTo +
+        escapeHtml(NODES[curOpt.target].title || curOpt.target) + ' →</button>'
+      : "";
+    return '<div class="var-block"><div class="var-head"><b>' + escapeHtml(v.label) +
+      '</b><span class="var-kind-tag">' + tag + '</span></div>' +
+      '<div class="var-opts">' + optsHtml + '</div>' + goHtml + '</div>';
+  }).join("");
+  card.classList.remove("hidden");
+}
+
+function buildSvgEdgeMap() {
+  var polys = document.querySelectorAll("#flow-svg polyline[data-from]");
+  var outMap = {};
+  polys.forEach(function (pl) {
+    var f = pl.getAttribute("data-from");
+    var t = pl.getAttribute("data-to");
+    if (f && t) {
+      (outMap[f] = outMap[f] || []).push({
+        to: t,
+        branch: pl.getAttribute("data-branch") || "",
+        pl: pl
+      });
+    }
+  });
+  return { polys: polys, outMap: outMap };
+}
+
+function canReachNode(outMap, startId, goalId) {
+  if (!startId || !goalId) return false;
+  if (startId === goalId) return true;
+  var seen = {};
+  var q = [startId];
+  seen[startId] = true;
+  while (q.length) {
+    var cur = q.shift();
+    if (cur !== startId && NODES[cur] && !NODES[cur].isDecision) continue;
+    var outs = outMap[cur] || [];
+    for (var i = 0; i < outs.length; i++) {
+      var nxt = outs[i].to;
+      if (nxt === goalId) return true;
+      if (!seen[nxt]) {
+        seen[nxt] = true;
+        q.push(nxt);
+      }
+    }
+  }
+  return false;
+}
+
+function pickDiamondOutgoingEdge(outMap, diamondChoice, dId) {
+  var info = diamondChoice[dId];
+  var outs = outMap[dId] || [];
+  if (!info || !outs.length) return null;
+  var rawTarget = info.target;
+  var optId = info.optId;
+  return outs.find(function (e) { return optId && e.branch === optId; }) ||
+    outs.find(function (e) { return e.to === rawTarget; }) ||
+    outs.find(function (e) { return diamondChoice[e.to] && canReachNode(outMap, e.to, rawTarget); }) ||
+    outs.find(function (e) { return canReachNode(outMap, e.to, rawTarget); }) ||
+    null;
+}
+
+function highlightBranchEdges(activeBranches) {
+  var g = buildSvgEdgeMap();
+  g.polys.forEach(function (pl) {
+    pl.classList.remove("branch-active");
+    pl.classList.remove("branch-dim");
+  });
+  if (!activeBranches || !activeBranches.length) return;
+  var diamondChoice = {};
+  activeBranches.forEach(function (item) {
+    if (item.diamond) diamondChoice[item.diamond] = item;
+  });
+  var visited = {};
+  function walkDiamond(dId) {
+    if (!dId || visited[dId] || !diamondChoice[dId]) return;
+    visited[dId] = true;
+    var outs = g.outMap[dId] || [];
+    var chosen = pickDiamondOutgoingEdge(g.outMap, diamondChoice, dId);
+    if (!chosen) return;
+    chosen.pl.classList.remove("branch-dim");
+    chosen.pl.classList.add("branch-active");
+    outs.forEach(function (e) {
+      if (e !== chosen && !e.pl.classList.contains("branch-active")) {
+        e.pl.classList.add("branch-dim");
+      }
+    });
+    if (diamondChoice[chosen.to]) walkDiamond(chosen.to);
+  }
+  (g.outMap[currentNode] || []).forEach(function (e) {
+    if (diamondChoice[e.to]) {
+      e.pl.classList.add("branch-active");
+      walkDiamond(e.to);
+    }
+  });
+  Object.keys(diamondChoice).forEach(function (dId) { walkDiamond(dId); });
+}
+
+var isRestoringHash = false;
+function syncUrlHash() {
+  if (isRestoringHash) return;
+  var params = new URLSearchParams();
+  if (currentNode) params.set("node", currentNode);
+  (VARS || []).forEach(function (v) {
+    if (v && v.id && varValues[v.id] !== undefined) {
+      params.set(v.id, varValues[v.id]);
+    }
+  });
+  if (wbView && wbView !== "flow") params.set("view", wbView);
+  var newHash = "#" + params.toString();
+  if (location.hash !== newHash) {
+    try { history.replaceState(null, "", newHash); } catch (e) { location.hash = newHash; }
+  }
+}
+
+function parseUrlHash() {
+  var raw = (location.hash || "").replace(/^#/, "");
+  var out = { node: null, view: null };
+  if (!raw) return out;
+  var params = new URLSearchParams(raw);
+  (VARS || []).forEach(function (v) {
+    if (!v || !v.id || !params.has(v.id)) return;
+    var val = params.get(v.id);
+    if ((v.options || []).some(function (o) { return o.id === val; })) {
+      varValues[v.id] = val;
+    }
+  });
+  var n = params.get("node");
+  if (n && NODES[n]) out.node = n;
+  var vw = params.get("view");
+  if (vw === "flow" || vw === "spec") out.view = vw;
+  return out;
+}
+
+window.getVar = function (varId) { return varValues[varId]; };
+window.setVar = function (varId, optId) {
+  var v = (VARS || []).find(function (x) { return x.id === varId; });
+  if (!v) return;
+  var opt = (v.options || []).find(function (o) { return o.id === optId; });
+  if (!opt) return;
+  varValues[varId] = optId;
+  if (opt.page && PAGE_FRAME[opt.page]) {
+    showPage(resolveVariantPage(opt.page, varValues.platform));
+  } else if (v.kind === "global" && currentPage) {
+    var variantPg = resolveVariantPage(currentPage, optId);
+    if (variantPg && PAGE_FRAME[variantPg] && variantPg !== currentPage) {
+      showPage(variantPg);
+    }
+  }
+  syncDeclarativePageVars();
+  renderGlobalVars();
+  renderScopedVars();
+  syncUrlHash();
+  scheduleOverlaySync();
+  if (typeof window.onWalkVarChange === "function") {
+    window.onWalkVarChange(varId, optId, Object.assign({}, varValues));
+  }
+};
+
+window.goBranch = function (varId) {
+  var v = (VARS || []).find(function (x) { return x.id === varId; });
+  if (!v) return;
+  var opt = (v.options || []).find(function (o) { return o.id === varValues[varId]; });
+  if (!opt || !opt.target) return;
+  if (NODES[opt.target]) setViewByNode(opt.target);
+};
+
+function renderStates() {
+  var card = document.getElementById("state-card");
+  var body = document.getElementById("state-body");
+  if (!card || !body) return;
+  var st = currentState ? String(currentState).split("/") : null;
+  var grp = st && STATE_GROUPS[st[0]];
+  if (!grp || !grp.states || grp.states.length < 2) {
+    body.innerHTML = "";
+    card.classList.add("hidden");
+    return;
+  }
+  body.innerHTML = '<div class="st-group">' + grp.states.map(function (s) {
+    if (s.id === st[1]) {
+      return '<button type="button" class="st-btn cur" disabled>' + escapeHtml(s.label) + '</button>';
+    }
+    return '<button type="button" class="st-btn" onclick="goState(\'' +
+      escapeHtml(st[0]) + '\',\'' + escapeHtml(s.id) + '\')">' +
+      escapeHtml(s.label) + '</button>';
+  }).join("") + '</div>';
+  card.classList.remove("hidden");
+}
+
+function showPage(pageId) {
+  if (!pageId) return;
+  currentPage = pageId;
+  var frame = PAGE_FRAME[pageId] || "phone";
+  var phoneEl = document.getElementById("frame-phone");
+  var wideEl = document.getElementById("frame-wide");
+  if (phoneEl) phoneEl.classList.toggle("hidden", frame !== "phone");
+  if (wideEl) wideEl.classList.toggle("hidden", frame !== "wide");
+  var drawer = document.getElementById("inspector-drawer");
+  var prevWide = drawer ? drawer.classList.contains("wide-mode") : null;
+  var nextWide = frame === "wide";
+  if (drawer) drawer.classList.toggle("wide-mode", nextWide);
+  var specWs = document.getElementById("spec-ws");
+  if (specWs) specWs.classList.toggle("wide-spec", nextWide);
+  document.querySelectorAll(".page").forEach(function (p) {
+    p.classList.toggle("active", p.id === pageId);
+  });
+  syncDeclarativePageVars();
+  var memoForm = document.getElementById("memo-form");
+  if (memoForm && !memoForm.classList.contains("hidden") && typeof updateMemoFormCtx === "function") {
+    updateMemoFormCtx();
+  }
+  if (prevWide !== null && prevWide !== nextWide && typeof hasBootFitted !== "undefined" && hasBootFitted) {
+    fitBootZoom();
+  }
+  scheduleOverlaySync();
+}
+
+window.goState = function (groupId, stateId) {
+  var grp = STATE_GROUPS[groupId];
+  if (!grp) return;
+  var state = (grp.states || []).find(function (s) { return s.id === stateId; });
+  if (!state) return;
+  currentState = groupId + "/" + stateId;
+  showPage(resolveVariantPage(state.page, varValues.platform));
+  renderStates();
+  renderScopedVars();
+};
+
+function setViewByNode(nodeId) {
+  var n = NODES[nodeId];
+  if (!n) return;
+  var panel = document.querySelector(".flow-panel");
+  if (panel && panel.classList.contains("fs")) toggleFs(false);
+  if (n.isDecision && n.branchVar) {
+    var bv = (VARS || []).find(function (x) { return x.id === n.branchVar; });
+    if (bv && bv.when) {
+      for (var wk in bv.when) {
+        var wexp = bv.when[wk];
+        if (Array.isArray(wexp)) {
+          if (wexp.indexOf(varValues[wk]) < 0 && wexp.length) varValues[wk] = wexp[0];
+        } else if (varValues[wk] !== wexp) {
+          varValues[wk] = wexp;
+        }
+      }
+    }
+  }
+  currentNode = nodeId;
+  currentState = n.state || null;
+  showPage(resolveVariantPage(n.page, varValues.platform));
+
+  var ring = document.getElementById("sel-ring");
+  var target = document.querySelector('.flow-svg g[data-node="' + nodeId + '"]');
+  if (ring && target) {
+    var bb = target.getBBox();
+    ring.setAttribute("x", bb.x - 7);
+    ring.setAttribute("y", bb.y - 7);
+    ring.setAttribute("width", bb.width + 14);
+    ring.setAttribute("height", bb.height + 14);
+    ring.setAttribute("stroke", "#d97706");
+    ring.setAttribute("fill", "rgba(217,119,6,0.08)");
+    ring.setAttribute("visibility", "visible");
+  }
+
+  var badge = document.getElementById("insp-node-id");
+  if (badge) badge.textContent = nodeId;
+  var titleEl = document.getElementById("anno-node-title");
+  if (titleEl) titleEl.textContent = n.title || nodeId;
+  var refEl = document.getElementById("flow-node-ref");
+  if (refEl) refEl.textContent = nodeId + (n.title ? " · " + n.title : "");
+  var annoEl = document.getElementById("anno-body");
+  if (annoEl) {
+    annoEl.innerHTML = (n.anno || []).map(function (p) {
+      return '<div class="anno-item"><b>' + escapeHtml(p[0]) + '</b>' + escapeHtml(p[1]) + '</div>';
+    }).join("") || ('<div class="wt-muted">' + UI_TEXT.noAnno + '</div>');
+  }
+
+  renderStates();
+  renderGlobalVars();
+  renderScopedVars();
+  syncUrlHash();
+  if (target) panNodeToSafeLeft(target);
+  if (typeof updateMemoFormCtx === "function" && !document.getElementById("memo-form").classList.contains("hidden")) {
+    updateMemoFormCtx();
+  }
+  if (typeof window.onWalkNodeChange === "function") {
+    window.onWalkNodeChange(nodeId, currentPage, Object.assign({}, varValues));
+  }
+}
+window.goNode = setViewByNode;
+
+// =========================================================================
+// SVG Canvas Pan & Zoom (Intrinsic viewBox Scale, True Non-Overlapping Split)
+// =========================================================================
+var zoomPct = 100;
+var panX = 0;
+var panY = 0;
+var hasBootFitted = false;
+var flowSvgEl = document.getElementById("flow-svg");
+var flowInnerEl = document.getElementById("flow-canvas-inner");
+var movedFlag = false;
+
+function getSvgIntrinsicSize() {
+  var svg = document.querySelector("#flow-svg svg");
+  if (!svg) return { w: 820, h: 920 };
+  var vb = svg.viewBox && svg.viewBox.baseVal;
+  if (vb && vb.width > 0 && vb.height > 0) {
+    return { w: vb.width, h: vb.height };
+  }
+  var wAttr = parseFloat(svg.getAttribute("width")) || 0;
+  var hAttr = parseFloat(svg.getAttribute("height")) || 0;
+  if (wAttr > 0 && hAttr > 0) return { w: wAttr, h: hAttr };
+  try {
+    var bb = svg.getBBox();
+    if (bb.width > 0 && bb.height > 0) {
+      return { w: Math.max(320, bb.x + bb.width + 40), h: Math.max(320, bb.y + bb.height + 40) };
+    }
+  } catch (e) {}
+  return { w: 820, h: 920 };
+}
+
+function ensureSvgIntrinsicBox() {
+  var svg = document.querySelector("#flow-svg svg");
+  if (!svg) return;
+  var sz = getSvgIntrinsicSize();
+  svg.style.width = sz.w + "px";
+  svg.style.height = sz.h + "px";
+}
+
+function applyPan(smooth) {
+  if (!flowInnerEl) return;
+  flowInnerEl.classList.toggle("smooth", !!smooth);
+  var s = zoomPct / 100;
+  flowInnerEl.style.transform = "translate(" + panX.toFixed(1) + "px," + panY.toFixed(1) + "px) scale(" + s.toFixed(4) + ")";
+}
+
+function applyZoomPct(pct) {
+  zoomPct = Math.min(300, Math.max(18, Math.round(pct)));
+  var zv = document.getElementById("zv");
+  if (zv) zv.textContent = zoomPct + "%";
+}
+
+function zoomAt(value, clientX, clientY) {
+  if (!flowSvgEl) return;
+  ensureSvgIntrinsicBox();
+  var oldZoom = zoomPct;
+  var newZoom = Math.min(300, Math.max(18, Math.round(value)));
+  if (newZoom === oldZoom) return;
+  var rect = flowSvgEl.getBoundingClientRect();
+  var cx = clientX !== undefined ? clientX : (rect.left + rect.width / 2);
+  var cy = clientY !== undefined ? clientY : (rect.top + rect.height / 2);
+  var relX = cx - rect.left;
+  var relY = cy - rect.top;
+  var ratio = newZoom / oldZoom;
+  panX = relX - (relX - panX) * ratio;
+  panY = relY - (relY - panY) * ratio;
+  applyZoomPct(newZoom);
+  applyPan(false);
+}
+
+function setZoom(dir) {
+  if (dir === 0) {
+    fitBootZoom();
+    return;
+  }
+  var step = dir > 0 ? 20 : -20;
+  var rect = flowSvgEl ? flowSvgEl.getBoundingClientRect() : null;
+  var cx = rect ? rect.left + rect.width / 2 : undefined;
+  var cy = rect ? rect.top + rect.height / 2 : undefined;
+  zoomAt(zoomPct + step, cx, cy);
+}
+
+function fitBootZoom() {
+  if (!flowSvgEl) return;
+  ensureSvgIntrinsicBox();
+  var sz = getSvgIntrinsicSize();
+  var cw = flowSvgEl.clientWidth || 480;
+  var ch = flowSvgEl.clientHeight || 720;
+  var pad = 24;
+  var fitScale = Math.min(
+    Math.max(120, cw - pad * 2) / sz.w,
+    Math.max(120, ch - pad * 2) / sz.h
+  );
+  var targetPct = Math.min(115, Math.max(18, Math.round(fitScale * 100)));
+  applyZoomPct(targetPct);
+  var actualScale = zoomPct / 100;
+  panX = (cw - sz.w * actualScale) / 2;
+  panY = (ch - sz.h * actualScale) / 2;
+  applyPan(false);
+  hasBootFitted = true;
+}
+
+function panNodeToSafeLeft(target) {
+  if (!target || !flowSvgEl || !hasBootFitted) return;
+  var flowRect = flowSvgEl.getBoundingClientRect();
+  if (!flowRect.width || !flowRect.height) return;
+  var pad = 24;
+  var safeLeft = flowRect.left + pad;
+  var safeRight = flowRect.right - pad;
+  var safeTop = flowRect.top + pad;
+  var safeBottom = flowRect.bottom - pad;
+  var tr = target.getBoundingClientRect();
+  if (!tr.width && !tr.height) return;
+
+  var dx = 0;
+  var dy = 0;
+  if (tr.left < safeLeft || tr.right > safeRight) {
+    dx = (flowRect.left + flowRect.width / 2) - (tr.left + tr.width / 2);
+  }
+  if (tr.top < safeTop || tr.bottom > safeBottom) {
+    dy = (flowRect.top + flowRect.height / 2) - (tr.top + tr.height / 2);
+  }
+  if (Math.abs(dx) > 1 || Math.abs(dy) > 1) {
+    panX += dx;
+    panY += dy;
+    applyPan(true);
+    setTimeout(function () { if (flowInnerEl) flowInnerEl.classList.remove("smooth"); }, 280);
+  }
+}
+
+function toggleFs(force) {
+  var p = document.querySelector(".flow-panel");
+  if (!p) return;
+  var on = force !== undefined ? force : !p.classList.contains("fs");
+  p.classList.toggle("fs", on);
+  var btn = document.getElementById("fs-btn");
+  if (btn) btn.textContent = on ? UI_TEXT.showDetail : UI_TEXT.fullCanvas;
+  fitBootZoom();
+}
+
+if (flowSvgEl) {
+  var dragState = { active: false, startX: 0, startY: 0, startPanX: 0, startPanY: 0 };
+  flowSvgEl.addEventListener("pointerdown", function (e) {
+    if (e.button !== 0 && e.pointerType === "mouse") return;
+    dragState.active = true;
+    movedFlag = false;
+    dragState.startX = e.clientX;
+    dragState.startY = e.clientY;
+    dragState.startPanX = panX;
+    dragState.startPanY = panY;
+    if (flowInnerEl) flowInnerEl.classList.remove("smooth");
+  });
+  window.addEventListener("pointermove", function (e) {
+    if (!dragState.active) return;
+    var dx = e.clientX - dragState.startX;
+    var dy = e.clientY - dragState.startY;
+    if (!movedFlag && Math.hypot(dx, dy) > 4) movedFlag = true;
+    if (movedFlag) {
+      panX = dragState.startPanX + dx;
+      panY = dragState.startPanY + dy;
+      applyPan(false);
+    }
+  });
+  function endFlowDrag() {
+    if (!dragState.active) return;
+    dragState.active = false;
+    if (movedFlag) setTimeout(function () { movedFlag = false; }, 0);
+  }
+  window.addEventListener("pointerup", endFlowDrag);
+  window.addEventListener("pointercancel", endFlowDrag);
+
+  flowSvgEl.addEventListener("click", function (e) {
+    if (movedFlag) {
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+    var nodeEl = e.target.closest("g[data-node]");
+    if (nodeEl) {
+      setViewByNode(nodeEl.getAttribute("data-node"));
+    } else {
+      toggleFs(true);
+    }
+  });
+
+  flowSvgEl.addEventListener("keydown", function (e) {
+    if (e.key !== "Enter" && e.key !== " ") return;
+    var nodeEl = e.target.closest("g[data-node]");
+    if (nodeEl) {
+      e.preventDefault();
+      setViewByNode(nodeEl.getAttribute("data-node"));
+    }
+  });
+
+  flowSvgEl.addEventListener("wheel", function (e) {
+    e.preventDefault();
+    if (e.ctrlKey || e.metaKey) {
+      var factor = Math.exp(-e.deltaY * 0.008);
+      zoomAt(zoomPct * factor, e.clientX, e.clientY);
+    } else {
+      panX -= e.deltaX;
+      panY -= e.deltaY;
+      applyPan(false);
+    }
+  }, { passive: false });
+
+  var gestureStartZoom = 100;
+  flowSvgEl.addEventListener("gesturestart", function (e) {
+    e.preventDefault();
+    gestureStartZoom = zoomPct;
+  }, { passive: false });
+  flowSvgEl.addEventListener("gesturechange", function (e) {
+    e.preventDefault();
+    zoomAt(gestureStartZoom * e.scale, e.clientX, e.clientY);
+  }, { passive: false });
+  flowSvgEl.addEventListener("gestureend", function (e) {
+    e.preventDefault();
+  }, { passive: false });
+}
+
+document.addEventListener("keydown", function (e) {
+  if (e.key !== "Escape") return;
+  var guardModal = document.getElementById("export-guard-modal");
+  if (guardModal && !guardModal.classList.contains("hidden")) {
+    closeExportGuard();
+    return;
+  }
+  var memoForm = document.getElementById("memo-form");
+  if (memoForm && !memoForm.classList.contains("hidden")) {
+    closeMemoForm();
+    return;
+  }
+  if (wbView === "flow") {
+    var panel = document.querySelector(".flow-panel");
+    if (panel && !panel.classList.contains("fs")) toggleFs(true);
+  }
+});
+
+// =========================================================================
+// Spec Cards Mode (Single-page Cubic Bezier Tether & Scroll Sync)
+// =========================================================================
+function initSpecMode() {
+  var sw = document.getElementById("view-switch");
+  var box = document.getElementById("spec-cards");
+  if (!sw || !box || !SPEC_CARDS || !SPEC_CARDS.length) return;
+  sw.classList.remove("hidden");
+  box.innerHTML = SPEC_CARDS.map(function (c) {
+    return '<div class="spec-card" data-cid="' + escapeHtml(c.id) +
+      '" data-page="' + escapeHtml(c.page || "") +
+      '" data-anchor="' + escapeHtml(c.anchor || "") + '">' +
+      '<div class="spec-card-hd"><span class="spec-idx">' + escapeHtml(c.id) +
+      '</span><b>' + escapeHtml(c.title) + '</b></div>' +
+      '<div class="spec-card-bd">' + escapeHtml(c.body) + '</div></div>';
+  }).join("");
+  box.querySelectorAll(".spec-card").forEach(function (el) {
+    el.addEventListener("mouseenter", function () { activateSpecCard(el.getAttribute("data-cid")); });
+    el.addEventListener("click", function () { activateSpecCard(el.getAttribute("data-cid")); });
+  });
+}
+
+window.switchWbView = function (view) {
+  wbView = view;
+  document.getElementById("flow-panel-root").classList.toggle("hidden", view !== "flow");
+  document.getElementById("spec-panel-root").classList.toggle("hidden", view !== "spec");
+  var stageEl = document.getElementById("flow-stage");
+  var specSlot = document.getElementById("spec-stage-slot");
+  var inspBody = document.querySelector(".insp-body");
+  document.querySelectorAll("#view-switch .seg-btn").forEach(function (b) {
+    b.classList.toggle("active", b.getAttribute("data-wbview") === view);
+  });
+  if (view === "spec" && SPEC_CARDS && SPEC_CARDS.length) {
+    specSlot.appendChild(stageEl);
+    activateSpecCard(activeSpecId || SPEC_CARDS[0].id);
+  } else {
+    inspBody.insertBefore(stageEl, inspBody.firstChild);
+    var svg = document.getElementById("tether-svg");
+    var abox = document.getElementById("anchor-box");
+    if (svg) svg.innerHTML = "";
+    if (abox) abox.classList.add("hidden");
+    if (currentNode && NODES[currentNode]) {
+      setViewByNode(currentNode);
+    }
+  }
+  syncUrlHash();
+  scheduleOverlaySync();
+};
+
+function activateSpecCard(cid) {
+  activeSpecId = cid;
+  var card = (SPEC_CARDS || []).find(function (c) { return c.id === cid; });
+  if (!card) return;
+  var targetPage = resolveVariantPage(card.page, varValues.platform);
+  showPage(targetPage);
+  var specWs = document.getElementById("spec-ws");
+  if (specWs) specWs.classList.toggle("wide-spec", (PAGE_FRAME[targetPage] || "phone") === "wide");
+  document.querySelectorAll(".spec-card").forEach(function (el) {
+    el.classList.toggle("active", el.getAttribute("data-cid") === cid);
+  });
+  requestAnimationFrame(updateSpecTether);
+}
+
+function findSpecAnchorElement(anchor) {
+  if (!anchor) return null;
+  var activePage = document.querySelector(".page.active");
+  if (!activePage) return null;
+  var candidates = activePage.querySelectorAll("[data-comp-id], [data-anchor]");
+  for (var i = 0; i < candidates.length; i++) {
+    if (candidates[i].getAttribute("data-comp-id") === anchor ||
+        candidates[i].getAttribute("data-anchor") === anchor) {
+      return candidates[i];
+    }
+  }
+  return null;
+}
+
+function updateSpecTether() {
+  var svg = document.getElementById("tether-svg");
+  var abox = document.getElementById("anchor-box");
+  var ws = document.getElementById("spec-ws");
+  if (!svg || !abox || !ws || wbView !== "spec" || !activeSpecId) return;
+  var cardEl = document.querySelector('.spec-card[data-cid="' + activeSpecId + '"]');
+  var anchor = cardEl && cardEl.getAttribute("data-anchor");
+  var targetEl = findSpecAnchorElement(anchor);
+  if (!cardEl || !targetEl) {
+    svg.innerHTML = "";
+    abox.classList.add("hidden");
+    return;
+  }
+  var wr = ws.getBoundingClientRect();
+  var tr = targetEl.getBoundingClientRect();
+  var cr = cardEl.getBoundingClientRect();
+  if ((tr.width === 0 && tr.height === 0) || (cr.width === 0 && cr.height === 0)) {
+    svg.innerHTML = "";
+    abox.classList.add("hidden");
+    return;
+  }
+  abox.style.left = (tr.left - wr.left - 4) + "px";
+  abox.style.top = (tr.top - wr.top - 4) + "px";
+  abox.style.width = (tr.width + 8) + "px";
+  abox.style.height = (tr.height + 8) + "px";
+  abox.classList.remove("hidden");
+
+  var stageEl = document.getElementById("flow-stage");
+  var sr = stageEl ? stageEl.getBoundingClientRect() : tr;
+  var isStacked = cr.left < (sr.right - 16);
+  var x1, y1, x2, y2, dPath;
+  if (isStacked) {
+    x1 = tr.left - wr.left + tr.width / 2;
+    y1 = tr.bottom - wr.top + 4;
+    x2 = cr.left - wr.left + Math.min(48, cr.width / 2);
+    y2 = cr.top - wr.top;
+    var dy = Math.max(32, Math.abs(y2 - y1) * 0.5);
+    var cy1 = y1 + dy;
+    var cy2 = y2 - dy;
+    dPath = "M " + x1 + " " + y1 + " C " + x1 + " " + cy1 + ", " + x2 + " " + cy2 + ", " + x2 + " " + y2;
+  } else {
+    x1 = tr.right - wr.left + 4;
+    y1 = tr.top - wr.top + tr.height / 2;
+    x2 = cr.left - wr.left;
+    y2 = cr.top - wr.top + Math.min(24, cr.height / 2);
+    var dx = Math.max(32, Math.abs(x2 - x1) * 0.5);
+    var cx1 = x1 + dx;
+    var cx2 = x2 - dx;
+    dPath = "M " + x1 + " " + y1 + " C " + cx1 + " " + y1 + ", " + cx2 + " " + y2 + ", " + x2 + " " + y2;
+  }
+  svg.innerHTML =
+    '<path d="' + dPath + '" fill="none" stroke="#d97706" stroke-width="1.8" stroke-dasharray="5 4"></path>' +
+    '<circle cx="' + x1 + '" cy="' + y1 + '" r="3" fill="#d97706"></circle>' +
+    '<circle cx="' + x2 + '" cy="' + y2 + '" r="3" fill="#d97706"></circle>';
+}
+
+// =========================================================================
+// Minimalist Pick-and-Memo (Strict Semantic Picking + Cross-Page @ Chips)
+// =========================================================================
+var isMemoPickingActive = false;
+var lastPickedEl = null;
+var overlayRafId = 0;
+
+function scheduleOverlaySync() {
+  if (overlayRafId) return;
+  overlayRafId = requestAnimationFrame(function () {
+    overlayRafId = 0;
+    if (wbView === "spec") updateSpecTether();
+    if (isMemoPickingActive) updatePickOverlay();
+  });
+}
+
+function getStageContainers() {
+  return [document.getElementById("frame-phone"), document.getElementById("frame-wide")].filter(Boolean);
+}
+
+function setMemoPickingActive(active) {
+  isMemoPickingActive = !!active;
+  getStageContainers().forEach(function (el) {
+    el.classList.toggle("pick-mode-on", isMemoPickingActive);
+  });
+  if (!isMemoPickingActive) hidePickOverlay();
+}
+
+function hidePickOverlay() {
+  var ov = document.getElementById("pick-highlight-overlay");
+  var bg = document.getElementById("pick-label-badge");
+  if (ov) ov.style.display = "none";
+  if (bg) bg.style.display = "none";
+}
+
+function positionPickOverlay(targetEl, labelText) {
+  var ov = document.getElementById("pick-highlight-overlay");
+  var bg = document.getElementById("pick-label-badge");
+  if (!ov || !bg || !targetEl || !targetEl.isConnected) {
+    hidePickOverlay();
+    return;
+  }
+  var rect = targetEl.getBoundingClientRect();
+  if (rect.width === 0 && rect.height === 0) {
+    hidePickOverlay();
+    return;
+  }
+  ov.style.display = "block";
+  ov.style.left = rect.left + "px";
+  ov.style.top = rect.top + "px";
+  ov.style.width = rect.width + "px";
+  ov.style.height = rect.height + "px";
+
+  bg.style.display = "block";
+  bg.textContent = labelText;
+  var topPos = rect.top - 26;
+  if (topPos < 54) topPos = rect.bottom + 4;
+  var leftPos = Math.max(8, Math.min(window.innerWidth - 280, rect.left));
+  bg.style.left = leftPos + "px";
+  bg.style.top = topPos + "px";
+}
+
+function getCompDisplayName(el) {
+  if (!el) return "";
+  var cname = el.getAttribute("data-comp-name");
+  if (cname) return cname;
+  var cid = el.getAttribute("data-comp-id");
+  if (cid) return cid;
+  var anc = el.getAttribute("data-anchor");
+  if (anc) return anc;
+  return "";
+}
+
+function updatePickOverlay() {
+  if (!isMemoPickingActive || !lastPickedEl || !lastPickedEl.isConnected) {
+    hidePickOverlay();
+    return;
+  }
+  var pageEl = lastPickedEl.closest(".page.active");
+  if (!pageEl) {
+    hidePickOverlay();
+    return;
+  }
+  var name = getCompDisplayName(lastPickedEl);
+  positionPickOverlay(lastPickedEl, "已 @：" + name);
+}
+
+function buildFallbackSelector(el, pageEl) {
+  if (!el || !pageEl || el === pageEl) return "";
+  if (el.id) return "#" + CSS.escape(el.id);
+  var cid = el.getAttribute("data-comp-id");
+  if (cid) return '[data-comp-id="' + cid + '"]';
+  var anc = el.getAttribute("data-anchor");
+  if (anc) return '[data-anchor="' + anc + '"]';
+  var parts = [];
+  var cur = el;
+  while (cur && cur !== pageEl && cur.nodeType === 1) {
+    var tag = cur.tagName.toLowerCase();
+    var c = cur.getAttribute("data-comp-id");
+    if (c) {
+      parts.unshift('[data-comp-id="' + c + '"]');
+      break;
+    }
+    var parent = cur.parentElement;
+    if (parent) {
+      var sameTag = Array.prototype.filter.call(parent.children, function (ch) {
+        return ch.tagName === cur.tagName;
+      });
+      if (sameTag.length > 1) {
+        tag += ":nth-of-type(" + (sameTag.indexOf(cur) + 1) + ")";
+      }
+    }
+    parts.unshift(tag);
+    cur = parent;
+  }
+  return parts.join(" > ");
+}
+
+function showMemoFormHint(msg) {
+  var hintEl = document.getElementById("memo-form-hint");
+  if (!hintEl) return;
+  hintEl.textContent = msg;
+  hintEl.classList.remove("hidden");
+}
+
+function hideMemoFormHint() {
+  var hintEl = document.getElementById("memo-form-hint");
+  if (hintEl) {
+    hintEl.textContent = "";
+    hintEl.classList.add("hidden");
+  }
+}
+
+function insertMentionChipInEditor(targetObj) {
+  var inp = document.getElementById("memo-input");
+  if (!inp || !targetObj) return;
+  var chip = document.createElement("span");
+  chip.className = "memo-at-chip";
+  chip.setAttribute("contenteditable", "false");
+  chip.setAttribute("data-comp-id", targetObj.comp_id || "");
+  chip.setAttribute("data-comp-name", targetObj.comp_name || "");
+  chip.setAttribute("data-fallback", targetObj.fallback_selector || "");
+  if (targetObj.page) chip.setAttribute("data-page", targetObj.page);
+  chip.textContent = "@[" + (targetObj.comp_name || targetObj.comp_id || "组件") + "]";
+  var spaceNode = document.createTextNode(" ");
+
+  var sel = window.getSelection();
+  var range = null;
+  if (sel && sel.rangeCount > 0) {
+    var candidate = sel.getRangeAt(0);
+    if (inp.contains(candidate.commonAncestorContainer)) {
+      range = candidate;
+    }
+  }
+  inp.focus();
+  if (range) {
+    range.deleteContents();
+    range.insertNode(spaceNode);
+    range.insertNode(chip);
+    range.setStartAfter(spaceNode);
+    range.collapse(true);
+    sel.removeAllRanges();
+    sel.addRange(range);
+  } else {
+    inp.appendChild(chip);
+    inp.appendChild(spaceNode);
+    if (sel) {
+      var endRange = document.createRange();
+      endRange.setStartAfter(spaceNode);
+      endRange.collapse(true);
+      sel.removeAllRanges();
+      sel.addRange(endRange);
+    }
+  }
+}
+
+function updateMemoFormCtx() {
+  var ctxEl = document.getElementById("memo-ctx");
+  if (ctxEl) {
+    ctxEl.textContent = UI_TEXT.ctxPrefix + (currentNode || "-") + " · " + (currentPage || "-");
+  }
+}
+
+function findSemanticComp(rawTarget, pageEl) {
+  if (!rawTarget || !pageEl || !rawTarget.closest) return null;
+  var compEl = rawTarget.closest("[data-comp-id], [data-anchor]");
+  if (compEl && !pageEl.contains(compEl)) compEl = null;
+  return compEl;
+}
+
+function handlePickSelect(rawTarget) {
+  if (!isMemoPickingActive) return;
+  var pageEl = (rawTarget && rawTarget.closest && rawTarget.closest(".page.active")) || document.querySelector(".page.active");
+  if (!pageEl) return;
+  var compEl = findSemanticComp(rawTarget, pageEl);
+  if (!compEl) return;
+
+  var compId = compEl.getAttribute("data-comp-id") || compEl.getAttribute("data-anchor") || "";
+  var compName = getCompDisplayName(compEl);
+  var fallbackSel = buildFallbackSelector(compEl, pageEl);
+  var pageId = pageEl.id || currentPage || "";
+
+  insertMentionChipInEditor({
+    page: pageId,
+    comp_id: compId,
+    comp_name: compName,
+    fallback_selector: fallbackSel
+  });
+  lastPickedEl = compEl;
+  updateMemoFormCtx();
+  positionPickOverlay(compEl, UI_TEXT.pickedPrefix + compName);
+}
+
+function handlePickHover(rawTarget) {
+  if (!isMemoPickingActive) return;
+  var pageEl = rawTarget && rawTarget.closest ? rawTarget.closest(".page.active") : null;
+  if (!pageEl) {
+    updatePickOverlay();
+    return;
+  }
+  var compEl = findSemanticComp(rawTarget, pageEl);
+  if (!compEl) {
+    updatePickOverlay();
+    return;
+  }
+  var name = getCompDisplayName(compEl);
+  positionPickOverlay(compEl, UI_TEXT.hoverPrefix + name);
+}
+
+getStageContainers().forEach(function (container) {
+  container.addEventListener("pointerdown", function (e) {
+    if (!isMemoPickingActive) return;
+    e.preventDefault();
+    e.stopPropagation();
+    e.stopImmediatePropagation();
+    if (e.button === 0 || e.pointerType !== "mouse") {
+      handlePickSelect(e.target);
+    }
+  }, { capture: true });
+
+  container.addEventListener("click", function (e) {
+    if (!isMemoPickingActive) return;
+    e.preventDefault();
+    e.stopPropagation();
+    e.stopImmediatePropagation();
+  }, { capture: true });
+
+  container.addEventListener("pointermove", function (e) {
+    if (!isMemoPickingActive) return;
+    handlePickHover(e.target);
+  }, { capture: true });
+
+  container.addEventListener("pointerleave", function () {
+    if (!isMemoPickingActive) return;
+    updatePickOverlay();
+  });
+
+  container.addEventListener("scroll", function () {
+    scheduleOverlaySync();
+  }, { capture: true, passive: true });
+});
+
+var specPanelRootEl = document.getElementById("spec-panel-root");
+if (specPanelRootEl) {
+  specPanelRootEl.addEventListener("scroll", function () {
+    scheduleOverlaySync();
+  }, { passive: true });
+}
+window.addEventListener("resize", function () {
+  scheduleOverlaySync();
+});
+
+// =========================================================================
+// Contenteditable Extraction, Memo Normalization, Revalidation & Export
+// =========================================================================
+function extractEditorContent(editorEl) {
+  var targets = [];
+  var seen = {};
+  var fullChunks = [];
+  var commentChunks = [];
+  var BLOCK_TAGS = { DIV: 1, P: 1, LI: 1, PRE: 1, BLOCKQUOTE: 1, H1: 1, H2: 1, H3: 1, H4: 1, H5: 1, H6: 1 };
+
+  function ensureNewline(arr) {
+    if (!arr.length) return;
+    var last = arr[arr.length - 1];
+    if (last && last.slice(-1) !== "\n") arr.push("\n");
+  }
+
+  function walk(node) {
+    if (!node) return;
+    if (node.nodeType === 3) {
+      var val = node.nodeValue || "";
+      fullChunks.push(val);
+      commentChunks.push(val);
+      return;
+    }
+    if (node.nodeType !== 1) return;
+    var el = node;
+    if (el.classList && el.classList.contains("memo-at-chip")) {
+      var cid = el.getAttribute("data-comp-id") || "";
+      var cname = el.getAttribute("data-comp-name") || cid || "组件";
+      var fb = el.getAttribute("data-fallback") || "";
+      var pg = el.getAttribute("data-page") || currentPage || "";
+      var key = (cid || fb) + "@" + pg;
+      if ((cid || fb) && !seen[key]) {
+        seen[key] = true;
+        targets.push({
+          page: pg,
+          comp_id: cid,
+          comp_name: cname,
+          fallback_selector: fb
+        });
+      }
+      fullChunks.push("@[" + cname + "]");
+      return;
+    }
+    var tag = el.tagName ? el.tagName.toUpperCase() : "";
+    if (tag === "BR") {
+      var parent = el.parentElement;
+      var pTag = parent && parent !== editorEl && parent.tagName ? parent.tagName.toUpperCase() : "";
+      if (BLOCK_TAGS[pTag] && el.nextSibling === null && el.previousSibling !== null) {
+        return;
+      }
+      fullChunks.push("\n");
+      commentChunks.push("\n");
+      return;
+    }
+    var isBlock = !!BLOCK_TAGS[tag];
+    if (isBlock) {
+      ensureNewline(fullChunks);
+      ensureNewline(commentChunks);
+    }
+    var children = el.childNodes;
+    for (var i = 0; i < children.length; i++) {
+      walk(children[i]);
+    }
+    if (isBlock) {
+      ensureNewline(fullChunks);
+      ensureNewline(commentChunks);
+    }
+  }
+
+  if (editorEl) {
+    var topNodes = editorEl.childNodes;
+    for (var i = 0; i < topNodes.length; i++) {
+      walk(topNodes[i]);
+    }
+  }
+
+  var text = fullChunks.join("").replace(/\u00a0/g, " ").replace(/\n{3,}/g, "\n\n").trim();
+  var commentOnly = commentChunks.join("").replace(/\u00a0/g, " ").trim();
+  return {
+    targets: targets,
+    text: text,
+    commentOnly: commentOnly,
+    hasValidComment: commentOnly.length > 0
+  };
+}
+
+function normalizeTarget(t, defaultPage) {
+  if (!t || typeof t !== "object") return null;
+  var cid = t.comp_id || t.compId || "";
+  var cname = t.comp_name || t.compName || cid || "";
+  var fb = t.fallback_selector || t.fallbackSelector || "";
+  var pg = t.page || defaultPage || "";
+  if (!cid && !fb) return null;
+  return {
+    page: pg,
+    comp_id: cid,
+    comp_name: cname,
+    fallback_selector: fb
+  };
+}
+
+function getMemoTargets(memo) {
+  if (!memo || typeof memo !== "object") return [];
+  var defPage = memo.page || "";
+  if (Array.isArray(memo.targets) && memo.targets.length > 0) {
+    return memo.targets.map(function (t) { return normalizeTarget(t, defPage); }).filter(Boolean);
+  }
+  var legacy = normalizeTarget({
+    page: defPage,
+    comp_id: memo.comp_id || memo.compId || "",
+    comp_name: memo.comp_name || memo.compName || "",
+    fallback_selector: memo.fallback_selector || memo.fallbackSelector || ""
+  }, defPage);
+  return legacy ? [legacy] : [];
+}
+
+function normalizeMemo(m) {
+  if (!m || typeof m !== "object") return null;
+  var page = m.page || "";
+  var targets = getMemoTargets(m);
+  if (!page && targets[0] && targets[0].page) page = targets[0].page;
+  var gran = targets.length > 0 ? "component" : "page";
+  var compIdStr = targets.map(function (t) { return t.comp_id; }).filter(Boolean).join(", ");
+  var compNameStr = targets.length > 0
+    ? targets.map(function (t) { return "@" + (t.comp_name || t.comp_id); }).join(" ")
+    : page;
+  var fbStr = targets.map(function (t) { return t.fallback_selector; }).filter(Boolean).join(", ");
+  return {
+    id: m.id || ("m_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6)),
+    version_hash: m.version_hash || m.versionHash || DOC_VERSION_HASH,
+    view: m.view || "flow",
+    node: m.node || "",
+    page: page,
+    vars: m.vars || {},
+    granularity: gran,
+    comp_id: compIdStr,
+    comp_name: compNameStr,
+    targets: targets,
+    fallback_selector: fbStr,
+    text: m.body || m.text || "",
+    time: m.time || ""
+  };
+}
+
+var memos = [];
+try {
+  var savedRaw = localStorage.getItem(MEMO_STORAGE_KEY);
+  if (savedRaw) {
+    var parsedSaved = JSON.parse(savedRaw);
+    if (Array.isArray(parsedSaved)) {
+      memos = parsedSaved.map(normalizeMemo).filter(Boolean);
+    }
+  }
+} catch (e) {
+  memos = [];
+}
+
+if (!memos.length && Array.isArray(INITIAL_MEMOS) && INITIAL_MEMOS.length) {
+  memos = INITIAL_MEMOS.map(normalizeMemo).filter(Boolean);
+}
+
+function persistMemos() {
+  try { localStorage.setItem(MEMO_STORAGE_KEY, JSON.stringify(memos)); } catch (e) {}
+}
+
+function validateSingleTarget(pageEl, compId, fallbackSelector) {
+  if (!pageEl || !pageEl.classList || !pageEl.classList.contains("page")) return false;
+  if (compId) {
+    var allComps = pageEl.querySelectorAll("[data-comp-id], [data-anchor]");
+    for (var i = 0; i < allComps.length; i++) {
+      if (allComps[i].getAttribute("data-comp-id") === compId ||
+          allComps[i].getAttribute("data-anchor") === compId) {
+        return true;
+      }
+    }
+  }
+  if (fallbackSelector) {
+    try {
+      if (pageEl.querySelectorAll(fallbackSelector).length > 0) return true;
+    } catch (e) {}
+  }
+  return false;
+}
+
+function validateMemoAnchor(memo) {
+  if (!memo) return false;
+  var targets = getMemoTargets(memo);
+  if (targets.length > 0) {
+    return targets.every(function (t) {
+      var tp = (t && t.page) || memo.page || "";
+      if (!tp) return false;
+      var tPageEl = document.getElementById(tp);
+      return validateSingleTarget(tPageEl, t.comp_id, t.fallback_selector);
+    });
+  }
+  if (!memo.page) return false;
+  var pageEl = document.getElementById(memo.page);
+  return !!(pageEl && pageEl.classList.contains("page"));
+}
+
+function renderMemos() {
+  var toggleBtn = document.getElementById("memo-toggle-btn");
+  if (toggleBtn) toggleBtn.textContent = UI_TEXT.memoToggle + " (" + memos.length + ")";
+  var listEl = document.getElementById("memo-list");
+  if (!listEl) return;
+  if (!memos.length) {
+    listEl.innerHTML = '<div class="memo-empty">' + UI_TEXT.memoEmpty + '</div>';
+    return;
+  }
+  var compTouchMap = {};
+  memos.forEach(function (m) {
+    getMemoTargets(m).forEach(function (t) {
+      if (!t.comp_id) return;
+      var k = (t.page || m.page || "") + "::" + t.comp_id;
+      compTouchMap[k] = (compTouchMap[k] || 0) + 1;
+    });
+  });
+  listEl.innerHTML = memos.map(function (m, i) {
+    var isValid = validateMemoAnchor(m);
+    var targets = getMemoTargets(m);
+    var hasMultiTouch = targets.some(function (t) {
+      return t.comp_id && compTouchMap[(t.page || m.page || "") + "::" + t.comp_id] > 1;
+    });
+    var compNameLabel = targets.length
+      ? targets.map(function (t) { return "@[" + (t.comp_name || t.comp_id) + "]"; }).join(" ")
+      : (m.page || m.node || "-");
+    var titleLabel = "[" + (m.node || m.page || "-") + "] " + compNameLabel;
+    var badgeHtml = isValid
+      ? (hasMultiTouch ? '<span class="memo-conflict-badge" title="' + escapeHtml(UI_TEXT.conflictTitle) + '">' + escapeHtml(UI_TEXT.conflictBadge) + '</span>' : "")
+      : '<span class="memo-invalid-badge">' + escapeHtml(UI_TEXT.invalidBadge) + '</span>';
+    var authorHtml = m.author ? '<span class="memo-author-pill">' + escapeHtml(m.author) + '</span>' : "";
+    var tagsHtml = "";
+    if (targets.length > 0) {
+      tagsHtml = '<div class="memo-item-tags">' + targets.map(function (t) {
+        var pgSuffix = (t.page && t.page !== m.page) ? (" (" + t.page + ")") : "";
+        return '<span class="memo-item-tag">@' + escapeHtml((t.comp_name || t.comp_id) + pgSuffix) + '</span>';
+      }).join("") + '</div>';
+    }
+    var metaText = targets.length > 0
+      ? ("component · " + targets.map(function (t) { return t.comp_id || t.fallback_selector; }).join(", "))
+      : ("page · " + (m.page || "-"));
+    return '<div class="memo-item' + (isValid ? "" : " invalid") + '">' +
+      '<div class="memo-item-hd">' +
+        '<div class="memo-item-ctx" onclick="jumpToMemo(' + i + ')" title="Jump">' + authorHtml + escapeHtml(titleLabel) + '</div>' +
+        badgeHtml +
+      '</div>' +
+      tagsHtml +
+      '<div class="memo-item-meta">' + escapeHtml(metaText) + '</div>' +
+      '<div class="memo-item-txt">' + escapeHtml(m.text) + '</div>' +
+      '<div class="memo-item-ft"><span>' + escapeHtml((m.author ? m.author + " · " : "") + (m.time || "")) + '</span>' +
+        '<button type="button" class="memo-del-btn" onclick="deleteMemoItem(' + i + ')">' + escapeHtml(UI_TEXT.delBtn) + '</button></div>' +
+    '</div>';
+  }).join("");
+}
+
+window.jumpToMemo = function (idx) {
+  var m = memos[idx];
+  if (!m) return;
+  if (m.vars) {
+    Object.keys(m.vars).forEach(function (k) { varValues[k] = m.vars[k]; });
+  }
+  if (m.view === "spec" && wbView !== "spec") switchWbView("spec");
+  else if (m.view === "flow" && wbView !== "flow") switchWbView("flow");
+  if (m.node && NODES[m.node]) setViewByNode(m.node);
+  var targetPg = (m.targets && m.targets[0] && m.targets[0].page) || m.page;
+  if (targetPg && PAGE_FRAME[targetPg]) showPage(targetPg);
+  renderGlobalVars();
+  renderScopedVars();
+};
+
+window.deleteMemoItem = function (idx) {
+  memos.splice(idx, 1);
+  persistMemos();
+  renderMemos();
+};
+
+window.toggleMemo = function (force) {
+  var d = document.getElementById("memo-drawer");
+  if (!d) return;
+  var on = force !== undefined ? force : d.classList.contains("hidden");
+  d.classList.toggle("hidden", !on);
+  var btn = document.getElementById("memo-toggle-btn");
+  if (btn) btn.classList.toggle("active", on);
+  if (!on) closeMemoForm();
+  requestAnimationFrame(updateSpecTether);
+  scheduleOverlaySync();
+};
+
+window.openMemoForCurrent = function () {
+  toggleMemo(true);
+  lastPickedEl = null;
+  hidePickOverlay();
+  hideMemoFormHint();
+  document.getElementById("memo-form").classList.remove("hidden");
+  setMemoPickingActive(true);
+  updateMemoFormCtx();
+  var inp = document.getElementById("memo-input");
+  if (inp) inp.focus();
+};
+
+window.closeMemoForm = function () {
+  var form = document.getElementById("memo-form");
+  if (form) form.classList.add("hidden");
+  var inp = document.getElementById("memo-input");
+  if (inp) inp.innerHTML = "";
+  hideMemoFormHint();
+  lastPickedEl = null;
+  setMemoPickingActive(false);
+};
+
+window.saveMemoItem = function () {
+  var inp = document.getElementById("memo-input");
+  var extracted = extractEditorContent(inp);
+  if (!extracted.hasValidComment) {
+    showMemoFormHint("请输入具体修改意见（仅选择 @组件 无法保存）");
+    if (inp) inp.focus();
+    return;
+  }
+  hideMemoFormHint();
+
+  var targets = extracted.targets;
+  var pageId = currentPage || (targets[0] && targets[0].page) || "";
+  var gran = targets.length > 0 ? "component" : "page";
+  var compIdStr = targets.map(function (t) { return t.comp_id; }).filter(Boolean).join(", ");
+  var compNameStr = targets.length > 0
+    ? targets.map(function (t) { return "@" + (t.comp_name || t.comp_id); }).join(" ")
+    : pageId;
+  var fallbackSel = targets.map(function (t) { return t.fallback_selector; }).filter(Boolean).join(", ");
+
+  var now = new Date();
+  var timeStr = now.toTimeString().slice(0, 5);
+  var reviewer = getReviewerName();
+
+  memos.unshift({
+    id: "m_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6),
+    author: reviewer,
+    version_hash: DOC_VERSION_HASH,
+    view: wbView,
+    node: currentNode || "",
+    page: pageId,
+    vars: Object.assign({}, varValues),
+    granularity: gran,
+    comp_id: compIdStr,
+    comp_name: compNameStr,
+    targets: targets,
+    fallback_selector: fallbackSel,
+    text: extracted.text,
+    time: timeStr
+  });
+  if (inp) inp.innerHTML = "";
+  persistMemos();
+  closeMemoForm();
+  renderMemos();
+};
+
+function cleanMemoEditorIfEmpty(el) {
+  if (!el) return;
+  if (el.querySelector(".memo-at-chip")) return;
+  var plain = (el.textContent || "").replace(/[\u00a0\u200b\r\n]/g, "").trim();
+  if (!plain && el.innerHTML !== "") {
+    el.innerHTML = "";
+  }
+}
+
+var memoInputEl = document.getElementById("memo-input");
+if (memoInputEl) {
+  memoInputEl.addEventListener("keydown", function (e) {
+    if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+      e.preventDefault();
+      saveMemoItem();
+    }
+  });
+  memoInputEl.addEventListener("paste", function (e) {
+    e.preventDefault();
+    var text = "";
+    if (e.clipboardData && e.clipboardData.getData) {
+      text = e.clipboardData.getData("text/plain");
+    } else if (window.clipboardData && window.clipboardData.getData) {
+      text = window.clipboardData.getData("Text");
+    }
+    if (!text) return;
+    var sel = window.getSelection();
+    if (sel && sel.rangeCount > 0) {
+      var range = sel.getRangeAt(0);
+      if (memoInputEl.contains(range.commonAncestorContainer)) {
+        range.deleteContents();
+        var textNode = document.createTextNode(text);
+        range.insertNode(textNode);
+        range.setStartAfter(textNode);
+        range.collapse(true);
+        sel.removeAllRanges();
+        sel.addRange(range);
+        hideMemoFormHint();
+        return;
+      }
+    }
+    memoInputEl.appendChild(document.createTextNode(text));
+    hideMemoFormHint();
+  });
+  memoInputEl.addEventListener("input", function () {
+    cleanMemoEditorIfEmpty(memoInputEl);
+    if ((memoInputEl.textContent || "").trim()) hideMemoFormHint();
+  });
+  memoInputEl.addEventListener("keyup", function (e) {
+    if (e.key === "Backspace" || e.key === "Delete") {
+      cleanMemoEditorIfEmpty(memoInputEl);
+    }
+  });
+}
+
+function buildMemosMarkdown(items) {
+  var validCount = items.filter(function (m) { return validateMemoAnchor(m); }).length;
+  var invalidCount = items.length - validCount;
+  var reviewer = getReviewerName();
+  var lines = [
+    "---",
+    "project: " + PROJECT_SLUG,
+    "reviewer: " + (reviewer || "anonymous"),
+    "version_hash: " + DOC_VERSION_HASH,
+    "exported_at: " + new Date().toISOString(),
+    "total_comments: " + items.length,
+    "valid_count: " + validCount,
+    "invalid_count: " + invalidCount,
+    "---",
+    "",
+    "# 评审反馈记录（Review Feedback）",
+    ""
+  ];
+  items.forEach(function (m, idx) {
+    var valid = validateMemoAnchor(m);
+    var statusStr = valid ? "valid" : "invalid";
+    var targets = getMemoTargets(m);
+    var targetHeading = targets.length
+      ? targets.map(function (t) { return "@[" + (t.comp_name || t.comp_id) + "]"; }).join(" ")
+      : (m.page || m.node || "page");
+    var gran = targets.length > 0 ? "component" : "page";
+    var compIdStr = targets.map(function (t) { return t.comp_id; }).filter(Boolean).join(", ");
+    var compNameStr = targets.map(function (t) { return t.comp_name; }).filter(Boolean).join(", ");
+    var fbStr = targets.map(function (t) { return t.fallback_selector; }).filter(Boolean).join(", ");
+    var itemAuthor = m.author || reviewer || "anonymous";
+
+    lines.push("## [FB-" + String(idx + 1).padStart(3, "0") + "] " + targetHeading + "（" + statusStr + "）");
+    if (!valid) {
+      lines.push("");
+      lines.push("> [!WARNING] 落点已失效");
+      lines.push("> 该条批注的 `targets` 中存在未命中当前原型的落点（命中数为 0），请人工核对后再修改。");
+    }
+    lines.push("");
+    lines.push("- **id**: `" + (m.id || ("fb_" + (idx + 1))) + "`");
+    lines.push("- **author**: `" + itemAuthor + "`");
+    lines.push("- **version_hash**: `" + (m.version_hash || m.versionHash || DOC_VERSION_HASH) + "`");
+    lines.push("- **status**: `" + statusStr + "`");
+    lines.push("- **view**: `" + (m.view || "flow") + "`");
+    lines.push("- **node**: `" + (m.node || "") + "`");
+    lines.push("- **page**: `" + (m.page || "") + "`");
+    lines.push("- **vars**: `" + JSON.stringify(m.vars || {}) + "`");
+    lines.push("- **granularity**: `" + gran + "`");
+    lines.push("- **comp_id**: `" + compIdStr + "`");
+    lines.push("- **comp_name**: `" + compNameStr + "`");
+    lines.push("- **targets**: `" + JSON.stringify(targets) + "`");
+    lines.push("- **fallback_selector**: `" + fbStr + "`");
+    lines.push("");
+    lines.push("**修改意见**：");
+    lines.push(m.text || "");
+    lines.push("");
+    lines.push("---");
+    lines.push("");
+  });
+  return lines.join("\n");
+}
+
+function buildMemosJsonl(items) {
+  var reviewer = getReviewerName();
+  return items.map(function (m) {
+    var valid = validateMemoAnchor(m);
+    var targets = getMemoTargets(m);
+    var gran = targets.length > 0 ? "component" : "page";
+    var compIdStr = targets.map(function (t) { return t.comp_id; }).filter(Boolean).join(", ");
+    var compNameStr = targets.map(function (t) { return t.comp_name; }).filter(Boolean).join(", ");
+    var fbStr = targets.map(function (t) { return t.fallback_selector; }).filter(Boolean).join(", ");
+    return JSON.stringify({
+      id: m.id || "",
+      author: m.author || reviewer || "anonymous",
+      version_hash: m.version_hash || m.versionHash || DOC_VERSION_HASH,
+      status: valid ? "valid" : "invalid",
+      view: m.view || "flow",
+      node: m.node || "",
+      page: m.page || "",
+      vars: m.vars || {},
+      granularity: gran,
+      comp_id: compIdStr,
+      comp_name: compNameStr,
+      targets: targets,
+      fallback_selector: fbStr,
+      text: m.text || "",
+      time: m.time || ""
+    });
+  }).join("\n");
+}
+
+var pendingExportAction = null;
+function runWithExportGuard(actionType) {
+  if (!memos.length) {
+    alert("当前没有可导出的评审备注。");
+    return;
+  }
+  renderMemos();
+  var invalidCount = memos.filter(function (m) { return !validateMemoAnchor(m); }).length;
+  var validCount = memos.length - invalidCount;
+  if (invalidCount > 0) {
+    pendingExportAction = actionType;
+    document.getElementById("export-guard-msg").textContent =
+      "检测到 " + invalidCount + " 条备注的原型落点已失效（可能因页面或组件结构变更），共 " + validCount + " 条有效备注。请选择处理方式：";
+    var validBtn = document.getElementById("export-valid-only-btn");
+    validBtn.disabled = validCount === 0;
+    validBtn.textContent = "仅导出有效备注 (" + validCount + " 条)";
+    document.getElementById("export-guard-modal").classList.remove("hidden");
+    return;
+  }
+  executeExport(actionType, memos);
+}
+
+window.closeExportGuard = function () {
+  pendingExportAction = null;
+  document.getElementById("export-guard-modal").classList.add("hidden");
+};
+
+window.confirmExportValidOnly = function () {
+  var actionType = pendingExportAction;
+  closeExportGuard();
+  var validItems = memos.filter(function (m) { return validateMemoAnchor(m); });
+  if (!validItems.length || !actionType) return;
+  executeExport(actionType, validItems);
+};
+
+window.confirmExportAllWithInvalid = function () {
+  var actionType = pendingExportAction;
+  closeExportGuard();
+  if (!memos.length || !actionType) return;
+  executeExport(actionType, memos);
+};
+
+function triggerDownload(content, mimeType, filename) {
+  var blob = new Blob([content], { type: mimeType });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+}
+
+function fallbackCopyText(text) {
+  var ta = document.createElement("textarea");
+  ta.value = text;
+  ta.style.position = "fixed";
+  ta.style.left = "-9999px";
+  document.body.appendChild(ta);
+  ta.select();
+  try { document.execCommand("copy"); } catch (e) {}
+  document.body.removeChild(ta);
+}
+
+function executeExport(actionType, items) {
+  var reviewer = getReviewerName().replace(/[^\w\u4e00-\u9fa5-]+/g, "-").replace(/^-+|-+$/g, "");
+  var suffix = reviewer ? ("-" + reviewer) : "";
+  if (actionType === "download_jsonl") {
+    triggerDownload(buildMemosJsonl(items), "application/x-ndjson;charset=utf-8", "review-feedback" + suffix + ".jsonl");
+    return;
+  }
+  var md = buildMemosMarkdown(items);
+  if (actionType === "copy") {
+    var btn = document.getElementById("copy-md-btn");
+    var done = function () {
+      if (btn) {
+        var orig = btn.textContent;
+        btn.textContent = "已复制";
+        setTimeout(function () { btn.textContent = orig; }, 1500);
+      }
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(md).then(done, function () { fallbackCopyText(md); done(); });
+    } else {
+      fallbackCopyText(md);
+      done();
+    }
+  } else if (actionType === "download") {
+    triggerDownload(md, "text/markdown;charset=utf-8", "review-feedback" + suffix + ".md");
+  }
+}
+
+window.importFeedbackFiles = function (fileList) {
+  if (!fileList || !fileList.length) return;
+  var existingSig = {};
+  memos.forEach(function (m) {
+    var sig = (m.id || "") + "|" + (m.author || "") + "|" + (m.page || "") + "|" + (m.comp_id || "") + "|" + (m.text || "");
+    existingSig[sig] = true;
+  });
+  var added = 0;
+  var remaining = fileList.length;
+  Array.prototype.forEach.call(fileList, function (file) {
+    var reader = new FileReader();
+    reader.onload = function (ev) {
+      var raw = String(ev.target.result || "");
+      var parsedItems = [];
+      if (/\.jsonl$/i.test(file.name) || raw.trim().charAt(0) === "{") {
+        raw.split(/\r?\n/).forEach(function (line) {
+          var s = line.trim();
+          if (!s) return;
+          try { parsedItems.push(JSON.parse(s)); } catch (e) {}
+        });
+      } else {
+        var blocks = raw.split(/^##\s+\[/m);
+        var fmAuthor = (raw.match(/^reviewer:\s*(.+)$/m) || [])[1] || "";
+        for (var bi = 1; bi < blocks.length; bi++) {
+          var blk = blocks[bi];
+          var getField = function (k) {
+            var m = blk.match(new RegExp("^-\\s+\\*\\*" + k + "\\*\\*:\\s*`([^`]*)`", "m"));
+            return m ? m[1] : "";
+          };
+          var targetsJson = getField("targets");
+          var tgts = [];
+          try { if (targetsJson) tgts = JSON.parse(targetsJson); } catch (e) {}
+          var varsJson = getField("vars");
+          var vobj = {};
+          try { if (varsJson) vobj = JSON.parse(varsJson); } catch (e) {}
+          var txtMatch = blk.split("**修改意见**：");
+          var bodyTxt = txtMatch.length > 1 ? txtMatch[1].split(/^---$/m)[0].trim() : "";
+          parsedItems.push({
+            id: getField("id") || ("imp_" + Date.now() + "_" + bi),
+            author: getField("author") || fmAuthor.trim() || file.name.replace(/\.(md|jsonl)$/i, ""),
+            version_hash: getField("version_hash"),
+            view: getField("view") || "flow",
+            node: getField("node"),
+            page: getField("page"),
+            vars: vobj,
+            comp_id: getField("comp_id"),
+            comp_name: getField("comp_name"),
+            targets: tgts,
+            text: bodyTxt,
+            time: "导入"
+          });
+        }
+      }
+      parsedItems.forEach(function (item) {
+        if (!item || !item.text) return;
+        var sig = (item.id || "") + "|" + (item.author || "") + "|" + (item.page || "") + "|" + (item.comp_id || "") + "|" + (item.text || "");
+        if (!existingSig[sig]) {
+          existingSig[sig] = true;
+          memos.push(item);
+          added++;
+        }
+      });
+      remaining--;
+      if (remaining === 0) {
+        persistMemos();
+        renderMemos();
+        var inp = document.getElementById("memo-import-file");
+        if (inp) inp.value = "";
+      }
+    };
+    reader.readAsText(file, "utf-8");
+  });
+};
+
+window.copyMemosMd = function () { runWithExportGuard("copy"); };
+window.downloadMemosMd = function () { runWithExportGuard("download"); };
+window.downloadMemosJsonl = function () { runWithExportGuard("download_jsonl"); };
+
+function applyHashState() {
+  isRestoringHash = true;
+  try {
+    var parsed = parseUrlHash();
+    var initNode = parsed.node || ENTRY_NODE;
+    setViewByNode(initNode);
+    if (parsed.view && parsed.view !== wbView && SPEC_CARDS && SPEC_CARDS.length) {
+      switchWbView(parsed.view);
+    }
+  } finally {
+    isRestoringHash = false;
+  }
+  syncUrlHash();
+}
+
+window.addEventListener("hashchange", applyHashState);
+
+initDeltaHighlights();
+initSpecMode();
+(function initReviewerInput() {
+  var ri = document.getElementById("memo-reviewer-input");
+  if (ri) ri.value = getReviewerName();
+})();
+renderMemos();
+applyHashState();
+fitBootZoom();
+
+</script>
+</body>
+</html>

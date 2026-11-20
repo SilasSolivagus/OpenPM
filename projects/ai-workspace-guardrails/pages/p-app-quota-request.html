@@ -1,0 +1,80 @@
+<div class="page" id="p-app-quota-request" data-page="p-app-quota-request" data-page-id="p-app-quota-request">
+  <div class="wt-phone-shell">
+    <div>
+      <div class="wt-phone-statusbar">
+        <span>9:41</span>
+        <span>Acme Cloud · 5G [100%]</span>
+      </div>
+      <div class="wt-navbar">
+        <button type="button" class="wt-btn wt-btn-sm" data-comp-id="req.back.btn" data-comp-name="Mobile Back to Usage Button" onclick="goNode('F_USAGE_DASH')">&lt; Back</button>
+        <span>Request Top-Up</span>
+        <span class="wt-mono wt-muted">REQ-2049</span>
+      </div>
+
+      <div style="padding: 12px;" class="wt-stack">
+        <div class="wt-card" data-comp-id="req.form.card" data-comp-name="Mobile Quota Request Form Card">
+          <div class="wt-card-bd wt-form">
+            <div class="wt-field">
+              <label class="wt-label">Project / API Key *</label>
+              <select class="wt-select" data-comp-id="req.project.select" data-comp-name="Mobile Target API Key Selector">
+                <option value="sk-prod-8f2a" selected>Core Agent Prod (sk-prod-...8f2a)</option>
+                <option value="sk-prod-3c19">Code Review Bot (sk-prod-...3c19)</option>
+              </select>
+            </div>
+
+            <div class="wt-field">
+              <label class="wt-label">Requested Extra Budget (USD) *</label>
+              <input class="wt-input wt-mono" type="number" value="800"
+                     data-comp-id="req.amount.input"
+                     data-comp-name="Requested Extra Budget Input"
+                     oninput="setVar('request_tier', (parseFloat(this.value) || 0) > 500 ? 'gt_500' : 'le_500')" />
+              <div class="wt-Split2" style="margin-top: 4px;">
+                <button type="button" class="wt-btn wt-btn-sm" data-comp-id="req.preset.300.btn" data-comp-name="Mobile Preset +$300 Auto Button"
+                        onclick="var el=this.parentNode.parentNode.querySelector('input'); if(el) el.value='300'; setVar('request_tier','le_500')">
+                  +$300 (Auto)
+                </button>
+                <button type="button" class="wt-btn wt-btn-sm" data-comp-id="req.preset.800.btn" data-comp-name="Mobile Preset +$800 Owner Review Button"
+                        onclick="var el=this.parentNode.parentNode.querySelector('input'); if(el) el.value='800'; setVar('request_tier','gt_500')">
+                  +$800 (Owner)
+                </button>
+              </div>
+            </div>
+
+            <div class="wt-alert" data-when-var="request_tier" data-when-val="gt_500">
+              <b>[OWNER REVIEW]</b> &gt; $500 ceiling; routes to jordan.lee.
+            </div>
+            <div class="wt-alert hidden" data-when-var="request_tier" data-when-val="le_500">
+              <b>[AUTO-APPROVE]</b> &lt;= $500 ceiling; unlocks keys instantly.
+            </div>
+
+            <div class="wt-field">
+              <label class="wt-label">Cost Center *</label>
+              <select class="wt-select" data-comp-id="req.costcenter.select" data-comp-name="Mobile Cost Center Selector">
+                <option value="cc-402" selected>CC-402 · Core AI R&amp;D</option>
+                <option value="cc-218">CC-218 · Dev Productivity</option>
+              </select>
+            </div>
+
+            <div class="wt-field">
+              <label class="wt-label">Justification *</label>
+              <textarea class="wt-textarea" style="min-height: 56px;" data-comp-id="req.reason.textarea" data-comp-name="Mobile Business Justification Textarea">Q4 customer cohort batch agent sessions (+42k runs).</textarea>
+            </div>
+          </div>
+          <div class="wt-card-ft">
+            <button type="button" class="wt-btn wt-btn-primary wt-btn-block" data-comp-id="req.submit.btn" data-comp-name="Submit Quota Request Button"
+                    onclick="goNode(getVar('request_tier') === 'le_500' ? 'F_QUOTA_ACTIVE' : 'F_OWNER_REVIEW')">
+              Submit Request
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="wt-tabbar">
+      <div class="wt-tabbar-item active" role="button" tabindex="0" data-comp-id="app.req.tab.usage" data-comp-name="Mobile Request Usage Tab" onclick="goNode('F_USAGE_DASH')">Usage</div>
+      <div class="wt-tabbar-item" role="button" tabindex="0" data-comp-id="app.req.tab.keys" data-comp-name="Mobile Request Keys Tab" onclick="goNode('F_KEY_PAUSED')">Keys</div>
+      <div class="wt-tabbar-item" role="button" tabindex="0" data-comp-id="app.req.tab.approvals" data-comp-name="Mobile Request Approvals Tab" onclick="goNode('F_OWNER_REVIEW')">Approvals</div>
+      <div class="wt-tabbar-item" role="button" tabindex="0" data-comp-id="app.req.tab.audit" data-comp-name="Mobile Request Audit Tab" onclick="goNode('F_QUOTA_ACTIVE')">Audit</div>
+    </div>
+  </div>
+</div>

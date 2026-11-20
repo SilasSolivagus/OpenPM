@@ -463,6 +463,55 @@ body.show-delta .wt-delta-target {
   padding: 8px 12px; border-radius: 6px; border: 1px solid var(--wt-border);
   background: var(--wt-bg); font-size: 12px;
 }
+
+/* High-Density SaaS & Mobile Layout Primitives (wt-* · 100% Monochrome) */
+.wt-app-shell { display: grid; grid-template-columns: 148px minmax(0, 1fr); min-height: 520px; background: var(--wt-white); }
+.wt-sidebar {
+  border-right: 1px solid var(--wt-border-light); background: #fafafa; padding: 12px 8px;
+  display: flex; flex-direction: column; gap: 3px;
+}
+.wt-brand-row {
+  display: flex; align-items: center; gap: 7px; padding: 4px 8px 10px; margin-bottom: 4px;
+  border-bottom: 1px solid var(--wt-border-light); font-size: 12.5px; font-weight: 700;
+}
+.wt-brand-mark {
+  width: 20px; height: 20px; border-radius: 5px; background: var(--wt-accent); color: var(--wt-white);
+  display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700;
+}
+.wt-side-label { font-size: 10px; font-weight: 700; color: var(--wt-light); padding: 8px 8px 2px; text-transform: uppercase; letter-spacing: 0.4px; }
+.wt-side-item {
+  display: flex; align-items: center; justify-content: space-between; width: 100%; text-align: left;
+  padding: 6px 8px; border-radius: 5px; border: 1px solid transparent; background: transparent;
+  font-size: 12px; color: var(--wt-dim); cursor: pointer;
+}
+.wt-side-item:hover { background: var(--wt-fill); color: var(--wt-text); }
+.wt-side-item.active { background: var(--wt-white); border-color: var(--wt-border-light); color: var(--wt-text); font-weight: 600; }
+.wt-main { padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.wt-kpi-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.wt-kpi-card {
+  border: 1px solid var(--wt-border-light); border-radius: 7px; padding: 10px 12px;
+  background: var(--wt-white); display: flex; flex-direction: column; gap: 4px;
+}
+.wt-kpi-label { font-size: 11px; color: var(--wt-dim); display: flex; align-items: center; justify-content: space-between; }
+.wt-kpi-val { font-size: 18px; font-weight: 700; letter-spacing: -0.3px; color: var(--wt-text); }
+.wt-kpi-sub { font-size: 11px; color: var(--wt-dim); }
+.wt-meter { width: 100%; height: 6px; border-radius: 999px; background: var(--wt-fill); overflow: hidden; margin-top: 2px; }
+.wt-meter-fill { height: 100%; background: var(--wt-accent); border-radius: 999px; }
+.wt-mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; }
+.wt-pill-strong {
+  display: inline-flex; align-items: center; padding: 1px 7px; border-radius: 999px;
+  background: var(--wt-accent); color: var(--wt-white); font-size: 10.5px; font-weight: 600;
+}
+.wt-Split2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.wt-switch-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 8px 10px; border: 1px solid var(--wt-border-light); border-radius: 6px; background: #fafafa;
+}
+.wt-phone-shell { display: flex; flex-direction: column; min-height: 636px; justify-content: space-between; background: var(--wt-bg); }
+.wt-phone-statusbar {
+  height: 26px; padding: 0 16px; display: flex; align-items: center; justify-content: space-between;
+  font-size: 11px; font-weight: 600; color: var(--wt-text); background: var(--wt-white);
+}
 .wt-alert-danger {
   border-color: var(--wt-accent); background: #f0f0f0; color: var(--wt-text); font-weight: 600;
 }
@@ -1875,6 +1924,46 @@ function computeDocVersionHash() {
 
 var DOC_VERSION_HASH = computeDocVersionHash();
 var PROJECT_SLUG = (typeof META === "object" && META && META.project) ? String(META.project) : "default";
+var IS_EN = (typeof META === "object" && META && String(META.lang || "").toLowerCase().indexOf("en") === 0);
+var UI_TEXT = IS_EN ? {
+  branchTag: "Branch",
+  localTag: "Scoped",
+  jumpTo: "Jump to: ",
+  noAnno: "No node specification notes.",
+  showDetail: "Show Inspector",
+  fullCanvas: "Full Canvas",
+  ctxPrefix: "Context: ",
+  pickedPrefix: "Inserted @",
+  hoverPrefix: "Click to mention @",
+  memoToggle: "Comments",
+  memoEmpty: "No review comments yet.<br>Click '+ New' and click any UI element to insert an @chip.",
+  invalidBadge: "Stale Anchor",
+  conflictBadge: "Multi-Review",
+  conflictTitle: "Multiple comments target this same component",
+  delBtn: "Delete",
+  emptyHint: "Please write your comment after the @component chip.",
+  copied: "Copied",
+  noMemosAlert: "No review comments to export."
+} : {
+  branchTag: "分支条件",
+  localTag: "局部组件",
+  jumpTo: "跳转至：",
+  noAnno: "暂无节点规则说明",
+  showDetail: "显示详情",
+  fullCanvas: "全屏画布",
+  ctxPrefix: "当前上下文：",
+  pickedPrefix: "已插入 @",
+  hoverPrefix: "点击添加 @",
+  memoToggle: "评审备注",
+  memoEmpty: "暂无评审备注。<br>点击「+ 新增」后，可直接点选原型组件添加 @ 胶囊。",
+  invalidBadge: "落点已失效",
+  conflictBadge: "同组件多方意见",
+  conflictTitle: "多条备注指向同一组件",
+  delBtn: "删除",
+  emptyHint: "请输入具体修改意见（仅选择 @组件 无法保存）",
+  copied: "已复制",
+  noMemosAlert: "当前没有可导出的评审备注。"
+};
 var MEMO_STORAGE_KEY = "wt_memos_" + PROJECT_SLUG;
 var REVIEWER_STORAGE_KEY = "wt_reviewer_name";
 
@@ -2083,7 +2172,7 @@ function renderScopedVars() {
   }
 
   body.innerHTML = scoped.map(function (v) {
-    var tag = v.kind === "branch" ? "分支条件" : "局部组件";
+    var tag = v.kind === "branch" ? UI_TEXT.branchTag : UI_TEXT.localTag;
     var curOpt = (v.options || []).find(function (o) { return o.id === varValues[v.id]; });
     var optsHtml = (v.options || []).map(function (o) {
       var curCls = varValues[v.id] === o.id ? " cur" : "";
@@ -2093,7 +2182,7 @@ function renderScopedVars() {
     }).join("");
     var goHtml = (v.kind === "branch" && curOpt && curOpt.target && NODES[curOpt.target])
       ? '<button type="button" class="branch-go-btn" onclick="goBranch(\'' +
-        escapeHtml(v.id) + '\')">跳转至：' +
+        escapeHtml(v.id) + '\')">' + UI_TEXT.jumpTo +
         escapeHtml(NODES[curOpt.target].title || curOpt.target) + ' →</button>'
       : "";
     return '<div class="var-block"><div class="var-head"><b>' + escapeHtml(v.label) +
@@ -2366,7 +2455,7 @@ function setViewByNode(nodeId) {
   if (annoEl) {
     annoEl.innerHTML = (n.anno || []).map(function (p) {
       return '<div class="anno-item"><b>' + escapeHtml(p[0]) + '</b>' + escapeHtml(p[1]) + '</div>';
-    }).join("") || '<div class="wt-muted">暂无节点规则说明</div>';
+    }).join("") || ('<div class="wt-muted">' + UI_TEXT.noAnno + '</div>');
   }
 
   renderStates();
@@ -2518,7 +2607,7 @@ function toggleFs(force) {
   var on = force !== undefined ? force : !p.classList.contains("fs");
   p.classList.toggle("fs", on);
   var btn = document.getElementById("fs-btn");
-  if (btn) btn.textContent = on ? "显示详情" : "全屏画布";
+  if (btn) btn.textContent = on ? UI_TEXT.showDetail : UI_TEXT.fullCanvas;
   fitBootZoom();
 }
 
@@ -2932,7 +3021,7 @@ function insertMentionChipInEditor(targetObj) {
 function updateMemoFormCtx() {
   var ctxEl = document.getElementById("memo-ctx");
   if (ctxEl) {
-    ctxEl.textContent = "当前上下文：" + (currentNode || "-") + " · " + (currentPage || "-");
+    ctxEl.textContent = UI_TEXT.ctxPrefix + (currentNode || "-") + " · " + (currentPage || "-");
   }
 }
 
@@ -2963,7 +3052,7 @@ function handlePickSelect(rawTarget) {
   });
   lastPickedEl = compEl;
   updateMemoFormCtx();
-  positionPickOverlay(compEl, "已插入 @" + compName);
+  positionPickOverlay(compEl, UI_TEXT.pickedPrefix + compName);
 }
 
 function handlePickHover(rawTarget) {
@@ -2979,7 +3068,7 @@ function handlePickHover(rawTarget) {
     return;
   }
   var name = getCompDisplayName(compEl);
-  positionPickOverlay(compEl, "点击添加 @" + name);
+  positionPickOverlay(compEl, UI_TEXT.hoverPrefix + name);
 }
 
 getStageContainers().forEach(function (container) {
@@ -3228,11 +3317,11 @@ function validateMemoAnchor(memo) {
 
 function renderMemos() {
   var toggleBtn = document.getElementById("memo-toggle-btn");
-  if (toggleBtn) toggleBtn.textContent = "评审备注 (" + memos.length + ")";
+  if (toggleBtn) toggleBtn.textContent = UI_TEXT.memoToggle + " (" + memos.length + ")";
   var listEl = document.getElementById("memo-list");
   if (!listEl) return;
   if (!memos.length) {
-    listEl.innerHTML = '<div class="memo-empty">暂无评审备注。<br>点击「+ 新增」后，可直接点选原型组件添加 @ 胶囊。</div>';
+    listEl.innerHTML = '<div class="memo-empty">' + UI_TEXT.memoEmpty + '</div>';
     return;
   }
   var compTouchMap = {};
@@ -3254,8 +3343,8 @@ function renderMemos() {
       : (m.page || m.node || "-");
     var titleLabel = "[" + (m.node || m.page || "-") + "] " + compNameLabel;
     var badgeHtml = isValid
-      ? (hasMultiTouch ? '<span class="memo-conflict-badge" title="多条备注指向同一组件">同组件多方意见</span>' : "")
-      : '<span class="memo-invalid-badge">落点已失效</span>';
+      ? (hasMultiTouch ? '<span class="memo-conflict-badge" title="' + escapeHtml(UI_TEXT.conflictTitle) + '">' + escapeHtml(UI_TEXT.conflictBadge) + '</span>' : "")
+      : '<span class="memo-invalid-badge">' + escapeHtml(UI_TEXT.invalidBadge) + '</span>';
     var authorHtml = m.author ? '<span class="memo-author-pill">' + escapeHtml(m.author) + '</span>' : "";
     var tagsHtml = "";
     if (targets.length > 0) {
@@ -3269,14 +3358,14 @@ function renderMemos() {
       : ("page · " + (m.page || "-"));
     return '<div class="memo-item' + (isValid ? "" : " invalid") + '">' +
       '<div class="memo-item-hd">' +
-        '<div class="memo-item-ctx" onclick="jumpToMemo(' + i + ')" title="点击定位">' + authorHtml + escapeHtml(titleLabel) + '</div>' +
+        '<div class="memo-item-ctx" onclick="jumpToMemo(' + i + ')" title="Jump">' + authorHtml + escapeHtml(titleLabel) + '</div>' +
         badgeHtml +
       '</div>' +
       tagsHtml +
       '<div class="memo-item-meta">' + escapeHtml(metaText) + '</div>' +
       '<div class="memo-item-txt">' + escapeHtml(m.text) + '</div>' +
       '<div class="memo-item-ft"><span>' + escapeHtml((m.author ? m.author + " · " : "") + (m.time || "")) + '</span>' +
-        '<button type="button" class="memo-del-btn" onclick="deleteMemoItem(' + i + ')">删除</button></div>' +
+        '<button type="button" class="memo-del-btn" onclick="deleteMemoItem(' + i + ')">' + escapeHtml(UI_TEXT.delBtn) + '</button></div>' +
     '</div>';
   }).join("");
 }

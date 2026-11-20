@@ -1,0 +1,119 @@
+<div class="page" id="p-quota-request" data-page="p-quota-request" data-page-id="p-quota-request">
+  <div class="wt-app-shell" data-comp-id="req.shell.container" data-comp-name="申请加额页主布局" data-comp-role="container">
+    <aside class="wt-sidebar" data-comp-id="req.sidebar.nav" data-comp-name="左侧控制台导航栏" data-comp-role="nav">
+      <div class="wt-brand-row">
+        <span class="wt-brand-mark">N</span>
+        <span>星云 AI 工作台</span>
+      </div>
+      <div class="wt-side-label">研发中心空间</div>
+      <button type="button" class="wt-side-item" onclick="goNode('F_USAGE_DASH')" data-comp-id="req.nav_overview.btn" data-comp-name="概览菜单按钮" data-comp-role="nav">
+        <span>概览</span>
+      </button>
+      <button type="button" class="wt-side-item" onclick="goNode('F_USAGE_DASH')" data-comp-id="req.nav_members.btn" data-comp-name="成员管理菜单按钮" data-comp-role="nav">
+        <span>成员管理</span>
+        <span class="wt-muted">42</span>
+      </button>
+      <button type="button" class="wt-side-item" onclick="goNode('F_USAGE_DASH')" data-comp-id="req.nav_keys.btn" data-comp-name="API密钥菜单按钮" data-comp-role="nav">
+        <span>API 密钥</span>
+        <span class="wt-muted">18</span>
+      </button>
+      <button type="button" class="wt-side-item active" onclick="goNode('F_USAGE_DASH')" data-comp-id="req.nav_guardrails.btn" data-comp-name="额度与风控菜单按钮" data-comp-role="nav">
+        <span>额度与风控</span>
+        <span class="wt-badge">[激活]</span>
+      </button>
+      <button type="button" class="wt-side-item" onclick="goNode('F_QUOTA_ACTIVE')" data-comp-id="req.nav_audit.btn" data-comp-name="审计日志菜单按钮" data-comp-role="nav">
+        <span>审计日志</span>
+      </button>
+    </aside>
+
+    <main class="wt-main">
+      <div class="wt-between">
+        <div class="wt-col" style="gap: 2px;">
+          <div class="wt-breadcrumb">额度与风控 / <span>申请临时加额</span></div>
+          <strong style="font-size: 15px;">成员发起临时加额申请</strong>
+        </div>
+        <button type="button" class="wt-btn" onclick="goNode('F_USAGE_DASH')" data-comp-id="req.back.btn" data-comp-name="返回监控台按钮" data-comp-role="control">← 返回监控台</button>
+      </div>
+
+      <div class="wt-kpi-grid">
+        <div class="wt-kpi-card">
+          <div class="wt-kpi-label"><span>当前空间余额</span><span class="wt-pill-strong">[92%]</span></div>
+          <div class="wt-kpi-val wt-mono">$160.00</div>
+          <div class="wt-kpi-sub">原硬顶 $2,000 · 已用 $1,840</div>
+        </div>
+        <div class="wt-kpi-card">
+          <div class="wt-kpi-label"><span>免审自动放行额度</span><span class="wt-badge">[当月可用]</span></div>
+          <div class="wt-kpi-val wt-mono">&lt;= $500</div>
+          <div class="wt-kpi-sub">当月剩余免审次数: 1 次</div>
+        </div>
+        <div class="wt-kpi-card">
+          <div class="wt-kpi-label"><span>预计审批链路</span><span class="wt-badge">[动态路由]</span></div>
+          <div class="wt-kpi-val" style="font-size: 15px;" data-when-var="request_tier" data-when-val="gt_500">负责人加签</div>
+          <div class="wt-kpi-val hidden" style="font-size: 15px;" data-when-var="request_tier" data-when-val="le_500">系统秒级免审</div>
+          <div class="wt-kpi-sub">审批人: 周琳 (Workspace Owner)</div>
+        </div>
+      </div>
+
+      <div class="wt-card" data-comp-id="req.form.card" data-comp-name="临时加额申请表单卡片" data-comp-role="container">
+        <div class="wt-card-hd wt-between">
+          <span>临时扩容申请单（单号预分配 #QR-20261120-08）</span>
+          <span class="wt-muted">申请人：林哲 (linzhe@nebula.team)</span>
+        </div>
+        <div class="wt-card-bd wt-form">
+          <div class="wt-Split2">
+            <div class="wt-field">
+              <label class="wt-label">归属项目 API 密钥 *</label>
+              <select class="wt-select" data-comp-id="req.key.select" data-comp-name="归属项目密钥下拉框" data-comp-role="control">
+                <option value="sk-prod-8f2a" selected>sk-prod-...8f2a · 智能客服 Agent ($792.40)</option>
+                <option value="sk-eval-3c19">sk-eval-...3c19 · 多模态回归评测 ($518.20)</option>
+                <option value="sk-code-91d0">sk-code-...91d0 · IDE 代码补全网关 ($346.80)</option>
+              </select>
+            </div>
+
+            <div class="wt-field">
+              <label class="wt-label">申请追加额度（USD） *</label>
+              <input class="wt-input wt-mono" type="number" min="50" step="50" value="800" oninput="setVar('request_tier', parseFloat(this.value || 0) > 500 ? 'gt_500' : 'le_500')" data-comp-id="req.amount.input" data-comp-name="申请追加额度输入框" data-comp-role="control" />
+              <span class="wt-help">试算：输入 300 切换为免审直通；输入 800 触发负责人加签（新硬顶 $2,800）。</span>
+            </div>
+          </div>
+
+          <div class="wt-Split2">
+            <div class="wt-field">
+              <label class="wt-label">成本中心归属 *</label>
+              <select class="wt-select" data-comp-id="req.cost_center.select" data-comp-name="成本中心归属下拉框" data-comp-role="control">
+                <option value="CC-204" selected>CC-204 · 商业化智能客服研发部</option>
+                <option value="CC-108">CC-108 · 基础模型评测平台组</option>
+                <option value="CC-315">CC-315 · 企业研发效能工具链</option>
+              </select>
+            </div>
+
+            <div class="wt-field">
+              <label class="wt-label">临时额度有效期 *</label>
+              <select class="wt-select" data-comp-id="req.ttl.select" data-comp-name="临时额度有效期下拉框" data-comp-role="control">
+                <option value="month_end" selected>仅当月有效（12 月 1 日自动回落 $2,000）</option>
+                <option value="72h">72 小时大促应急窗口</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="wt-field">
+            <label class="wt-label">业务峰值事由与容量测算 *</label>
+            <textarea class="wt-textarea" data-comp-id="req.reason.textarea" data-comp-name="业务峰值事由输入框" data-comp-role="control">双十一返场大促期间客户咨询并发增长 2.3 倍，智能客服 Agent（sk-prod-...8f2a）日均推理消耗由 $82 升至 $190，申请追加 $800 保障月底前生产流量零中断。</textarea>
+          </div>
+
+          <div class="wt-banner" data-when-var="request_tier" data-when-val="gt_500">
+            <strong>[超阈值加签路由]</strong> 本次申请追加 <strong>$800 &gt; $500</strong>，提交后将实时推送企微审批卡片至空间负责人「周琳」，预计响应 SLA &lt; 15 分钟。
+          </div>
+          <div class="wt-banner hidden" data-when-var="request_tier" data-when-val="le_500">
+            <strong>[免审自动放行路由]</strong> 本次申请追加额度 <strong>&lt;= $500</strong>，满足团队免审自愈条件，提交后网关将在 3 秒内自动调增上限并记录审计流水。
+          </div>
+        </div>
+
+        <div class="wt-card-ft wt-between">
+          <button type="button" class="wt-btn" onclick="setVar('request_tier','le_500')" data-comp-id="req.fill_300.btn" data-comp-name="切换小额免审试算按钮" data-comp-role="control">试算 &lt;= $500 免审通道</button>
+          <button type="button" class="wt-btn wt-btn-primary" onclick="goBranch('request_tier')" data-comp-id="req.submit.btn" data-comp-name="提交加额申请按钮" data-comp-role="control">提交加额申请</button>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>

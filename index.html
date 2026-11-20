@@ -1,91 +1,356 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>OpenPM · 在线交互体验门户</title>
+<title>OpenPM · Live Interactive Workbench Playground</title>
 <style>
 :root {
-  --bg: #f7f7f7; --card: #ffffff; --border: #dcdcdc;
-  --text: #1f1f1f; --muted: #666666; --spot: #d97706; --spot-bg: rgba(217,119,6,0.08);
+  --bg: #f6f6f7;
+  --card: #ffffff;
+  --surface: #fafafa;
+  --border: #e2e2e5;
+  --border-strong: #d0d0d5;
+  --text: #18181b;
+  --muted: #52525b;
+  --subtle: #71717a;
+  --dark: #18181b;
+  --spot: #d97706;
+  --spot-bg: rgba(217, 119, 6, 0.08);
+  --spot-border: rgba(217, 119, 6, 0.42);
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body {
-  background: var(--bg); color: var(--text);
-  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
-  line-height: 1.6; padding: 48px 20px;
+  background-color: var(--bg);
+  background-image: radial-gradient(#dedee3 1px, transparent 1px);
+  background-size: 24px 24px;
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Inter", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  line-height: 1.6;
+  padding: 36px 20px 64px;
 }
-.wrap { max-width: 960px; margin: 0 auto; }
+.wrap { max-width: 1020px; margin: 0 auto; }
+.topbar {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  flex-wrap: wrap; margin-bottom: 22px;
+}
 .badge {
-  display: inline-block; font-size: 12px; font-weight: 600; color: var(--spot);
-  background: var(--spot-bg); border: 1px solid rgba(217,119,6,0.35);
-  padding: 3px 10px; border-radius: 999px; margin-bottom: 14px;
+  display: inline-flex; align-items: center; gap: 7px;
+  font-size: 12px; font-weight: 700; color: #92400e;
+  background: #fffbeb; border: 1px solid var(--spot-border);
+  padding: 4px 12px; border-radius: 999px; letter-spacing: 0.2px;
 }
-h1 { font-size: 36px; letter-spacing: -0.5px; margin-bottom: 10px; }
-.sub { font-size: 16px; color: var(--muted); max-width: 720px; margin-bottom: 32px; }
-.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 20px; margin-bottom: 32px; }
+.badge-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--spot); }
+.top-actions { display: flex; align-items: center; gap: 10px; }
+.ghost-link {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 6px 12px; border-radius: 8px; border: 1px solid var(--border);
+  background: var(--card); color: var(--text); font-size: 12.5px; font-weight: 600;
+  text-decoration: none; transition: border-color 0.15s;
+}
+.ghost-link:hover { border-color: var(--spot); color: var(--spot); }
+.lang-switch {
+  display: inline-flex; background: var(--card); border: 1px solid var(--border-strong);
+  border-radius: 8px; padding: 2px; gap: 2px;
+}
+.lang-btn {
+  border: none; background: transparent; color: var(--muted);
+  font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 6px;
+  cursor: pointer; transition: all 0.15s;
+}
+.lang-btn.active { background: var(--dark); color: #ffffff; }
+h1 { font-size: 36px; font-weight: 800; letter-spacing: -0.9px; line-height: 1.18; margin-bottom: 10px; }
+.sub { font-size: 15.5px; color: var(--muted); max-width: 780px; margin-bottom: 24px; }
+
+.install-bar {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  background: #111114; color: #fafafa; border: 1px solid #27272d;
+  border-radius: 12px; padding: 14px 18px; margin-bottom: 26px; flex-wrap: wrap;
+}
+.install-meta { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; min-width: 0; }
+.install-tag {
+  font-size: 11px; font-weight: 700; color: #fbbf24;
+  background: rgba(217, 119, 6, 0.18); border: 1px solid rgba(217, 119, 6, 0.5);
+  padding: 2px 8px; border-radius: 5px; white-space: nowrap;
+}
+.install-code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px; color: #e4e4e7; word-break: break-all;
+}
+.copy-btn {
+  background: var(--spot); color: #ffffff; border: none; border-radius: 7px;
+  padding: 7px 14px; font-size: 12.5px; font-weight: 700; cursor: pointer;
+  white-space: nowrap; transition: opacity 0.15s;
+}
+.copy-btn:hover { opacity: 0.92; }
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+  gap: 18px; margin-bottom: 26px;
+}
+@media (max-width: 520px) {
+  .grid { grid-template-columns: 1fr; }
+  h1 { font-size: 28px; }
+}
 .card {
-  background: var(--card); border: 1px solid var(--border); border-radius: 12px;
-  padding: 24px; display: flex; flex-direction: column; justify-content: space-between;
-  transition: border-color 0.2s, transform 0.2s; text-decoration: none; color: inherit;
+  background: var(--card); border: 1px solid var(--border); border-radius: 13px;
+  padding: 22px 24px; display: flex; flex-direction: column; justify-content: space-between;
+  transition: border-color 0.18s, transform 0.18s, box-shadow 0.18s;
+  text-decoration: none; color: inherit; position: relative;
 }
-.card:hover { border-color: var(--spot); transform: translateY(-2px); }
-.tag { font-size: 11px; color: var(--muted); border: 1px solid var(--border); border-radius: 4px; padding: 2px 7px; display: inline-block; margin-bottom: 10px; }
-.card h2 { font-size: 19px; margin-bottom: 8px; }
+.card.flagship { border-color: rgba(217, 119, 6, 0.45); background: linear-gradient(180deg, #fffdf7 0%, #ffffff 38%); }
+.card:hover {
+  border-color: var(--spot);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 26px rgba(24, 24, 27, 0.06);
+}
+.tag-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+.tag {
+  font-size: 11px; font-weight: 600; color: var(--muted);
+  border: 1px solid var(--border); background: var(--surface);
+  border-radius: 5px; padding: 2px 8px;
+}
+.tag-amber {
+  font-size: 11px; font-weight: 700; color: #92400e;
+  border: 1px solid var(--spot-border); background: #fffbeb;
+  border-radius: 5px; padding: 2px 8px;
+}
+.card h2 { font-size: 18.5px; font-weight: 700; letter-spacing: -0.2px; margin-bottom: 8px; }
 .card p { font-size: 13.5px; color: var(--muted); margin-bottom: 18px; }
 .btn {
   display: inline-flex; align-items: center; justify-content: center;
-  padding: 9px 16px; border-radius: 7px; font-size: 13.5px; font-weight: 600;
-  background: #222222; color: #ffffff; width: fit-content;
+  padding: 8px 15px; border-radius: 7px; font-size: 13px; font-weight: 600;
+  background: var(--dark); color: #ffffff; width: fit-content; transition: background 0.15s;
 }
 .card:hover .btn { background: var(--spot); }
+
 .tips {
-  background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+  background: var(--card); border: 1px solid var(--border); border-radius: 12px;
   padding: 18px 22px; font-size: 13.5px; color: var(--muted);
 }
 .tips strong { color: var(--text); }
-.ft { margin-top: 28px; font-size: 13px; color: var(--muted); display: flex; gap: 16px; }
-.ft a { color: var(--text); font-weight: 600; }
+.tips code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px;
+  background: #f1f1f4; color: #92400e; padding: 1px 6px; border-radius: 4px;
+}
+.ft {
+  margin-top: 26px; font-size: 13px; color: var(--subtle);
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+}
+.ft a { color: var(--text); font-weight: 600; text-decoration: none; }
+.ft a:hover { color: var(--spot); text-decoration: underline; }
+[data-lang] { display: none; }
+html[data-active-lang="en"] [data-lang="en"] { display: revert; }
+html[data-active-lang="zh"] [data-lang="zh"] { display: revert; }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <span class="badge">OpenPM Live Playground · 零安装单文件交互工作台</span>
-  <h1>OpenPM 在线交互试玩</h1>
-  <p class="sub">告别“盲盒写 PRD、评审靠嘴指、改一处崩全篇”。以下两个工作台均由 OpenPM 确定性编译生成（单文件 HTML、零外部依赖），点击即可直接体验。</p>
+  <div class="topbar">
+    <span class="badge">
+      <span class="badge-dot"></span>
+      <span data-lang="en">OpenPM Live Playground · Zero-Install Single-File HTML</span>
+      <span data-lang="zh">OpenPM 在线交互门户 · 零安装单文件工作台</span>
+    </span>
+    <div class="top-actions">
+      <a class="ghost-link" href="./guide.html">
+        <span data-lang="en">Quickstart Guide</span>
+        <span data-lang="zh">新手速查手册</span>
+      </a>
+      <a class="ghost-link" href="https://github.com/SilasSolivagus/OpenPM" target="_blank" rel="noopener">&#9733; GitHub</a>
+      <div class="lang-switch" role="group" aria-label="Language toggle">
+        <button type="button" class="lang-btn" id="btn-en" onclick="setLang('en')">EN</button>
+        <button type="button" class="lang-btn" id="btn-zh" onclick="setLang('zh')">中文</button>
+      </div>
+    </div>
+  </div>
+
+  <h1 data-lang="en">Clickable Wireframes, Orthogonal Flows, Surgical PRDs.</h1>
+  <h1 data-lang="zh">把一句话想法，编译成可点选评审的活原型工作台</h1>
+
+  <p class="sub" data-lang="en">
+    Every workbench below was deterministically compiled by OpenPM into a standalone HTML file with zero external dependencies. Open any demo to test the 95% monochrome wireframe + 5% #D97706 delta toggle, cubic Bezier spec tethers, and inline @[Component] review pills.
+  </p>
+  <p class="sub" data-lang="zh">
+    告别“几千字纯文字盲盒、开会靠嘴指认按钮、让 AI 改一处崩全篇”。以下 4 个工作台均由 OpenPM 确定性编译为纯离线单文件 HTML，点击即可直接在浏览器体验。
+  </p>
+
+  <div class="install-bar">
+    <div class="install-meta">
+      <span class="install-tag" data-lang="en">30s AGENT INSTALL</span>
+      <span class="install-tag" data-lang="zh">30 秒一句话安装</span>
+      <code class="install-code" id="install-en" data-lang="en">Install and initialize https://github.com/SilasSolivagus/OpenPM</code>
+      <code class="install-code" id="install-zh" data-lang="zh">帮我安装并启动 https://github.com/SilasSolivagus/OpenPM</code>
+    </div>
+    <button type="button" class="copy-btn" onclick="copyInstall(this)">
+      <span data-lang="en">Copy Prompt</span>
+      <span data-lang="zh">复制安装口令</span>
+    </button>
+  </div>
 
   <div class="grid">
-    <a class="card" href="./projects/b-end-approval-flow/walkthrough.html">
+    <!-- Card 1: Flagship EN -->
+    <a class="card flagship" href="./projects/ai-workspace-guardrails/walkthrough.html">
       <div>
-        <span class="tag">B 端企业管理后台 · 690px 宽屏</span>
-        <h2>示例一：企业采购多级审批流</h2>
-        <p>体验 95% 纯黑白灰线框底图 + 5% 琥珀橙「改动高亮」开关、正交流程图菱形点击、单页改点三次贝塞尔曲线直连，以及点击按钮直接插入 @[组件名] 记评审备注。</p>
+        <div class="tag-row">
+          <span class="tag-amber">FLAGSHIP · EN</span>
+          <span class="tag" data-lang="en">AI SaaS Admin · 690px Desktop</span>
+          <span class="tag" data-lang="zh">英文旗舰样板 · AI 云工作台</span>
+        </div>
+        <h2 data-lang="en">Acme AI Cloud · Spend Guardrails &amp; Quota Approval</h2>
+        <h2 data-lang="zh">Flagship Demo (EN): Acme AI Cloud · Spend Guardrails &amp; Quota Approval</h2>
+        <p data-lang="en">
+          Full English B2B AI platform spec: monthly token budget caps, soft/hard threshold alerts, VP override escalation, Bezier spec tethers, and multi-reviewer @[Component] notes.
+        </p>
+        <p data-lang="zh">
+          全英文国际化团队样板：覆盖 AI 团队月度 Token 预算阈值拦截、VP 超额加签审批、单页改点三次贝塞尔曲线直连与多人 @[Component] 胶囊批注。
+        </p>
       </div>
-      <span class="btn">打开 B 端审批流工作台 →</span>
+      <span class="btn">
+        <span data-lang="en">Open Flagship EN Workbench &rarr;</span>
+        <span data-lang="zh">打开英文旗舰工作台 &rarr;</span>
+      </span>
     </a>
 
+    <!-- Card 2: Flagship ZH -->
+    <a class="card flagship" href="./projects/ai-workspace-guardrails-zh/walkthrough.html">
+      <div>
+        <div class="tag-row">
+          <span class="tag-amber">旗舰演示 · 中文</span>
+          <span class="tag" data-lang="en">AI Workspace · Chinese Spec</span>
+          <span class="tag" data-lang="zh">AI SaaS 管理后台 · 690px 宽屏</span>
+        </div>
+        <h2 data-lang="en">旗舰演示 (中文): 星云 AI 团队工作台 · 用量风控与加签审批</h2>
+        <h2 data-lang="zh">星云 AI 团队工作台 · 用量风控与加签审批</h2>
+        <p data-lang="en">
+          Chinese flagship workbench demonstrating 95% monochrome wireframes + 5% #D97706 engineering delta, Top-Down orthogonal decision diamonds, and signed reviewer feedback export.
+        </p>
+        <p data-lang="zh">
+          中文旗舰样板：完整演示 95% 纯黑白灰底图 + 5% 琥珀橙增量高亮、纵向正交菱形风控分支切换、单页改点连线，以及署名点选 @[组件名] 导出合并闭环。
+        </p>
+      </div>
+      <span class="btn">
+        <span data-lang="en">Open Flagship ZH Workbench &rarr;</span>
+        <span data-lang="zh">打开中文旗舰工作台 &rarr;</span>
+      </span>
+    </a>
+
+    <!-- Card 3: B2B Procurement -->
+    <a class="card" href="./projects/b-end-approval-flow/walkthrough.html">
+      <div>
+        <div class="tag-row">
+          <span class="tag" data-lang="en">B2B Demo · Enterprise Admin</span>
+          <span class="tag" data-lang="zh">B 端示例 · 企业采购后台</span>
+        </div>
+        <h2 data-lang="en">B2B Demo: Enterprise Procurement Approval</h2>
+        <h2 data-lang="zh">B 端示例：企业采购多级加签审批流</h2>
+        <p data-lang="en">
+          Multi-tier procurement approval workflow featuring conditional finance co-signing over threshold, reject-reason validation modals, and anchored spec cards.
+        </p>
+        <p data-lang="zh">
+          体验超额自动触发财务复核加签、驳回必填原因弹窗校验、存量节点与本期改点分离高亮，以及离线单文件评审流转。
+        </p>
+      </div>
+      <span class="btn">
+        <span data-lang="en">Open B2B Demo &rarr;</span>
+        <span data-lang="zh">打开 B 端采购审批工作台 &rarr;</span>
+      </span>
+    </a>
+
+    <!-- Card 4: Consumer Captcha -->
     <a class="card" href="./projects/demo-captcha-publish/walkthrough.html">
       <div>
-        <span class="tag">C 端多状态强交互 · App 375px + Web 宽屏</span>
-        <h2>示例二：动态社区发布器人机验证</h2>
-        <p>体验 25 个流程节点、7 个可点击风控判断菱形、App/Web 双端实时切换、三种验证码题型局部状态切换，以及导出结构化 review-feedback.md 闭环。</p>
+        <div class="tag-row">
+          <span class="tag" data-lang="en">Consumer Demo · App 375px + Web</span>
+          <span class="tag" data-lang="zh">C 端示例 · App 375px + Web 双端</span>
+        </div>
+        <h2 data-lang="en">Consumer Demo: Community Post Security Check</h2>
+        <h2 data-lang="zh">C 端示例：社区动态发布器人机安全验证</h2>
+        <p data-lang="en">
+          25 flow nodes and 7 clickable risk-control decision diamonds across mobile 375px and desktop viewports, with live interactive captcha state switching.
+        </p>
+        <p data-lang="zh">
+          涵盖 25 个流程节点与 7 个可点击风控判断菱形，支持 App 375px 与 Web 宽屏实时切换及三种验证码题型局部状态交互。
+        </p>
       </div>
-      <span class="btn">打开 C 端双端工作台 →</span>
+      <span class="btn">
+        <span data-lang="en">Open Consumer Demo &rarr;</span>
+        <span data-lang="zh">打开 C 端双端工作台 &rarr;</span>
+      </span>
     </a>
   </div>
 
-  <div class="tips">
+  <div class="tips" data-lang="en">
+    <strong>30-Second Tryout Checklist:</strong>
+    Inside any workbench: (1) Toggle <strong>Delta Highlight</strong> in the top bar to spot every #D97706 sprint change in one second; (2) Switch to <strong>Spec Delta</strong> view and click a rule card to trace its cubic Bezier tether; (3) Click <strong>+ Add Note</strong>, then click any button on the wireframe to insert an inline <code>@[Component]</code> pill.
+  </div>
+  <div class="tips" data-lang="zh">
     <strong>30 秒试玩指南：</strong>
-    进入任一工作台后 → ① 点顶栏<strong>「改动高亮」</strong>开关，一秒看清本期研发增量；② 点顶栏<strong>「单页改点」</strong>看规则卡片与控件曲线联动；③ 点右上角<strong>「+ 记备注」</strong>后直接点中间原型里的任意按钮，体验内联 <code>@[组件名]</code> 批注！
+    进入任一工作台后 &rarr; ① 点顶栏<strong>「改动高亮」</strong>开关，一秒看清本期 5% 琥珀橙研发增量；② 切到<strong>「单页改点」</strong>点击右侧规则卡片查看三次贝塞尔曲线直连；③ 点右上角<strong>「+ 记备注」</strong>后直接点中间原型里的任意按钮，体验内联 <code>@[组件名]</code> 胶囊批注！
   </div>
 
   <div class="ft">
-    <a href="./guide.html">新手速查使用指南 (guide.html)</a>
+    <a href="./guide.html">
+      <span data-lang="en">Beginner Manual (guide.html)</span>
+      <span data-lang="zh">新手速查使用手册 (guide.html)</span>
+    </a>
     <span>·</span>
-    <a href="https://github.com/SilasSolivagus/OpenPM" target="_blank" rel="noopener">GitHub 仓库主页 &#9733;</a>
+    <a href="https://github.com/SilasSolivagus/OpenPM" target="_blank" rel="noopener">
+      <span data-lang="en">GitHub Repository &#9733;</span>
+      <span data-lang="zh">GitHub 仓库主页 &#9733;</span>
+    </a>
     <span>·</span>
-    <span>源于 <a href="https://github.com/roxorlt" target="_blank" rel="noopener">@roxorlt</a> &amp; <a href="https://github.com/roxorlt/UEmaster" target="_blank" rel="noopener">UEmaster</a> 创意</span>
+    <span data-lang="en">Originated from <a href="https://github.com/roxorlt" target="_blank" rel="noopener">@roxorlt</a> &amp; <a href="https://github.com/roxorlt/UEmaster" target="_blank" rel="noopener">roxorlt/UEmaster</a>, co-built with <a href="https://github.com/SilasSolivagus" target="_blank" rel="noopener">@SilasSolivagus</a></span>
+    <span data-lang="zh">源于 <a href="https://github.com/roxorlt" target="_blank" rel="noopener">@roxorlt</a> 灵感创意与 <a href="https://github.com/roxorlt/UEmaster" target="_blank" rel="noopener">roxorlt/UEmaster</a>，由 <a href="https://github.com/SilasSolivagus" target="_blank" rel="noopener">@SilasSolivagus</a> 与 <a href="https://github.com/roxorlt" target="_blank" rel="noopener">@roxorlt</a> 共建</span>
   </div>
 </div>
+
+<script>
+function detectInitialLang() {
+  try {
+    var params = new URLSearchParams(window.location.search);
+    var q = params.get("lang");
+    if (q === "en" || q === "zh") return q;
+    var saved = localStorage.getItem("openpm_lang");
+    if (saved === "en" || saved === "zh") return saved;
+  } catch (e) {}
+  var nav = (navigator.language || navigator.userLanguage || "en").toLowerCase();
+  return nav.indexOf("zh") === 0 ? "zh" : "en";
+}
+
+function setLang(lang) {
+  var active = lang === "zh" ? "zh" : "en";
+  document.documentElement.setAttribute("data-active-lang", active);
+  document.documentElement.setAttribute("lang", active === "zh" ? "zh-CN" : "en");
+  document.title = active === "zh"
+    ? "OpenPM · 在线交互体验门户"
+    : "OpenPM · Live Interactive Workbench Playground";
+  document.getElementById("btn-en").className = "lang-btn" + (active === "en" ? " active" : "");
+  document.getElementById("btn-zh").className = "lang-btn" + (active === "zh" ? " active" : "");
+  try { localStorage.setItem("openpm_lang", active); } catch (e) {}
+}
+
+function copyInstall(btn) {
+  var lang = document.documentElement.getAttribute("data-active-lang") || "en";
+  var txt = document.getElementById(lang === "zh" ? "install-zh" : "install-en").textContent;
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(txt);
+  } else {
+    var ta = document.createElement("textarea");
+    ta.value = txt; document.body.appendChild(ta); ta.select();
+    try { document.execCommand("copy"); } catch (e) {}
+    document.body.removeChild(ta);
+  }
+  var label = btn.querySelector('[data-lang="' + lang + '"]');
+  if (label) {
+    var old = label.textContent;
+    label.textContent = lang === "zh" ? "已复制 ✓" : "Copied ✓";
+    setTimeout(function () { label.textContent = old; }, 1400);
+  }
+}
+
+setLang(detectInitialLang());
+</script>
 </body>
 </html>

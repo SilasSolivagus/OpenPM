@@ -1,0 +1,311 @@
+{
+  "version": "spec-v2",
+  "meta": {
+    "project": "ai-workspace-guardrails",
+    "title": "Acme AI Cloud · Spend Guardrails & Quota Approval (v2.4)",
+    "doc_version": "v2.4",
+    "lang": "en",
+    "platform_default": "web",
+    "entry_node": "F_USAGE_DASH",
+    "prd_source": "prd.md"
+  },
+  "vars": [
+    {
+      "id": "platform",
+      "label": "Platform",
+      "kind": "global",
+      "default": "web",
+      "options": [
+        { "id": "web", "label": "Web Console" },
+        { "id": "app", "label": "Mobile App 375px" }
+      ]
+    },
+    {
+      "id": "enforcement_mode",
+      "label": "100% Cap Action",
+      "kind": "local",
+      "default": "auto_pause",
+      "pages": ["p-guardrail-modal", "p-app-guardrail-modal"],
+      "options": [
+        { "id": "auto_pause", "label": "Auto-Pause Keys" },
+        { "id": "alert_only", "label": "Alert Only" }
+      ]
+    },
+    {
+      "id": "cap_status",
+      "label": "Monthly Cap State",
+      "kind": "branch",
+      "default": "paused",
+      "diamond": "D_HARD_CAP",
+      "nodes": ["F_USAGE_DASH", "F_GUARDRAIL_POLICY", "D_HARD_CAP", "F_KEY_PAUSED"],
+      "options": [
+        {
+          "id": "within_cap",
+          "label": "< 100% Cap (Active)",
+          "target": "F_QUOTA_REQ"
+        },
+        {
+          "id": "paused",
+          "label": "100% Cap (Auto-Pause)",
+          "target": "F_KEY_PAUSED"
+        }
+      ]
+    },
+    {
+      "id": "request_tier",
+      "label": "Top-Up Amount Tier",
+      "kind": "branch",
+      "default": "gt_500",
+      "diamond": "D_THRESHOLD",
+      "nodes": ["F_QUOTA_REQ", "D_THRESHOLD", "F_OWNER_REVIEW", "F_QUOTA_ACTIVE"],
+      "options": [
+        {
+          "id": "le_500",
+          "label": "<= $500 (Auto-Approve)",
+          "target": "F_QUOTA_ACTIVE"
+        },
+        {
+          "id": "gt_500",
+          "label": "> $500 (Owner Review)",
+          "target": "F_OWNER_REVIEW"
+        }
+      ]
+    },
+    {
+      "id": "owner_decision",
+      "label": "Owner Review Decision",
+      "kind": "branch",
+      "default": "approve",
+      "diamond": "D_OWNER_DECISION",
+      "nodes": ["F_OWNER_REVIEW", "D_OWNER_DECISION", "F_QUOTA_ACTIVE", "F_CAP_RETAINED"],
+      "options": [
+        {
+          "id": "approve",
+          "label": "Approve & Unlock",
+          "target": "F_QUOTA_ACTIVE"
+        },
+        {
+          "id": "reject",
+          "label": "Reject & Keep Cap",
+          "target": "F_CAP_RETAINED"
+        }
+      ]
+    }
+  ],
+  "nodes": {
+    "F_USAGE_DASH": {
+      "page": "p-usage-dash",
+      "title": "Usage & Spend Dashboard",
+      "change": "unchanged",
+      "anno": [
+        ["Real-Time Workspace Spend", "Displays MTD spend ($1,840 / $2,000 at 92%), 18 active API keys, and per-project burn share."],
+        ["Dual Entry Actions", "Admins open Guardrail Policy Drawer; developers trigger proactive or emergency Quota Top-Up requests."]
+      ]
+    },
+    "F_GUARDRAIL_POLICY": {
+      "page": "p-guardrail-modal",
+      "title": "Guardrail Policy Drawer",
+      "change": "new",
+      "anno": [
+        ["Hard Cap & Auto-Approve Ceiling (v2.4 New)", "Sets workspace monthly hard cap ($2,000) and tiered instant auto-approval threshold ($500)."],
+        ["Health-Check Key Exemption", "Allows synthetic uptime probes (capped at $10/mo) to stay online when production keys auto-pause."]
+      ]
+    },
+    "D_HARD_CAP": {
+      "page": "p-guardrail-modal",
+      "title": "Spend Hits 100% Cap?",
+      "isDecision": true,
+      "branchVar": "cap_status",
+      "change": "new",
+      "anno": [
+        ["Deterministic Gateway Enforcement", "When spend reaches 100% with Auto-Pause enabled, edge gateways pause non-exempt keys within 5s (HTTP 429)."]
+      ]
+    },
+    "F_KEY_PAUSED": {
+      "page": "p-key-paused",
+      "title": "API Key Auto-Paused",
+      "change": "new",
+      "anno": [
+        ["Zero-Overage Pause State (v2.4 New)", "Blocks further billable token burn on sk-prod-...8f2a and surfaces one-click emergency top-up recovery."]
+      ]
+    },
+    "F_QUOTA_REQ": {
+      "page": "p-quota-request",
+      "title": "Quota Top-Up Request",
+      "change": "modified",
+      "anno": [
+        ["Live Tier Preview (v2.4 Modified)", "Typing an amount or clicking +$300 / +$800 dynamically updates request_tier and previews routing before submit."]
+      ]
+    },
+    "D_THRESHOLD": {
+      "page": "p-quota-request",
+      "title": "Top-Up > $500 Limit?",
+      "isDecision": true,
+      "branchVar": "request_tier",
+      "change": "new",
+      "anno": [
+        ["Tiered Auto-Approval Routing", "Requests <= $500 with an active cost center auto-approve in < 2s; requests > $500 route to Workspace Owner."]
+      ]
+    },
+    "F_OWNER_REVIEW": {
+      "page": "p-owner-approval",
+      "title": "Owner Approval Console",
+      "change": "unchanged",
+      "anno": [
+        ["Burn-Rate Context & Audit Sign-Off", "Presents 7-day daily spend comparison, error rates, and requester justification alongside mandatory audit comment."]
+      ]
+    },
+    "D_OWNER_DECISION": {
+      "page": "p-owner-approval",
+      "title": "Owner Approves?",
+      "isDecision": true,
+      "branchVar": "owner_decision",
+      "change": "modified",
+      "anno": [
+        ["Approve vs Retain Cap", "Approval atomically increments cap and unpauses keys; rejection retains $2,000 cap and loops back for revision."]
+      ]
+    },
+    "F_QUOTA_ACTIVE": {
+      "page": "p-quota-active",
+      "title": "Quota Active & Keys Unlocked",
+      "change": "unchanged",
+      "anno": [
+        ["Global Unpause & FinOps Log", "Confirms updated monthly cap ($2,800 or $2,300), restored 18/18 active keys, and immutable 365-day audit entry."]
+      ]
+    },
+    "F_CAP_RETAINED": {
+      "page": "p-key-paused",
+      "title": "Cap Retained · Request Denied",
+      "change": "unchanged",
+      "anno": [
+        ["Rejected Request Loop", "Keeps $2,000 cap intact, displays owner feedback note, and lets developer revise top-up amount to resubmit."]
+      ]
+    }
+  },
+  "pages": {
+    "p-usage-dash": {
+      "frame": "wide",
+      "platform": "web",
+      "title": "Usage & Spend Dashboard (Web Console)",
+      "components": [
+        { "comp_id": "dash.guardrail.btn", "comp_name": "Configure Guardrails Button", "role": "control" },
+        { "comp_id": "dash.request.btn", "comp_name": "Request Quota Top-Up Button", "role": "control" },
+        { "comp_id": "dash.kpi.grid", "comp_name": "Workspace Spend KPI Grid", "role": "container" }
+      ]
+    },
+    "p-guardrail-modal": {
+      "frame": "wide",
+      "platform": "web",
+      "title": "Guardrail Policy Drawer (Web Console)",
+      "components": [
+        { "comp_id": "policy.cap.input", "comp_name": "Monthly Hard Cap Input", "role": "control" },
+        { "comp_id": "policy.threshold.input", "comp_name": "Auto-Approve Threshold Input", "role": "control" },
+        { "comp_id": "policy.save.btn", "comp_name": "Save Guardrail Policy Button", "role": "control" }
+      ]
+    },
+    "p-quota-request": {
+      "frame": "wide",
+      "platform": "web",
+      "title": "Developer Quota Top-Up Request (Web Console)",
+      "components": [
+        { "comp_id": "req.amount.input", "comp_name": "Requested Extra Budget Input", "role": "control" },
+        { "comp_id": "req.submit.btn", "comp_name": "Submit Quota Request Button", "role": "control" }
+      ]
+    },
+    "p-owner-approval": {
+      "frame": "wide",
+      "platform": "web",
+      "title": "Workspace Owner Approval Console (Web Console)",
+      "components": [
+        { "comp_id": "approve.comment.input", "comp_name": "Reviewer Audit Comment Input", "role": "control" },
+        { "comp_id": "approve.confirm.btn", "comp_name": "Approve and Unlock Keys Button", "role": "control" },
+        { "comp_id": "approve.reject.btn", "comp_name": "Reject and Keep Cap Button", "role": "control" }
+      ]
+    },
+    "p-key-paused": {
+      "frame": "wide",
+      "platform": "web",
+      "title": "Hard-Cap Triggered · Key Auto-Paused (Web Console)",
+      "components": [
+        { "comp_id": "paused.cap.banner", "comp_name": "Hard-Cap Auto-Paused Alert Banner", "role": "feedback" },
+        { "comp_id": "paused.unlock.btn", "comp_name": "Request Quota Top-Up to Unlock Button", "role": "control" }
+      ]
+    },
+    "p-quota-active": {
+      "frame": "wide",
+      "platform": "web",
+      "title": "Quota Updated & Keys Active (Web Console)",
+      "components": [
+        { "comp_id": "active.audit.card", "comp_name": "Immutable FinOps Audit Trail Card", "role": "container" },
+        { "comp_id": "active.back.btn", "comp_name": "Back to Dashboard Button", "role": "control" }
+      ]
+    },
+    "p-app-usage-dash": {
+      "variant_of": "p-usage-dash",
+      "frame": "phone",
+      "platform": "app",
+      "title": "Usage & Spend Dashboard (Mobile 375px)"
+    },
+    "p-app-guardrail-modal": {
+      "variant_of": "p-guardrail-modal",
+      "frame": "phone",
+      "platform": "app",
+      "title": "Guardrail Policy (Mobile 375px)"
+    },
+    "p-app-quota-request": {
+      "variant_of": "p-quota-request",
+      "frame": "phone",
+      "platform": "app",
+      "title": "Quota Top-Up Request (Mobile 375px)"
+    },
+    "p-app-owner-approval": {
+      "variant_of": "p-owner-approval",
+      "frame": "phone",
+      "platform": "app",
+      "title": "Owner Approval (Mobile 375px)"
+    },
+    "p-app-key-paused": {
+      "variant_of": "p-key-paused",
+      "frame": "phone",
+      "platform": "app",
+      "title": "Key Auto-Paused (Mobile 375px)"
+    },
+    "p-app-quota-active": {
+      "variant_of": "p-quota-active",
+      "frame": "phone",
+      "platform": "app",
+      "title": "Quota Active (Mobile 375px)"
+    }
+  },
+  "spec_cards": [
+    {
+      "id": "SC-01",
+      "title": "Tiered Auto-Approval Guardrail ($500 Threshold)",
+      "page": "p-guardrail-modal",
+      "anchor": "policy.threshold.input",
+      "body": "Workspace admins configure an instant auto-approval ceiling (default $500). Top-up requests <= $500 under a verified cost center skip manual queue and unlock keys in < 2s."
+    },
+    {
+      "id": "SC-02",
+      "title": "Live Threshold Routing Preview on Amount Input",
+      "page": "p-quota-request",
+      "anchor": "req.amount.input",
+      "body": "Entering a top-up amount or selecting +$300 / +$800 presets dynamically updates request_tier and previews whether the request will auto-approve or route to Workspace Owner."
+    },
+    {
+      "id": "SC-03",
+      "title": "Zero-Overage Hard-Cap Pause & 1-Click Recovery",
+      "page": "p-key-paused",
+      "anchor": "paused.unlock.btn",
+      "body": "Reaching 100% of the monthly hard cap pauses non-exempt API keys within 5s (HTTP 429 quota_hard_cap_exceeded) while keeping synthetic health probes online and deep-linking to emergency top-up."
+    },
+    {
+      "id": "SC-04",
+      "title": "Atomic Cap Increment & Edge Key Unpause",
+      "page": "p-owner-approval",
+      "anchor": "approve.confirm.btn",
+      "body": "Owner approval atomically raises the monthly hard cap ($2,000 -> $2,800), restores paused keys across all edge gateways, and appends a signed 365-day FinOps audit trail record."
+    }
+  ],
+  "memos": []
+}

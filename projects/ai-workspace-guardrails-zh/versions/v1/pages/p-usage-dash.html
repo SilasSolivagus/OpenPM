@@ -1,0 +1,170 @@
+<div class="page" id="p-usage-dash" data-page="p-usage-dash" data-page-id="p-usage-dash">
+  <div class="wt-app-shell" data-comp-id="dash.shell.container" data-comp-name="工作台主布局容器" data-comp-role="container">
+    <aside class="wt-sidebar" data-comp-id="dash.sidebar.nav" data-comp-name="左侧控制台导航栏" data-comp-role="nav">
+      <div class="wt-brand-row">
+        <span class="wt-brand-mark">N</span>
+        <span>星云 AI 工作台</span>
+      </div>
+      <div class="wt-side-label">研发中心空间</div>
+      <button type="button" class="wt-side-item" onclick="goNode('F_USAGE_DASH')" data-comp-id="dash.nav_overview.btn" data-comp-name="概览菜单按钮" data-comp-role="nav">
+        <span>概览</span>
+      </button>
+      <button type="button" class="wt-side-item" onclick="goNode('F_USAGE_DASH')" data-comp-id="dash.nav_members.btn" data-comp-name="成员管理菜单按钮" data-comp-role="nav">
+        <span>成员管理</span>
+        <span class="wt-muted">42</span>
+      </button>
+      <button type="button" class="wt-side-item" onclick="goNode('F_USAGE_DASH')" data-comp-id="dash.nav_keys.btn" data-comp-name="API密钥菜单按钮" data-comp-role="nav">
+        <span>API 密钥</span>
+        <span class="wt-muted">18</span>
+      </button>
+      <button type="button" class="wt-side-item active" onclick="goNode('F_USAGE_DASH')" data-comp-id="dash.nav_guardrails.btn" data-comp-name="额度与风控菜单按钮" data-comp-role="nav">
+        <span>额度与风控</span>
+        <span class="wt-badge">[激活]</span>
+      </button>
+      <button type="button" class="wt-side-item" onclick="goNode('F_QUOTA_ACTIVE')" data-comp-id="dash.nav_audit.btn" data-comp-name="审计日志菜单按钮" data-comp-role="nav">
+        <span>审计日志</span>
+      </button>
+      <div class="wt-divider"></div>
+      <div class="wt-col" style="padding: 4px 8px;">
+        <span class="wt-muted">账期: 2026-11</span>
+        <span class="wt-muted">套餐: Enterprise</span>
+      </div>
+    </aside>
+
+    <main class="wt-main">
+      <div class="wt-between" data-comp-id="dash.header.bar" data-comp-name="额度监控页顶栏" data-comp-role="container">
+        <div class="wt-col" style="gap: 2px;">
+          <div class="wt-row">
+            <strong style="font-size: 15px;">团队额度与密钥监控总览</strong>
+            <span class="wt-badge wt-mono">ws-nebula-core</span>
+          </div>
+          <span class="wt-muted">实时流式 Token 计费 · 硬顶风控策略已开启（延迟 &lt; 10s）</span>
+        </div>
+        <div class="wt-row">
+          <button type="button" class="wt-btn" onclick="goNode('F_GUARDRAIL_CFG')" data-comp-id="dash.guardrail.btn" data-comp-name="配置预算风控按钮" data-comp-role="control">配置预算风控</button>
+          <button type="button" class="wt-btn wt-btn-primary" onclick="goNode('F_QUOTA_REQ')" data-comp-id="dash.request.btn" data-comp-name="申请临时加额按钮" data-comp-role="control">申请临时加额</button>
+        </div>
+      </div>
+
+      <div class="wt-banner wt-between" data-comp-id="dash.warning.banner" data-comp-name="月度预算预警横幅" data-comp-role="feedback">
+        <span><strong>[预警 92%]</strong> 本月已消耗 <span class="wt-mono">$1,840.00 / $2,000.00</span>，按近 24h 速率预计 29 小时后触及月度硬顶。</span>
+        <button type="button" class="wt-btn wt-btn-sm" onclick="setVar('cap_trigger','hit_pause'); goNode('F_KEY_PAUSED')" data-comp-id="dash.preview_pause.btn" data-comp-name="预览触顶熔断态按钮" data-comp-role="control">预览 100% 熔断</button>
+      </div>
+
+      <div class="wt-kpi-grid" data-comp-id="dash.kpi.grid" data-comp-name="额度监控三联指标卡" data-comp-role="container">
+        <div class="wt-kpi-card" data-comp-id="dash.usage.card" data-comp-name="本月已用额度卡片" data-comp-role="container">
+          <div class="wt-kpi-label">
+            <span>本月已用 / 月度硬顶</span>
+            <span class="wt-pill-strong">[92%]</span>
+          </div>
+          <div class="wt-kpi-val wt-mono">$1,840 / $2,000</div>
+          <div class="wt-meter"><div class="wt-meter-fill" style="width: 92%;"></div></div>
+          <div class="wt-kpi-sub">剩余可用 $160 · 免审阈值 $500</div>
+        </div>
+
+        <div class="wt-kpi-card" data-comp-id="dash.keys.card" data-comp-name="活跃密钥指标卡" data-comp-role="container">
+          <div class="wt-kpi-label">
+            <span>活跃密钥</span>
+            <span class="wt-badge">[正常]</span>
+          </div>
+          <div class="wt-kpi-val">18 个</div>
+          <div class="wt-kpi-sub">生产网关 7 个 · 评测沙箱 11 个</div>
+          <div class="wt-kpi-sub">当前受限暂停: 0 个</div>
+        </div>
+
+        <div class="wt-kpi-card" data-comp-id="dash.pending.card" data-comp-name="待审批加额指标卡" data-comp-role="container">
+          <div class="wt-kpi-label">
+            <span>待审批加额</span>
+            <span class="wt-badge">[待加签]</span>
+          </div>
+          <div class="wt-kpi-val">2 单</div>
+          <div class="wt-between" style="margin-top: 2px;">
+            <span class="wt-kpi-sub">合计待批 $1,150</span>
+            <button type="button" class="wt-btn wt-btn-sm" onclick="goNode('F_OWNER_APPROVAL')" data-comp-id="dash.goto_approval.btn" data-comp-name="前往负责人审批台按钮" data-comp-role="control">去审批 →</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="wt-card" data-comp-id="dash.key_table.card" data-comp-name="API密钥消耗明细表卡片" data-comp-role="container">
+        <div class="wt-card-hd wt-between">
+          <span>API 密钥消耗明细（按当月账单降序）</span>
+          <div class="wt-row">
+            <select class="wt-select" style="width: 148px; padding: 3px 8px; font-size: 11.5px;" data-comp-id="dash.env_filter.select" data-comp-name="密钥环境筛选框" data-comp-role="control">
+              <option value="all">全部环境 (18)</option>
+              <option value="prod">生产环境 Production (7)</option>
+              <option value="eval">评测沙箱 Staging (11)</option>
+            </select>
+          </div>
+        </div>
+        <div class="wt-card-bd" style="padding: 0;">
+          <table class="wt-table">
+            <thead>
+              <tr>
+                <th>项目密钥 / 负责人</th>
+                <th>主力模型</th>
+                <th>当月已用</th>
+                <th>速率</th>
+                <th>状态</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>
+                  <div class="wt-mono"><strong>sk-prod-...8f2a</strong></div>
+                  <div class="wt-muted">智能客服 Agent · 林哲</div>
+                </td>
+                <td class="wt-mono">nebula-4o</td>
+                <td class="wt-mono"><strong>$792.40</strong></td>
+                <td class="wt-mono">$6.80/h</td>
+                <td><span class="wt-pill-strong">[预警 92%]</span></td>
+                <td>
+                  <button type="button" class="wt-btn wt-btn-sm" onclick="goNode('F_QUOTA_REQ')" data-comp-id="dash.row_prod_expand.btn" data-comp-name="客服密钥申请加额按钮" data-comp-role="control">加额</button>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <div class="wt-mono"><strong>sk-eval-...3c19</strong></div>
+                  <div class="wt-muted">多模态回归评测 · 周航</div>
+                </td>
+                <td class="wt-mono">nebula-4o-mini</td>
+                <td class="wt-mono">$518.20</td>
+                <td class="wt-mono">$4.15/h</td>
+                <td><span class="wt-badge">[正常]</span></td>
+                <td>
+                  <button type="button" class="wt-btn wt-btn-sm" onclick="goNode('F_GUARDRAIL_CFG')" data-comp-id="dash.row_eval_policy.btn" data-comp-name="评测密钥限额策略按钮" data-comp-role="control">风控</button>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <div class="wt-mono"><strong>sk-code-...91d0</strong></div>
+                  <div class="wt-muted">IDE 代码补全网关 · 陈默</div>
+                </td>
+                <td class="wt-mono">nebula-coder-v2</td>
+                <td class="wt-mono">$346.80</td>
+                <td class="wt-mono">$2.10/h</td>
+                <td><span class="wt-badge">[正常]</span></td>
+                <td>
+                  <button type="button" class="wt-btn wt-btn-sm" onclick="goNode('F_GUARDRAIL_CFG')" data-comp-id="dash.row_code_policy.btn" data-comp-name="代码网关限额策略按钮" data-comp-role="control">风控</button>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <div class="wt-mono"><strong>sk-batch-...04e7</strong></div>
+                  <div class="wt-muted">离线知识库向量化 · 宋佳</div>
+                </td>
+                <td class="wt-mono">nebula-embed-v3</td>
+                <td class="wt-mono">$182.60</td>
+                <td class="wt-mono">$0.45/h</td>
+                <td><span class="wt-badge">[低负载]</span></td>
+                <td>
+                  <button type="button" class="wt-btn wt-btn-sm" onclick="goNode('F_QUOTA_REQ')" data-comp-id="dash.row_batch_expand.btn" data-comp-name="离线任务加额按钮" data-comp-role="control">加额</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>

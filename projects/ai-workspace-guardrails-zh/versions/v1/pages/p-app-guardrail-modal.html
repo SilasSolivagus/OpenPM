@@ -1,0 +1,63 @@
+<div class="page" id="p-app-guardrail-modal" data-page="p-app-guardrail-modal" data-page-id="p-app-guardrail-modal">
+  <div class="wt-phone-shell" data-comp-id="policy.mobile_shell.container" data-comp-name="移动端风控配置外壳" data-comp-role="container">
+    <div class="wt-col" style="gap: 0;">
+      <div class="wt-phone-statusbar">
+        <span>9:41</span>
+        <span>5G · 100%</span>
+      </div>
+      <div class="wt-navbar">
+        <button type="button" class="wt-btn wt-btn-sm" onclick="goNode('F_USAGE_DASH')" data-comp-id="policy.back.btn" data-comp-name="返回监控页按钮" data-comp-role="control">← 返回</button>
+        <span>预算风控策略</span>
+        <span class="wt-badge">Owner</span>
+      </div>
+
+      <div class="wt-stack" style="padding: 12px;">
+        <div class="wt-card" data-comp-id="policy.drawer.card" data-comp-name="移动端风控配置卡片" data-comp-role="modal">
+          <div class="wt-card-hd">月度硬顶与免审阈值</div>
+          <div class="wt-card-bd wt-form">
+            <div class="wt-field">
+              <label class="wt-label">月度预算硬顶金额（USD） *</label>
+              <input class="wt-input wt-mono" type="number" value="2000" data-comp-id="policy.cap.input" data-comp-name="月度硬顶金额输入框" data-comp-role="control" />
+              <span class="wt-help">当前已消耗 $1,840 (92%)，不可低于已发生账单。</span>
+            </div>
+
+            <div class="wt-field">
+              <label class="wt-label">单次免审自动放行阈值（USD） *</label>
+              <input class="wt-input wt-mono" type="number" value="500" data-comp-id="policy.threshold.input" data-comp-name="自动放行阈值输入框" data-comp-role="control" />
+              <span class="wt-help">&lt;= $500 自动放行；&gt; $500 推企微加签。</span>
+            </div>
+
+            <div class="wt-field">
+              <label class="wt-label">达到 100% 硬顶策略 *</label>
+              <select class="wt-select" onchange="setVar('enforcement_mode', this.value)" data-comp-id="policy.strategy.select" data-comp-name="达到硬顶策略选择框" data-comp-role="control">
+                <option value="auto_pause" selected>自动暂停密钥（返回 429 拦截）</option>
+                <option value="alert_only">仅发送告警（不阻断线上请求）</option>
+              </select>
+            </div>
+
+            <div class="wt-switch-row">
+              <div class="wt-col" style="gap: 2px;">
+                <span class="wt-label">企业微信分级预警</span>
+                <span class="wt-help">80% / 90% / 100% 机器人通知</span>
+              </div>
+              <input type="checkbox" checked data-comp-id="policy.wecom.switch" data-comp-name="企微告警开关" data-comp-role="control" />
+            </div>
+
+            <div class="wt-switch-row">
+              <div class="wt-col" style="gap: 2px;">
+                <span class="wt-label">财务 Webhook 推送</span>
+                <span class="wt-help">finops-bus.nebula.internal</span>
+              </div>
+              <input type="checkbox" checked data-comp-id="policy.webhook.switch" data-comp-name="Webhook告警开关" data-comp-role="control" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="wt-card-ft wt-between" style="background: #ffffff;">
+      <button type="button" class="wt-btn" onclick="goNode('F_USAGE_DASH')" data-comp-id="policy.cancel.btn" data-comp-name="取消配置按钮" data-comp-role="control">取消</button>
+      <button type="button" class="wt-btn wt-btn-primary" style="flex: 1;" onclick="goNode('D_HARD_CAP')" data-comp-id="policy.save.btn" data-comp-name="保存风控策略按钮" data-comp-role="control">保存风控策略</button>
+    </div>
+  </div>
+</div>

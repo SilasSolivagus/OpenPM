@@ -1,36 +1,34 @@
-# 企业微信适配器（`wecom`）
+# 企业微信适配器（`wecom` · 原生企微在线文档交付规范）
 
-本适配器通过 `python3 scripts/wiki_sync.py` 对接**企业微信**，完成历史需求文档拉取（`01-pull-wiki`）、「左图右文 + `walkthrough.html.zip`」交付与群通知（`06-push-wiki`），并维护 `_manifest.json` 防覆盖保护。
+本适配器用于对接**企业微信在线文档 / 智能文档（WeDoc）**，核心铁律是：**「本地留工程源文件给 AI 反复复用，远端只交付一篇人类同事点开即读的企业微信在线文档」**。
 
 ---
 
-## 1. 配置与凭证隔离（`project-context.md` + `.env.local`）
+## ⚠️ 严禁违规操作（最高红线！）
 
-所有敏感凭证统一由 AI Agent 在首次启动时通过 `AskUserQuestion` 询问 PM 并自动代写入根目录 **`.env.local`**（已被 `.gitignore` 隔离，**严禁写入 `project-context.md` 或提交到 Git**）。
+当向企业微信知识库 / 微盘推送定稿时：
+1. **严禁把本地工程文件当成普通网盘文件一股脑上传到企微目录！**
+   - 绝对禁止上传：`confluence-storage.xml`、`project-context.md`、`spec.json`、裸 `prd.md`、`wiki-page.html`、`flow.svg`、`pages/*.html`。这些文件仅保存在本地 `projects/<project>/` 供 AI Agent 后续增量改稿复用！
+2. **远端企微知识库里应该只有什么？**
+   - **唯一核心交付物**：在目标知识库空间下创建或更新**一篇原生的「企业微信在线文档（文档 `doc_type=3` 或智能文档 `doc_type=11`）」**，标题直接用干净的业务名称（如《创建网页分享·第一期》），正文直接写入排版好的结构化 PRD 与页面对照表；
+   - **可选单一交互附件**：仅当需要让同事下载点选走查时，可在文档旁附带**唯一一个**重命名干净的 `《<需求标题>-交互走查原型.html》`（或 `.zip`），绝不准堆放其他杂乱工程文件！
 
-| 接入等级 | 适用场景 | `.env.local` 字段 |
+---
+
+## 1. 凭证配置（`.env.local` 隔离）
+
+| 模式 | 用途 | `.env.local` 字段 |
 | :--- | :--- | :--- |
-| **Level 1（推荐）：智能机器人 API 模式** | PM 创建支持 API / 长连接的企微智能机器人，免域名免公网 IP 直通文档、微盘与群消息 | `WECOM_BOT_ID` + `WECOM_BOT_SECRET`（可选 `WECOM_FOLDER_ID`） |
-| **Level 2：群机器人通知模式** | 仅需向研发/设计评审群推送通知卡片，附件走微盘或离线包 | `WECOM_WEBHOOK` |
-| **Level 3：零权限离线兜底** | 内网隔离或暂未配置任何机器人凭证 | 无需凭证，自动输出至 `projects/<project>/wiki-export/` |
-
-`project-context.md` 配置示例：
-
-```yaml
-wiki_adapter: wecom
-wiki_config:
-  space_or_parent: "<微盘或企微文档目录标识，可选>"
-  doc_id: ""
-```
+| **原生企微文档 API 模式（推荐）** | 调用 `wedoc/create_doc` + `wedoc/document/batch_update` 直接新建/更新企微在线文档或智能文档 | `WECOM_CORP_ID`（或 `WECOM_BOT_ID`）+ `WECOM_CORP_SECRET`（或 `WECOM_BOT_SECRET`），可选 `WECOM_SPACE_ID`、`WECOM_FOLDER_ID`、`WECOM_DOC_TYPE=3`（`3`=文档，`11`=智能文档） |
+| **客户端已挂载企微文档 MCP / 插件模式** | 若当前 Agent 客户端（如 Codex / WorkBuddy）已连接企微文档 MCP 工具 | 直接调用企微「新建在线文档 / 写入文档正文」工具创建单篇企微文档，并将返回的 `docid` 与 `url` 写入 `_manifest.json`，**严禁调用微盘文件上传接口把本地目录的 `.xml` / `.md` 原文件传上去！** |
+| **群机器人通知（可选叠加）** | 文档创建/更新完成后往研发群发卡片链接 | `WECOM_WEBHOOK` |
 
 ---
 
-## 2. 标准拉取与交付流程
+## 2. 标准执行流程
 
-### `01-pull-wiki`（拉取历史与对比）
-1. **自动拉取**：运行 `python3 scripts/wiki_sync.py pull projects/<project>`，通过企微文档/微盘接口读取指定 `doc_id` 的历史文档，保存至 `projects/<project>/history/prd-remote.md`，并与本地 `prd.md` 比对输出 `projects/<project>/history/pull-diff.md`。
-2. **离线兜底**：若无 API 权限，PM 将导出的历史 Markdown 放入 `history/prd-remote.md`，脚本同样生成结构化 `history/pull-diff.md`。
-
-### `06-push-wiki`（图文对照交付与防覆盖）
-1. **打包与组装**：运行 `python3 scripts/wiki_sync.py push projects/<project>`，自动打包 `walkthrough.html.zip`，结合 `screenshots/*.png` 组装「左图右文」三列对照文档（`序号 | 页面纯灰阶截图 | 需求说明与嵌套子表`）。
-2. **推送与 `_manifest.json` 回写**：校验远端版本无冲突后上传文档与 `walkthrough.html.zip` 至企微文档/微盘，在项目目录回写 `_manifest.json`（记录 `adapter`、`remote_page_id`、`remote_version`、`pushed_at`、`walkthrough_hash`），并可选通过 `WECOM_WEBHOOK` 发送群评审通知卡片；无外连权限时自动落盘至 `wiki-export/`。
+1. **拉取旧文档（`01-pull-wiki`）**：读取已有企微在线文档正文存入本地 `history/prd-remote.md`，输出 `history/pull-diff.md`。
+2. **定稿推送单篇企微在线文档（`06-push-wiki`）**：
+   - 运行 `python3 scripts/wiki_sync.py push projects/<project>`（或调用客户端企微在线文档创建/更新工具）；
+   - 若 `_manifest.json` 中尚无 `remote_page_id`（0 启动首次定稿），在目标知识库创建**一篇企业微信文档/智能文档**并写入正文，保存 `docid` 与 `share_url` 到本地 `_manifest.json`；
+   - 若已有 `remote_page_id`，直接更新同一篇企微文档正文，保持文档链接永久不变。

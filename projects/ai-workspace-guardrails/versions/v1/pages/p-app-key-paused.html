@@ -1,0 +1,69 @@
+<div class="page" id="p-app-key-paused" data-page="p-app-key-paused" data-page-id="p-app-key-paused">
+  <div class="wt-phone-shell">
+    <div>
+      <div class="wt-phone-statusbar">
+        <span>9:41</span>
+        <span>Acme Cloud · 5G [100%]</span>
+      </div>
+      <div class="wt-navbar">
+        <span>API Key Guardrail</span>
+        <span class="wt-pill-strong">[PAUSED]</span>
+      </div>
+
+      <div style="padding: 12px;" class="wt-stack">
+        <div class="wt-alert wt-alert-danger" data-comp-id="paused.cap.banner" data-comp-name="Mobile Hard-Cap Auto-Paused Banner">
+          <b>[100% CAP REACHED]</b> Key <span class="wt-mono">sk-prod-...8f2a</span> auto-paused at <b>$2,000 / $2,000</b>. Zero overage billed.
+        </div>
+
+        <div class="wt-alert hidden" data-when-var="owner_decision" data-when-val="reject" data-comp-id="paused.rejected.banner" data-comp-name="Mobile Owner Rejection Notice">
+          <b>[REQ-2049 DENIED]</b> Cap kept at $2,000. Revise amount &lt;= $500 or attach VP ticket.
+        </div>
+
+        <div class="wt-card" data-comp-id="paused.detail.card" data-comp-name="Mobile Paused Keys Diagnostics Card">
+          <div class="wt-card-hd wt-between">
+            <span>Gateway Enforcement</span>
+            <span class="wt-mono wt-muted">HTTP 429</span>
+          </div>
+          <div class="wt-list">
+            <div class="wt-list-item">
+              <div>
+                <div style="font-weight: 600;">Core Agent Prod</div>
+                <div class="wt-mono wt-muted">sk-prod-...8f2a</div>
+              </div>
+              <span class="wt-pill-strong">[PAUSED]</span>
+            </div>
+            <div class="wt-list-item">
+              <div>
+                <div style="font-weight: 600;">Code Review Bot</div>
+                <div class="wt-mono wt-muted">sk-prod-...3c19</div>
+              </div>
+              <span class="wt-pill-strong">[PAUSED]</span>
+            </div>
+            <div class="wt-list-item">
+              <div>
+                <div style="font-weight: 600;">Uptime Probe</div>
+                <div class="wt-mono wt-muted">sk-probe-...01a</div>
+              </div>
+              <span class="wt-badge">[EXEMPT]</span>
+            </div>
+          </div>
+          <div class="wt-card-ft wt-stack">
+            <button type="button" class="wt-btn wt-btn-primary wt-btn-block" data-comp-id="paused.unlock.btn" data-comp-name="Request Quota Top-Up to Unlock Button" onclick="goNode('F_QUOTA_REQ')">
+              Request Quota Top-Up &amp; Unlock
+            </button>
+            <button type="button" class="wt-btn wt-btn-block" data-comp-id="paused.retry.btn" data-comp-name="Mobile Back to Usage Button" onclick="goNode('F_USAGE_DASH')">
+              Back to Usage Overview
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="wt-tabbar">
+      <div class="wt-tabbar-item" role="button" tabindex="0" data-comp-id="app.paused.tab.usage" data-comp-name="Mobile Paused Usage Tab" onclick="goNode('F_USAGE_DASH')">Usage</div>
+      <div class="wt-tabbar-item active" role="button" tabindex="0" data-comp-id="app.paused.tab.keys" data-comp-name="Mobile Paused Keys Tab" onclick="goNode('F_KEY_PAUSED')">Keys</div>
+      <div class="wt-tabbar-item" role="button" tabindex="0" data-comp-id="app.paused.tab.approvals" data-comp-name="Mobile Paused Approvals Tab" onclick="goNode('F_OWNER_REVIEW')">Approvals</div>
+      <div class="wt-tabbar-item" role="button" tabindex="0" data-comp-id="app.paused.tab.audit" data-comp-name="Mobile Paused Audit Tab" onclick="goNode('F_QUOTA_ACTIVE')">Audit</div>
+    </div>
+  </div>
+</div>

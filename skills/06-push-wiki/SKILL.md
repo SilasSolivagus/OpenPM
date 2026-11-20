@@ -14,7 +14,11 @@ description: 调用 scripts/wiki_sync.py 将「左图右文」对照 PRD、纯�
 - `<project_dir>/project-context.md`（读取 `wiki_adapter` 与 `wiki_config`）
 - 根目录 `.env.local`（读取 `WECOM_BOT_ID`+`WECOM_BOT_SECRET` / `CONFLUENCE_PAT` / `FEISHU_APP_ID`+`FEISHU_APP_SECRET`，严禁进 Git）
 
-## 标准执行步骤
+## 标准执行步骤（严守「本地留工程资产、远端只交单篇可读文档」铁律！）
+
+> **最高红线（尤其针对企业微信 `wecom` 与飞书 `feishu`）**：
+> - `project-context.md`、`spec.json`、`confluence-storage.xml`、裸 `prd.md`、`wiki-page.html`、`pages/*.html` 是**仅供本地 AI Agent 反复利用的工程源文件，绝对严禁把它们当成网盘附件上传到企业微信知识库/微盘或飞书目录里**！
+> - 推往企业微信时，远端目标必须是**创建或更新唯一一篇原生的「企业微信在线文档（文档 `doc_type=3` 或智能文档 `doc_type=11`）」**，让同事点开即读（详见 `adapters/wecom.md`）。
 
 1. **调用统一同步脚本执行打包与推送**：
    ```bash

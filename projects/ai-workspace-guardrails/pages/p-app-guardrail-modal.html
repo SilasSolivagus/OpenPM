@@ -1,0 +1,69 @@
+<div class="page" id="p-app-guardrail-modal" data-page="p-app-guardrail-modal" data-page-id="p-app-guardrail-modal">
+  <div class="wt-phone-shell">
+    <div>
+      <div class="wt-phone-statusbar">
+        <span>9:41</span>
+        <span>Acme Cloud · 5G [100%]</span>
+      </div>
+      <div class="wt-navbar">
+        <button type="button" class="wt-btn wt-btn-sm" data-comp-id="policy.cancel.btn" data-comp-name="Back from Guardrail Policy Button" onclick="goNode('F_USAGE_DASH')">&lt; Back</button>
+        <span>Guardrail Policy</span>
+        <span class="wt-badge">[ADMIN]</span>
+      </div>
+
+      <div style="padding: 12px;" class="wt-stack">
+        <div class="wt-card" data-comp-id="policy.drawer.card" data-comp-name="Mobile Guardrail Policy Card">
+          <div class="wt-card-hd">Budget Caps &amp; Auto-Approval</div>
+          <div class="wt-card-bd wt-form">
+            <div class="wt-field">
+              <label class="wt-label">Monthly Hard Cap (USD) *</label>
+              <input class="wt-input wt-mono" type="number" value="2000" data-comp-id="policy.cap.input" data-comp-name="Monthly Hard Cap Input" />
+              <div class="wt-help">92% utilized ($1,840 / $2,000)</div>
+            </div>
+
+            <div class="wt-field">
+              <label class="wt-label">Auto-Approve Threshold (USD) *</label>
+              <input class="wt-input wt-mono" type="number" value="500" data-comp-id="policy.threshold.input" data-comp-name="Auto-Approve Threshold Input" />
+              <div class="wt-help">Requests &lt;= $500 unlock keys instantly.</div>
+            </div>
+
+            <div class="wt-field">
+              <label class="wt-label">Action on 100% Hard Cap</label>
+              <div class="wt-Split2">
+                <button type="button" class="wt-btn wt-btn-primary wt-btn-sm" data-comp-id="policy.mode.pause.btn" data-comp-name="Auto-Pause Keys Toggle" onclick="setVar('enforcement_mode','auto_pause'); setVar('cap_status','paused')">
+                  Auto-Pause Keys
+                </button>
+                <button type="button" class="wt-btn wt-btn-sm" data-comp-id="policy.mode.alert.btn" data-comp-name="Alert Only Toggle" onclick="setVar('enforcement_mode','alert_only'); setVar('cap_status','within_cap')">
+                  Alert Only
+                </button>
+              </div>
+            </div>
+
+            <div class="wt-switch-row">
+              <div>
+                <div style="font-size: 12px; font-weight: 600;">Push &amp; Slack Webhook</div>
+                <div class="wt-help">80% / 90% / 100% triggers</div>
+              </div>
+              <select class="wt-select" style="width: 112px;" data-comp-id="policy.webhook.select" data-comp-name="Mobile Webhook Alert Select">
+                <option value="enabled" selected>[ON] All</option>
+                <option value="critical_only">100% Only</option>
+              </select>
+            </div>
+          </div>
+          <div class="wt-card-ft">
+            <button type="button" class="wt-btn wt-btn-primary wt-btn-block" data-comp-id="policy.save.btn" data-comp-name="Save Guardrail Policy Button" onclick="goNode('D_HARD_CAP')">
+              Save Policy
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="wt-tabbar">
+      <div class="wt-tabbar-item active" role="button" tabindex="0" data-comp-id="app.policy.tab.usage" data-comp-name="Mobile Policy Usage Tab" onclick="goNode('F_USAGE_DASH')">Usage</div>
+      <div class="wt-tabbar-item" role="button" tabindex="0" data-comp-id="app.policy.tab.keys" data-comp-name="Mobile Policy Keys Tab" onclick="goNode('F_KEY_PAUSED')">Keys</div>
+      <div class="wt-tabbar-item" role="button" tabindex="0" data-comp-id="app.policy.tab.approvals" data-comp-name="Mobile Policy Approvals Tab" onclick="goNode('F_OWNER_REVIEW')">Approvals</div>
+      <div class="wt-tabbar-item" role="button" tabindex="0" data-comp-id="app.policy.tab.audit" data-comp-name="Mobile Policy Audit Tab" onclick="goNode('F_QUOTA_ACTIVE')">Audit</div>
+    </div>
+  </div>
+</div>

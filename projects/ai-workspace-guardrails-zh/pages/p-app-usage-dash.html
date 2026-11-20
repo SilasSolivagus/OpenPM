@@ -1,0 +1,90 @@
+<div class="page" id="p-app-usage-dash" data-page="p-app-usage-dash" data-page-id="p-app-usage-dash">
+  <div class="wt-phone-shell" data-comp-id="dash.mobile_shell.container" data-comp-name="移动端监控外壳" data-comp-role="container">
+    <div class="wt-col" style="gap: 0;">
+      <div class="wt-phone-statusbar">
+        <span>9:41</span>
+        <span>5G · 100%</span>
+      </div>
+      <div class="wt-navbar">
+        <span>星云 AI · 额度监控</span>
+        <span class="wt-badge wt-mono">ws-nebula</span>
+      </div>
+
+      <div class="wt-stack" style="padding: 12px;">
+        <div class="wt-banner" data-comp-id="dash.warning.banner" data-comp-name="移动端预算预警横幅" data-comp-role="feedback">
+          <strong>[预警 92%]</strong> 本月已消耗 $1,840 / $2,000，预计约 29 小时触顶。
+        </div>
+
+        <div class="wt-card" data-comp-id="dash.usage.card" data-comp-name="移动端月度额度卡片" data-comp-role="container">
+          <div class="wt-card-bd wt-col" style="gap: 8px;">
+            <div class="wt-between">
+              <span class="wt-muted">本月团队已用额度</span>
+              <span class="wt-pill-strong">[预警 92%]</span>
+            </div>
+            <div class="wt-kpi-val wt-mono" style="font-size: 20px;">$1,840.00 <span class="wt-muted">/ $2,000</span></div>
+            <div class="wt-meter"><div class="wt-meter-fill" style="width: 92%;"></div></div>
+            <div class="wt-Split2" style="margin-top: 4px;">
+              <div class="wt-kpi-card" style="padding: 8px;">
+                <span class="wt-muted">活跃密钥</span>
+                <strong>18 个 [正常]</strong>
+              </div>
+              <div class="wt-kpi-card" style="padding: 8px;">
+                <span class="wt-muted">待加签单</span>
+                <strong>2 单 [待批]</strong>
+              </div>
+            </div>
+          </div>
+          <div class="wt-card-ft wt-between">
+            <button type="button" class="wt-btn wt-btn-sm" onclick="goNode('F_GUARDRAIL_CFG')" data-comp-id="dash.guardrail.btn" data-comp-name="配置预算风控按钮" data-comp-role="control">配置预算风控</button>
+            <button type="button" class="wt-btn wt-btn-sm wt-btn-primary" onclick="goNode('F_QUOTA_REQ')" data-comp-id="dash.request.btn" data-comp-name="申请临时加额按钮" data-comp-role="control">申请临时加额</button>
+          </div>
+        </div>
+
+        <div class="wt-card" data-comp-id="dash.key_list.card" data-comp-name="移动端高耗密钥列表" data-comp-role="container">
+          <div class="wt-card-hd wt-between">
+            <span>高消耗 API 密钥 Top 3</span>
+            <button type="button" class="wt-btn wt-btn-sm" onclick="goNode('F_OWNER_APPROVAL')" data-comp-id="dash.goto_approval.btn" data-comp-name="前往移动端审批按钮" data-comp-role="control">审批 (2) →</button>
+          </div>
+          <div class="wt-list">
+            <div class="wt-list-item">
+              <div class="wt-col" style="gap: 2px;">
+                <span class="wt-mono"><strong>sk-prod-...8f2a</strong></span>
+                <span class="wt-muted">智能客服 Agent · 林哲</span>
+              </div>
+              <div class="wt-col" style="gap: 2px; align-items: flex-end;">
+                <strong class="wt-mono">$792.40</strong>
+                <span class="wt-pill-strong">[92%]</span>
+              </div>
+            </div>
+            <div class="wt-list-item">
+              <div class="wt-col" style="gap: 2px;">
+                <span class="wt-mono"><strong>sk-eval-...3c19</strong></span>
+                <span class="wt-muted">多模态回归评测 · 周航</span>
+              </div>
+              <div class="wt-col" style="gap: 2px; align-items: flex-end;">
+                <strong class="wt-mono">$518.20</strong>
+                <span class="wt-badge">[正常]</span>
+              </div>
+            </div>
+            <div class="wt-list-item">
+              <div class="wt-col" style="gap: 2px;">
+                <span class="wt-mono"><strong>sk-code-...91d0</strong></span>
+                <span class="wt-muted">IDE 补全网关 · 陈默</span>
+              </div>
+              <div class="wt-col" style="gap: 2px; align-items: flex-end;">
+                <strong class="wt-mono">$346.80</strong>
+                <span class="wt-badge">[正常]</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="wt-tabbar">
+      <div class="wt-tabbar-item active" role="tab" onclick="goNode('F_USAGE_DASH')" data-comp-id="dash.tab_monitor.btn" data-comp-name="底部额度监控标签" data-comp-role="nav">额度监控</div>
+      <div class="wt-tabbar-item" role="tab" onclick="goNode('F_OWNER_APPROVAL')" data-comp-id="dash.tab_approve.btn" data-comp-name="底部加签审批标签" data-comp-role="nav">加签审批 (2)</div>
+      <div class="wt-tabbar-item" role="tab" onclick="goNode('F_QUOTA_ACTIVE')" data-comp-id="dash.tab_audit.btn" data-comp-name="底部审计流水标签" data-comp-role="nav">审计日志</div>
+    </div>
+  </div>
+</div>

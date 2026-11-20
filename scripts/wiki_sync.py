@@ -1248,29 +1248,126 @@ def cmd_export(project_dir: Path) -> int:
 
     rows = _build_export_rows(prd_sections, spec_data, screenshots_src)
 
-    # 3. Generate wiki-page.html & confluence-storage.xml (validated via ET.fromstring)
+    # 3. Generate adapter-appropriate export artifacts (do NOT dump Confluence XML into non-Confluence workspaces!)
     html_content = _render_wiki_html(doc_title, project_slug, doc_version, wt_sha256, exported_at, rows)
     html_out = export_dir / "wiki-page.html"
     html_out.write_text(html_content, encoding="utf-8")
+
+    # Also build clean single-document WeCom / Feishu Markdown body (human-readable PRD + node spec summary)
+    wecom_doc_md_lines = [
+        f"# {doc_title}",
+        "",
+        f"> 版本：{doc_version} | 更新时间：{exported_at} | 交互走查原型指纹：{wt_sha256[:12]}",
+        "",
+        prd_text.strip(),
+        "",
+    ]
+    wecom_md_out = export_dir / f"{doc_title}.md"
+    wecom_md_out.write_text("\n".join(wecom_doc_md_lines), encoding="utf-8")
 
     try:
         storage_xml = _render_confluence_storage_xml(
             doc_title, project_slug, doc_version, wt_sha256, exported_at, rows
         )
-        # Re-verify serialized XML string explicitly
+        # Always verify XML well-formedness in memory as a structural table gate
         ET.fromstring(storage_xml.encode("utf-8"))
     except ET.ParseError as exc:
         print(f"ERROR: Generated Confluence Storage XML failed well-formedness check: {exc}", file=sys.stderr)
         return 1
 
-    xml_out = export_dir / "confluence-storage.xml"
-    xml_out.write_text(storage_xml, encoding="utf-8")
-
-    print(
-        f"[wiki_sync] Exported package to {export_dir}: "
-        f"{zip_path.name}, {html_out.name}, {xml_out.name} (XML verified)"
-    )
+    adapter_name = ctx.get("wiki_adapter", "local-obsidian")
+    if adapter_name == "confluence":
+        xml_out = export_dir / "confluence-storage.xml"
+        xml_out.write_text(storage_xml, encoding="utf-8")
+        print(f"[wiki_sync] Exported Confluence package to {export_dir}: {zip_path.name}, {xml_out.name}")
+    else:
+        # Remove stale confluence-storage.xml if present so Agents NEVER upload it to WeCom / Feishu!
+        stale_xml = export_dir / "confluence-storage.xml"
+        if stale_xml.is_file():
+            stale_xml.unlink()
+        print(f"[wiki_sync] Exported clean {adapter_name} package to {export_dir}: {wecom_md_out.name}, {zip_path.name}")
     return 0
+
+
+def _push_wecom_wedoc(
+    env: Dict[str, str],
+    wiki_cfg: Dict[str, Any],
+    doc_title: str,
+    doc_body_text: str,
+    existing_docid: str,
+) -> Tuple[str, str]:
+    """Create or update a SINGLE native Enterprise WeChat Online Document (WeDoc doc_type=3/11).
+
+    Returns (docid, doc_url). Never uploads raw engineering files (.xml, project-context.md, etc.).
+    """
+    corp_id = (env.get("WECOM_CORP_ID") or env.get("WECOM_BOT_ID") or "").strip()
+    secret = (env.get("WECOM_CORP_SECRET") or env.get("WECOM_BOT_SECRET") or "").strip()
+    if not (corp_id and secret):
+        raise ValueError("Missing WECOM_CORP_ID/WECOM_BOT_ID or WECOM_CORP_SECRET/WECOM_BOT_SECRET in .env.local")
+
+    tok_url = (
+        "https://qyapi.weixin.qq.com/cgi-bin/gettoken?"
+        f"corpid={urllib.parse.quote(corp_id)}&corpsecret={urllib.parse.quote(secret)}"
+    )
+    tok_resp = _http_json_request(tok_url, "GET", {})
+    access_token = str(tok_resp.get("access_token") or "").strip()
+    if not access_token:
+        raise RuntimeError(f"WeCom gettoken failed: {tok_resp.get('errmsg', tok_resp)}")
+
+    doc_type_cfg = str(wiki_cfg.get("doc_type") or env.get("WECOM_DOC_TYPE") or "3").strip()
+    doc_type_num = 11 if doc_type_cfg in ("11", "smartdoc", "智能文档") else 3
+    space_id = str(wiki_cfg.get("space_id") or env.get("WECOM_SPACE_ID") or "").strip()
+    father_id = str(wiki_cfg.get("father_id") or wiki_cfg.get("space_or_parent") or env.get("WECOM_FOLDER_ID") or "").strip()
+    admin_users_raw = str(env.get("WECOM_ADMIN_USERID") or wiki_cfg.get("admin_userid") or "").strip()
+
+    docid = existing_docid.strip()
+    if docid.startswith("local:"):
+        docid = ""
+    doc_url = ""
+
+    if not docid:
+        create_url = f"https://qyapi.weixin.qq.com/cgi-bin/wedoc/create_doc?access_token={urllib.parse.quote(access_token)}"
+        create_payload: Dict[str, Any] = {
+            "doc_type": doc_type_num,
+            "doc_name": doc_title,
+        }
+        if space_id and father_id:
+            create_payload["spaceid"] = space_id
+            create_payload["fatherid"] = father_id
+        if admin_users_raw:
+            create_payload["admin_users"] = [u.strip() for u in admin_users_raw.split(",") if u.strip()]
+
+        c_resp = _http_json_request(create_url, "POST", {"Content-Type": "application/json"}, payload=create_payload)
+        if int(c_resp.get("errcode", -1)) != 0:
+            raise RuntimeError(f"WeCom wedoc/create_doc failed: {c_resp}")
+        docid = str(c_resp.get("docid") or "")
+        doc_url = str(c_resp.get("url") or "")
+
+    # Write clean PRD content directly into the WeCom online document via wedoc/document/batch_update
+    upd_url = f"https://qyapi.weixin.qq.com/cgi-bin/wedoc/document/batch_update?access_token={urllib.parse.quote(access_token)}"
+    upd_payload: Dict[str, Any] = {
+        "docid": docid,
+        "requests": [
+            {
+                "insert_text": {
+                    "text": doc_body_text[:45000],
+                    "location": {"index": 0},
+                }
+            }
+        ],
+    }
+    u_resp = _http_json_request(upd_url, "POST", {"Content-Type": "application/json"}, payload=upd_payload)
+    if int(u_resp.get("errcode", 0)) != 0:
+        raise RuntimeError(f"WeCom wedoc/document/batch_update failed: {u_resp}")
+
+    if not doc_url and docid:
+        share_url = f"https://qyapi.weixin.qq.com/cgi-bin/wedoc/doc_share?access_token={urllib.parse.quote(access_token)}"
+        try:
+            s_resp = _http_json_request(share_url, "POST", {"Content-Type": "application/json"}, payload={"docid": docid})
+            doc_url = str(s_resp.get("share_url") or "")
+        except Exception:
+            pass
+    return docid, doc_url
 
 
 def cmd_push(project_dir: Path, force: bool = False, page_id_override: Optional[str] = None) -> int:
@@ -1292,8 +1389,8 @@ def cmd_push(project_dir: Path, force: bool = False, page_id_override: Optional[
     xml_path = export_dir / "confluence-storage.xml"
 
     wt_sha256 = _sha256_file(wt_path)
-    storage_xml = xml_path.read_text(encoding="utf-8")
     doc_title = str(ctx.get("title") or project_dir.name)
+    storage_xml = xml_path.read_text(encoding="utf-8") if xml_path.is_file() else ""
 
     base_url = (env.get("WIKI_BASE_URL") or wiki_cfg.get("base_url") or "").strip()
     confluence_pat = env.get("CONFLUENCE_PAT", "").strip()
@@ -1413,7 +1510,42 @@ def cmd_push(project_dir: Path, force: bool = False, page_id_override: Optional[
                 )
                 return 1
 
-        # Mode 2: WeCom Webhook group card notification (when configured)
+        # Mode 2: Native Enterprise WeChat Online Document (WeDoc create_doc + batch_update)
+        wecom_id = (env.get("WECOM_CORP_ID") or env.get("WECOM_BOT_ID") or "").strip()
+        wecom_sec = (env.get("WECOM_CORP_SECRET") or env.get("WECOM_BOT_SECRET") or "").strip()
+        if adapter == "wecom" and wecom_id and wecom_sec:
+            prd_body = (project_dir / "prd.md").read_text(encoding="utf-8")
+            docid, share_url = _push_wecom_wedoc(env, wiki_cfg, doc_title, prd_body, page_id)
+            next_ver = (recorded_ver or 0) + 1
+            pushed_at = _now_iso()
+            manifest.update(
+                {
+                    "adapter": "wecom",
+                    "remote_page_id": docid,
+                    "remote_url": share_url,
+                    "remote_version": next_ver,
+                    "pushed_at": pushed_at,
+                    "walkthrough_sha256": wt_sha256,
+                }
+            )
+            save_manifest(project_dir, manifest)
+            if wecom_webhook:
+                link_line = f"> **在线文档链接**：[点击打开《{doc_title}》]({share_url})\n" if share_url else ""
+                card_md = (
+                    f"### 需求定稿更新：{doc_title}\n"
+                    f"{link_line}"
+                    f"> **版本**：`v{next_ver}` · **更新时间**：`{pushed_at}`"
+                )
+                _http_json_request(
+                    wecom_webhook,
+                    "POST",
+                    {"Content-Type": "application/json"},
+                    payload={"msgtype": "markdown", "markdown": {"content": card_md}},
+                )
+            print(f"[wiki_sync] Published SINGLE native WeCom online document: docid={docid} url={share_url}")
+            return 0
+
+        # Mode 2b: WeCom Webhook group card notification only (when no WeDoc API credentials)
         if wecom_webhook and adapter == "wecom":
             card_md = (
                 f"### PRD 与交互走查交付通知\n"

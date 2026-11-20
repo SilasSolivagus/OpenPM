@@ -1,0 +1,109 @@
+<div class="page" id="p-quota-request" data-page="p-quota-request" data-page-id="p-quota-request">
+  <div class="wt-app-shell">
+    <aside class="wt-sidebar">
+      <div class="wt-brand-row">
+        <span class="wt-brand-mark">AC</span>
+        <span>Acme AI Cloud</span>
+      </div>
+      <div class="wt-side-label">Workspace</div>
+      <button type="button" class="wt-side-item" data-comp-id="req.nav.overview.btn" data-comp-name="Request View Overview Nav Item" onclick="goNode('F_USAGE_DASH')">
+        <span>Overview</span>
+      </button>
+      <button type="button" class="wt-side-item" data-comp-id="req.nav.members.btn" data-comp-name="Request View Members Nav Item" onclick="goNode('F_OWNER_REVIEW')">
+        <span>Members</span>
+      </button>
+      <button type="button" class="wt-side-item" data-comp-id="req.nav.keys.btn" data-comp-name="Request View API Keys Nav Item" onclick="goNode('F_KEY_PAUSED')">
+        <span>API Keys</span>
+      </button>
+      <button type="button" class="wt-side-item active" data-comp-id="req.nav.usage.btn" data-comp-name="Request View Usage Nav Item" onclick="goNode('F_USAGE_DASH')">
+        <span>Usage &amp; Limits</span>
+      </button>
+      <button type="button" class="wt-side-item" data-comp-id="req.nav.audit.btn" data-comp-name="Request View Audit Logs Nav Item" onclick="goNode('F_QUOTA_ACTIVE')">
+        <span>Audit Logs</span>
+      </button>
+    </aside>
+
+    <main class="wt-main">
+      <div class="wt-between">
+        <div>
+          <div class="wt-breadcrumb">Usage &amp; Limits / <b>Request Quota Top-Up</b></div>
+          <div style="font-size: 15px; font-weight: 700;">Developer Quota Top-Up Request (REQ-2049)</div>
+        </div>
+        <span class="wt-badge">Requester: maya.chen</span>
+      </div>
+
+      <div class="wt-card" data-comp-id="req.form.card" data-comp-name="Quota Top-Up Request Form Card" data-comp-role="container">
+        <div class="wt-card-hd wt-between">
+          <span>Budget Increment &amp; Cost-Center Attribution</span>
+          <span class="wt-muted">Current Cap: $2,000.00 / mo</span>
+        </div>
+        <div class="wt-card-bd wt-form">
+          <div class="wt-Split2">
+            <div class="wt-field">
+              <label class="wt-label">Target Project &amp; API Key *</label>
+              <select class="wt-select" data-comp-id="req.project.select" data-comp-name="Target API Key Selector">
+                <option value="sk-prod-8f2a" selected>Core Agent Prod (sk-prod-...8f2a)</option>
+                <option value="sk-prod-3c19">Code Review Bot (sk-prod-...3c19)</option>
+                <option value="sk-eval-91d0">RAG Eval Nightly (sk-eval-...91d0)</option>
+              </select>
+            </div>
+            <div class="wt-field">
+              <label class="wt-label">Cost Center *</label>
+              <select class="wt-select" data-comp-id="req.costcenter.select" data-comp-name="Cost Center Selector">
+                <option value="cc-402" selected>CC-402 · Core AI Product R&amp;D</option>
+                <option value="cc-218">CC-218 · Developer Productivity</option>
+                <option value="cc-509">CC-509 · Customer Pilots</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="wt-field">
+            <label class="wt-label">Requested Extra Monthly Budget (USD) *</label>
+            <div class="wt-row">
+              <input class="wt-input wt-mono" type="number" value="800" min="50" step="50"
+                     data-comp-id="req.amount.input"
+                     data-comp-name="Requested Extra Budget Input"
+                     data-comp-role="control"
+                     oninput="setVar('request_tier', (parseFloat(this.value) || 0) > 500 ? 'gt_500' : 'le_500')" />
+              <button type="button" class="wt-btn wt-btn-sm" data-comp-id="req.preset.300.btn" data-comp-name="Preset +$300 Auto-Approve Button"
+                      onclick="var el=this.parentNode.querySelector('input'); if(el) el.value='300'; setVar('request_tier','le_500')">
+                +$300 (&lt;= $500 Auto)
+              </button>
+              <button type="button" class="wt-btn wt-btn-sm" data-comp-id="req.preset.800.btn" data-comp-name="Preset +$800 Owner Review Button"
+                      onclick="var el=this.parentNode.querySelector('input'); if(el) el.value='800'; setVar('request_tier','gt_500')">
+                +$800 (&gt; $500 Review)
+              </button>
+            </div>
+          </div>
+
+          <div class="wt-alert" data-when-var="request_tier" data-when-val="gt_500" data-comp-id="req.route.owner.alert" data-comp-name="Owner Approval Routing Notice">
+            <b>[OWNER REVIEW REQUIRED]</b> Requested top-up exceeds the <b>$500</b> auto-approve ceiling (New Cap: <b>$2,800/mo</b>). Will route to Workspace Owner (<b>jordan.lee</b>) via Slack &amp; Console.
+          </div>
+          <div class="wt-alert hidden" data-when-var="request_tier" data-when-val="le_500" data-comp-id="req.route.auto.alert" data-comp-name="Instant Auto-Approve Routing Notice">
+            <b>[INSTANT AUTO-APPROVE]</b> Requested top-up is within the <b>&lt;= $500</b> guardrail ceiling (New Cap: <b>$2,300/mo</b>). Keys unlock immediately on submit.
+          </div>
+
+          <div class="wt-field">
+            <label class="wt-label">Business Justification &amp; Expected Burn Duration *</label>
+            <textarea class="wt-textarea" data-comp-id="req.reason.textarea" data-comp-name="Business Justification Textarea">Scaling enterprise onboarding batch inference for Q4 customer cohort (+42k agent sessions through Nov 30).</textarea>
+          </div>
+        </div>
+
+        <div class="wt-card-ft wt-between">
+          <button type="button" class="wt-btn" data-comp-id="req.back.btn" data-comp-name="Back to Dashboard Button" onclick="goNode('F_USAGE_DASH')">
+            Back
+          </button>
+          <div class="wt-row">
+            <button type="button" class="wt-btn" data-comp-id="req.check.tier.btn" data-comp-name="Inspect Threshold Rule Button" onclick="goNode('D_THRESHOLD')">
+              Inspect Threshold Check
+            </button>
+            <button type="button" class="wt-btn wt-btn-primary" data-comp-id="req.submit.btn" data-comp-name="Submit Quota Request Button"
+                    onclick="goNode(getVar('request_tier') === 'le_500' ? 'F_QUOTA_ACTIVE' : 'F_OWNER_REVIEW')">
+              Submit Request
+            </button>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>

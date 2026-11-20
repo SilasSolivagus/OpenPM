@@ -1,0 +1,66 @@
+<div class="page" id="p-app-owner-approval" data-page="p-app-owner-approval" data-page-id="p-app-owner-approval">
+  <div class="wt-phone-shell" data-comp-id="approve.mobile_shell.container" data-comp-name="企微移动端加签审批外壳" data-comp-role="container">
+    <div class="wt-col" style="gap: 0;">
+      <div class="wt-phone-statusbar">
+        <span>9:41</span>
+        <span>5G · 100%</span>
+      </div>
+      <div class="wt-navbar">
+        <span>企微工作台 · 加签审批</span>
+        <span class="wt-pill-strong">[待复核]</span>
+      </div>
+
+      <div class="wt-stack" style="padding: 12px;">
+        <div class="wt-card" data-comp-id="approve.summary.card" data-comp-name="移动端加额审批摘要卡" data-comp-role="container">
+          <div class="wt-card-hd wt-between">
+            <span>单号 #QR-20261120-08</span>
+            <span class="wt-badge">CC-204 客服部</span>
+          </div>
+          <div class="wt-card-bd wt-col" style="gap: 8px;">
+            <div class="wt-between">
+              <span class="wt-muted">申请人</span>
+              <strong>林哲 · 智能客服 Agent</strong>
+            </div>
+            <div class="wt-between">
+              <span class="wt-muted">本次追加金额</span>
+              <strong class="wt-mono" style="font-size: 16px;">+$800.00 ($2k → $2.8k)</strong>
+            </div>
+            <div class="wt-divider"></div>
+            <div class="wt-muted"><strong>事由：</strong>双十一返场大促工单并发 2.3x，需追加 $800 保障月底前生产流量零降级（次月回落）。</div>
+          </div>
+        </div>
+
+        <div class="wt-card" data-comp-id="approve.compare.card" data-comp-name="移动端消耗速率对比卡" data-comp-role="container">
+          <div class="wt-card-hd wt-between">
+            <span>消耗速率风控核查</span>
+            <span class="wt-badge">[非异常刷量]</span>
+          </div>
+          <div class="wt-list">
+            <div class="wt-list-item">
+              <span class="wt-muted">近 24h 速率对比</span>
+              <span class="wt-mono"><strong>$6.80/h</strong> vs 均值 $2.95/h</span>
+            </div>
+            <div class="wt-list-item">
+              <span class="wt-muted">5xx / 重试异常率</span>
+              <span class="wt-mono">0.42% [正常]</span>
+            </div>
+            <div class="wt-list-item">
+              <span class="wt-muted">单会话均摊成本</span>
+              <span class="wt-mono">$0.014/通 [优于基线]</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="wt-field">
+          <label class="wt-label">审批复核备注</label>
+          <textarea class="wt-textarea" style="min-height: 52px;" data-comp-id="approve.note.textarea" data-comp-name="复核备注输入框" data-comp-role="control">核实大促流量属实，同意当月扩容 $800。</textarea>
+        </div>
+      </div>
+    </div>
+
+    <div class="wt-card-ft wt-between" style="background: #ffffff;">
+      <button type="button" class="wt-btn wt-btn-danger" onclick="setVar('owner_decision','reject'); goNode('F_REJECT_HOLD')" data-comp-id="approve.reject.btn" data-comp-name="驳回并维持原上限按钮" data-comp-role="control">驳回维持原上限</button>
+      <button type="button" class="wt-btn wt-btn-primary" style="flex: 1;" onclick="setVar('owner_decision','approve'); goNode('F_QUOTA_ACTIVE')" data-comp-id="approve.confirm.btn" data-comp-name="同意加额并解封按钮" data-comp-role="control">同意加额并解封</button>
+    </div>
+  </div>
+</div>

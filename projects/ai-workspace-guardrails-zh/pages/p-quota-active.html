@@ -1,0 +1,109 @@
+<div class="page" id="p-quota-active" data-page="p-quota-active" data-page-id="p-quota-active">
+  <div class="wt-app-shell" data-comp-id="active.shell.container" data-comp-name="额度生效页主布局" data-comp-role="container">
+    <aside class="wt-sidebar" data-comp-id="active.sidebar.nav" data-comp-name="左侧控制台导航栏" data-comp-role="nav">
+      <div class="wt-brand-row">
+        <span class="wt-brand-mark">N</span>
+        <span>星云 AI 工作台</span>
+      </div>
+      <div class="wt-side-label">研发中心空间</div>
+      <button type="button" class="wt-side-item" onclick="goNode('F_USAGE_DASH')" data-comp-id="active.nav_overview.btn" data-comp-name="概览菜单按钮" data-comp-role="nav">
+        <span>概览</span>
+      </button>
+      <button type="button" class="wt-side-item" onclick="goNode('F_USAGE_DASH')" data-comp-id="active.nav_members.btn" data-comp-name="成员管理菜单按钮" data-comp-role="nav">
+        <span>成员管理</span>
+        <span class="wt-muted">42</span>
+      </button>
+      <button type="button" class="wt-side-item" onclick="goNode('F_USAGE_DASH')" data-comp-id="active.nav_keys.btn" data-comp-name="API密钥菜单按钮" data-comp-role="nav">
+        <span>API 密钥</span>
+        <span class="wt-badge">[正常 18]</span>
+      </button>
+      <button type="button" class="wt-side-item" onclick="goNode('F_USAGE_DASH')" data-comp-id="active.nav_guardrails.btn" data-comp-name="额度与风控菜单按钮" data-comp-role="nav">
+        <span>额度与风控</span>
+      </button>
+      <button type="button" class="wt-side-item active" onclick="goNode('F_QUOTA_ACTIVE')" data-comp-id="active.nav_audit.btn" data-comp-name="审计日志菜单按钮" data-comp-role="nav">
+        <span>审计日志</span>
+        <span class="wt-badge">[激活]</span>
+      </button>
+    </aside>
+
+    <main class="wt-main">
+      <div class="wt-between">
+        <div class="wt-col" style="gap: 2px;">
+          <div class="wt-row">
+            <strong style="font-size: 15px;">额度生效与密钥恢复结果</strong>
+            <span class="wt-badge">[已生效]</span>
+          </div>
+          <span class="wt-muted">网关配额版本号: <span class="wt-mono">rev-20261120-094</span> · 全节点同步耗时 4.2 秒</span>
+        </div>
+        <button type="button" class="wt-btn wt-btn-primary" onclick="goNode('F_USAGE_DASH')" data-comp-id="active.top_back.btn" data-comp-name="顶部返回监控台按钮" data-comp-role="control">返回额度监控台</button>
+      </div>
+
+      <div class="wt-banner wt-between" data-comp-id="active.result.banner" data-comp-name="额度扩容生效横幅" data-comp-role="feedback">
+        <span><strong>[解封完成]</strong> 本月总额度已调增至 <strong class="wt-mono">$2,800.00</strong>，密钥 <span class="wt-mono">sk-prod-...8f2a</span> 及全部关联队列已恢复正常响应。</span>
+        <span class="wt-badge">[正常 66%]</span>
+      </div>
+
+      <div class="wt-kpi-grid">
+        <div class="wt-kpi-card">
+          <div class="wt-kpi-label"><span>更新后总额度</span><span class="wt-badge">[正常 66%]</span></div>
+          <div class="wt-kpi-val wt-mono">$1,840 / $2,800</div>
+          <div class="wt-meter"><div class="wt-meter-fill" style="width: 66%;"></div></div>
+          <div class="wt-kpi-sub">可用余额增至 $960.00</div>
+        </div>
+        <div class="wt-kpi-card">
+          <div class="wt-kpi-label"><span>API 密钥健康度</span><span class="wt-badge">[正常]</span></div>
+          <div class="wt-kpi-val">18 / 18 活跃</div>
+          <div class="wt-kpi-sub">429 拦截率已回落至 0.00%</div>
+        </div>
+        <div class="wt-kpi-card">
+          <div class="wt-kpi-label"><span>次月自动回落计划</span><span class="wt-badge">[已排期]</span></div>
+          <div class="wt-kpi-val wt-mono">$2,000.00</div>
+          <div class="wt-kpi-sub">2026-12-01 00:00 自动恢复原基线</div>
+        </div>
+      </div>
+
+      <div class="wt-card" data-comp-id="active.audit.card" data-comp-name="额度变更审计流水卡片" data-comp-role="container">
+        <div class="wt-card-hd wt-between">
+          <span>不可篡改审计流水记录（Audit Trail）</span>
+          <button type="button" class="wt-btn wt-btn-sm" onclick="goNode('F_USAGE_DASH')" data-comp-id="active.export_csv.btn" data-comp-name="导出审计流水按钮" data-comp-role="control">导出 CSV 对账单</button>
+        </div>
+        <div class="wt-card-bd" style="padding: 0;">
+          <table class="wt-table">
+            <thead>
+              <tr>
+                <th>发生时间</th>
+                <th>动作类型</th>
+                <th>执行主体</th>
+                <th>变更快照与财务归属</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="wt-mono">15:18:09</td>
+                <td><span class="wt-badge">[密钥恢复]</span></td>
+                <td class="wt-mono">Guardrail-Gateway</td>
+                <td>解除 <span class="wt-mono">sk-prod-...8f2a</span> 等 18 个密钥 429 限流，流式转发恢复 [正常]</td>
+              </tr>
+              <tr>
+                <td class="wt-mono">15:18:05</td>
+                <td><span class="wt-badge">[加签批准]</span></td>
+                <td>周琳 (Owner)</td>
+                <td>审批通过 #QR-20261120-08，月度硬顶 <span class="wt-mono">$2,000 → $2,800</span>（归属 CC-204）</td>
+              </tr>
+              <tr>
+                <td class="wt-mono">15:12:41</td>
+                <td><span class="wt-badge">[提交申请]</span></td>
+                <td>林哲 (Member)</td>
+                <td>发起临时加额 <span class="wt-mono">+$800.00</span>，事由：双十一返场大促客服并发扩容</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="wt-card-ft wt-between">
+          <span class="wt-muted">审计哈希签名: sha256:9f4c...e81b（已同步企业 FinOps 归档库）</span>
+          <button type="button" class="wt-btn wt-btn-primary" onclick="goNode('F_USAGE_DASH')" data-comp-id="active.back_dash.btn" data-comp-name="返回额度监控台按钮" data-comp-role="control">返回额度监控台</button>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>

@@ -1,0 +1,65 @@
+<div class="page" id="p-app-quota-active" data-page="p-app-quota-active" data-page-id="p-app-quota-active">
+  <div class="wt-phone-shell">
+    <div>
+      <div class="wt-phone-statusbar">
+        <span>9:41</span>
+        <span>Acme Cloud · 5G [100%]</span>
+      </div>
+      <div class="wt-navbar">
+        <span>Quota Active</span>
+        <span class="wt-pill-strong">[18/18 LIVE]</span>
+      </div>
+
+      <div style="padding: 12px;" class="wt-stack">
+        <div class="wt-alert" data-comp-id="active.owner.banner" data-comp-name="Mobile Quota Unlocked Banner">
+          <b>[KEYS UNLOCKED]</b> Monthly cap updated; <span class="wt-mono">sk-prod-...8f2a</span> restored globally in 1.8s.
+        </div>
+
+        <div class="wt-card" data-comp-id="active.kpi.grid" data-comp-name="Mobile Updated Cap Card">
+          <div class="wt-card-bd wt-stack">
+            <div class="wt-between">
+              <span class="wt-muted">Updated Monthly Cap</span>
+              <span class="wt-badge">[ACTIVE]</span>
+            </div>
+            <div style="font-size: 20px; font-weight: 700;" data-when-var="request_tier" data-when-val="gt_500">$2,800.00</div>
+            <div style="font-size: 20px; font-weight: 700;" class="hidden" data-when-var="request_tier" data-when-val="le_500">$2,300.00</div>
+            <div class="wt-meter"><div class="wt-meter-fill" style="width: 66%;"></div></div>
+            <div class="wt-muted">$1,840.00 utilized · Next Slack alert at 90%</div>
+          </div>
+        </div>
+
+        <div class="wt-card" data-comp-id="active.audit.card" data-comp-name="Mobile Audit Trail Log Card">
+          <div class="wt-card-hd">FinOps Audit Trail</div>
+          <div class="wt-list">
+            <div class="wt-list-item">
+              <div>
+                <div style="font-weight: 600;">quota.cap_updated</div>
+                <div class="wt-mono wt-muted">14:26 UTC · CC-402</div>
+              </div>
+              <span class="wt-mono">$2,800</span>
+            </div>
+            <div class="wt-list-item">
+              <div>
+                <div style="font-weight: 600;">quota.topup_requested</div>
+                <div class="wt-mono wt-muted">14:23 UTC · maya.chen</div>
+              </div>
+              <span class="wt-mono">REQ-2049</span>
+            </div>
+          </div>
+          <div class="wt-card-ft">
+            <button type="button" class="wt-btn wt-btn-primary wt-btn-block" data-comp-id="active.back.btn" data-comp-name="Back to Dashboard Button" onclick="goNode('F_USAGE_DASH')">
+              Back to Dashboard
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="wt-tabbar">
+      <div class="wt-tabbar-item" role="button" tabindex="0" data-comp-id="app.act.tab.usage" data-comp-name="Mobile Active Usage Tab" onclick="goNode('F_USAGE_DASH')">Usage</div>
+      <div class="wt-tabbar-item" role="button" tabindex="0" data-comp-id="app.act.tab.keys" data-comp-name="Mobile Active Keys Tab" onclick="goNode('F_KEY_PAUSED')">Keys</div>
+      <div class="wt-tabbar-item" role="button" tabindex="0" data-comp-id="app.act.tab.approvals" data-comp-name="Mobile Active Approvals Tab" onclick="goNode('F_OWNER_REVIEW')">Approvals</div>
+      <div class="wt-tabbar-item active" role="button" tabindex="0" data-comp-id="app.act.tab.audit" data-comp-name="Mobile Active Audit Tab" onclick="goNode('F_QUOTA_ACTIVE')">Audit</div>
+    </div>
+  </div>
+</div>

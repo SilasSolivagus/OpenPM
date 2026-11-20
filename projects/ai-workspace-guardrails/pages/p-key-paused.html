@@ -1,0 +1,106 @@
+<div class="page" id="p-key-paused" data-page="p-key-paused" data-page-id="p-key-paused">
+  <div class="wt-app-shell">
+    <aside class="wt-sidebar">
+      <div class="wt-brand-row">
+        <span class="wt-brand-mark">AC</span>
+        <span>Acme AI Cloud</span>
+      </div>
+      <div class="wt-side-label">Workspace</div>
+      <button type="button" class="wt-side-item" data-comp-id="paused.nav.overview.btn" data-comp-name="Paused View Overview Nav Item" onclick="goNode('F_USAGE_DASH')">
+        <span>Overview</span>
+      </button>
+      <button type="button" class="wt-side-item" data-comp-id="paused.nav.members.btn" data-comp-name="Paused View Members Nav Item" onclick="goNode('F_OWNER_REVIEW')">
+        <span>Members</span>
+      </button>
+      <button type="button" class="wt-side-item active" data-comp-id="paused.nav.keys.btn" data-comp-name="Paused View API Keys Nav Item" onclick="goNode('F_KEY_PAUSED')">
+        <span>API Keys</span>
+        <span class="wt-pill-strong">PAUSED</span>
+      </button>
+      <button type="button" class="wt-side-item" data-comp-id="paused.nav.usage.btn" data-comp-name="Paused View Usage Nav Item" onclick="goNode('F_USAGE_DASH')">
+        <span>Usage &amp; Limits</span>
+      </button>
+      <button type="button" class="wt-side-item" data-comp-id="paused.nav.audit.btn" data-comp-name="Paused View Audit Logs Nav Item" onclick="goNode('F_QUOTA_ACTIVE')">
+        <span>Audit Logs</span>
+      </button>
+    </aside>
+
+    <main class="wt-main">
+      <div class="wt-between">
+        <div>
+          <div class="wt-breadcrumb">Acme Corp / API Keys / <b>Hard-Cap Enforcement State</b></div>
+          <div style="font-size: 15px; font-weight: 700;">Hard Cap Reached · Production Key Auto-Paused</div>
+        </div>
+        <span class="wt-pill-strong">[100% HARD CAP]</span>
+      </div>
+
+      <div class="wt-alert wt-alert-danger" data-comp-id="paused.cap.banner" data-comp-name="Hard-Cap Auto-Paused Alert Banner">
+        <div><b>[PAUSED AT 100% CAP]</b> API key <span class="wt-mono">sk-prod-...8f2a</span> paused at <b>$2,000.00 / $2,000.00</b> monthly hard cap. Zero overage billed; edge gateways return <span class="wt-mono">HTTP 429 quota_hard_cap_exceeded</span>.</div>
+      </div>
+
+      <div class="wt-alert hidden" data-when-var="owner_decision" data-when-val="reject" data-comp-id="paused.rejected.banner" data-comp-name="Owner Rejection Feedback Banner">
+        <b>[REQUEST REQ-2049 DENIED BY OWNER]</b> Cap retained at <b>$2,000.00</b>. Reviewer note: "Please scope request to &lt;= $500 staging top-up or attach VP ticket before re-submitting."
+      </div>
+
+      <div class="wt-card" data-comp-id="paused.detail.card" data-comp-name="Paused Key Diagnostics and Recovery Card">
+        <div class="wt-card-hd wt-between">
+          <span>Affected Keys &amp; Runtime Guardrail Diagnostics</span>
+          <span class="wt-mono wt-muted">Triggered 14:22:08 UTC</span>
+        </div>
+        <div class="wt-card-bd wt-stack">
+          <div class="wt-meter"><div class="wt-meter-fill" style="width: 100%;"></div></div>
+          <div class="wt-between wt-muted">
+            <span>Utilized: $2,000.00 / $2,000.00 (100.0%)</span>
+            <span>Unbilled Blocked Calls: 1,420 reqs</span>
+          </div>
+
+          <table class="wt-table">
+            <thead>
+              <tr>
+                <th>API Key</th>
+                <th>Project</th>
+                <th>Gateway Status</th>
+                <th>Exempt Rule</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="wt-mono">sk-prod-...8f2a</td>
+                <td>Core Agent Prod</td>
+                <td><span class="wt-pill-strong">[PAUSED · 429]</span></td>
+                <td>Standard Enforced</td>
+              </tr>
+              <tr>
+                <td class="wt-mono">sk-prod-...3c19</td>
+                <td>Code Review Bot</td>
+                <td><span class="wt-pill-strong">[PAUSED · 429]</span></td>
+                <td>Standard Enforced</td>
+              </tr>
+              <tr>
+                <td class="wt-mono">sk-probe-...01a</td>
+                <td>Synthetic Uptime Probe</td>
+                <td><span class="wt-badge">[ACTIVE · EXEMPT]</span></td>
+                <td>Health-Check Cap ($10)</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="wt-card-ft wt-between">
+          <button type="button" class="wt-btn" data-comp-id="paused.retry.btn" data-comp-name="Retry Gateway Health Check Button" onclick="goNode('F_USAGE_DASH')">
+            Back to Usage Dashboard
+          </button>
+          <div class="wt-row">
+            <button type="button" class="wt-btn" data-comp-id="paused.quick300.btn" data-comp-name="Emergency +$300 Auto-Unlock Button"
+                    onclick="setVar('request_tier','le_500'); goNode('F_QUOTA_REQ')">
+              Quick +$300 Unlock (&lt;= $500 Auto)
+            </button>
+            <button type="button" class="wt-btn wt-btn-primary" data-comp-id="paused.unlock.btn" data-comp-name="Request Quota Top-Up to Unlock Button"
+                    onclick="goNode('F_QUOTA_REQ')">
+              Request Quota Top-Up &amp; Unlock
+            </button>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>

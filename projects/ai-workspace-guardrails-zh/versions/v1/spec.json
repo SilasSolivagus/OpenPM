@@ -1,0 +1,303 @@
+{
+  "version": "spec-v2",
+  "meta": {
+    "project": "ai-workspace-guardrails-zh",
+    "title": "星云 AI 团队工作台 · 用量预算风控与超额加签审批（v2.4）",
+    "doc_version": "v2.4",
+    "lang": "zh",
+    "platform_default": "web",
+    "entry_node": "F_USAGE_DASH",
+    "prd_source": "prd.md"
+  },
+  "vars": [
+    {
+      "id": "platform",
+      "label": "预览端形态",
+      "kind": "global",
+      "default": "web",
+      "options": [
+        { "id": "web", "label": "Web 控制台" },
+        { "id": "app", "label": "App 审批端 375px" }
+      ]
+    },
+    {
+      "id": "cap_trigger",
+      "label": "月度硬顶水位",
+      "kind": "branch",
+      "default": "within_cap",
+      "diamond": "D_HARD_CAP",
+      "nodes": ["F_USAGE_DASH", "F_GUARDRAIL_CFG", "D_HARD_CAP", "F_KEY_PAUSED"],
+      "options": [
+        { "id": "within_cap", "label": "预警期内 (<100% 主动扩容)", "target": "F_QUOTA_REQ" },
+        { "id": "hit_pause", "label": "达 100% 触发自动熔断", "target": "F_KEY_PAUSED" }
+      ]
+    },
+    {
+      "id": "enforcement_mode",
+      "label": "硬顶执行策略",
+      "kind": "local",
+      "default": "auto_pause",
+      "pages": ["p-guardrail-modal", "p-app-guardrail-modal"],
+      "options": [
+        { "id": "auto_pause", "label": "自动暂停密钥" },
+        { "id": "alert_only", "label": "仅发送告警" }
+      ]
+    },
+    {
+      "id": "request_tier",
+      "label": "追加额度区间",
+      "kind": "branch",
+      "default": "gt_500",
+      "diamond": "D_THRESHOLD",
+      "nodes": ["F_QUOTA_REQ", "D_THRESHOLD", "F_OWNER_APPROVAL", "F_QUOTA_ACTIVE"],
+      "options": [
+        { "id": "le_500", "label": "<= $500 免审自动放行", "target": "F_QUOTA_ACTIVE" },
+        { "id": "gt_500", "label": "> $500 负责人加签", "target": "F_OWNER_APPROVAL" }
+      ]
+    },
+    {
+      "id": "owner_decision",
+      "label": "负责人审批结论",
+      "kind": "branch",
+      "default": "approve",
+      "diamond": "D_OWNER_DECISION",
+      "nodes": ["F_OWNER_APPROVAL", "D_OWNER_DECISION", "F_QUOTA_ACTIVE", "F_REJECT_HOLD"],
+      "options": [
+        { "id": "approve", "label": "同意加额并解封", "target": "F_QUOTA_ACTIVE" },
+        { "id": "reject", "label": "驳回并维持原上限", "target": "F_REJECT_HOLD" }
+      ]
+    }
+  ],
+  "nodes": {
+    "F_USAGE_DASH": {
+      "page": "p-usage-dash",
+      "title": "团队额度与密钥监控总览",
+      "change": "unchanged",
+      "anno": [
+        ["实时流式计量总览", "聚合展示当前团队空间本月已用额度（$1,840 / $2,000 [92%]）、18 个活跃 API 密钥消耗速率与待批加额单。"],
+        ["分级预警通知", "累计消耗达 80% / 90% 时推送企微机器人预警卡片并在控制台置顶提示，引导高负载业务提前发起扩容。"]
+      ]
+    },
+    "F_GUARDRAIL_CFG": {
+      "page": "p-guardrail-modal",
+      "title": "预算风控与超限熔断配置",
+      "change": "modified",
+      "anno": [
+        ["月度硬顶与免审阈值双轨配置", "空间管理员可设定月度预算硬顶（默认 $2,000，下限不得低于当月已出账金额）及单次免审自动放行上限（默认 $500）。"],
+        ["硬顶执行策略切换", "支持切换「自动暂停密钥（返回 429）」与「仅发送告警」，同步联动企业微信群机器人与内部 FinOps Webhook。"]
+      ]
+    },
+    "D_HARD_CAP": {
+      "page": "p-usage-dash",
+      "title": "消耗达 100% 硬顶？",
+      "isDecision": true,
+      "branchVar": "cap_trigger",
+      "change": "new",
+      "anno": [
+        ["网关级秒级硬顶判定", "流式计量引擎每 5 秒聚合空间累计消耗：未达 100% 时正常放行；达到 100% 且策略为自动暂停时在 10 秒内下发 429 熔断规则。"]
+      ]
+    },
+    "F_KEY_PAUSED": {
+      "page": "p-key-paused",
+      "title": "额度耗尽自动熔断拦截",
+      "change": "new",
+      "anno": [
+        ["保护性暂停与平滑收尾", "密钥 sk-prod-...8f2a 达到 100% 硬顶后拒绝新请求（workspace_hard_cap_exceeded），进行中的流式响应正常收尾不截断。"],
+        ["跨空间物理隔离", "仅暂停当前超支空间的关联密钥，企业下属其他独立业务空间不受影响；成员可一键发起紧急加额。"]
+      ]
+    },
+    "F_QUOTA_REQ": {
+      "page": "p-quota-request",
+      "title": "成员申请临时加额",
+      "change": "modified",
+      "anno": [
+        ["实时阶梯试算表单", "成员选定归属密钥并输入追加额度（如 $800）时，前端实时计算审批路径（<= $500 免审 vs > $500 负责人加签）。"],
+        ["月底自动回落机制", "临时扩容默认仅在当前计费月生效，次月 1 日零点自动回落至 $2,000 原硬顶，防止一次性大促演变为长期预算膨胀。"]
+      ]
+    },
+    "D_THRESHOLD": {
+      "page": "p-quota-request",
+      "title": "追加额度 > $500？",
+      "isDecision": true,
+      "branchVar": "request_tier",
+      "change": "new",
+      "anno": [
+        ["$500 免审分流门禁", "单次追加 <= $500 且该空间当月首次申请，由风控引擎 3 秒内自动放行；> $500 强制流转空间负责人加签复核。"]
+      ]
+    },
+    "F_OWNER_APPROVAL": {
+      "page": "p-owner-approval",
+      "title": "空间负责人加签审批",
+      "change": "new",
+      "anno": [
+        ["消耗速率与死循环排查", "审批台并列展示目标密钥近 24h 消耗速率（$6.80/h vs 均值 $2.95/h）、5xx 重试率与单通会话成本，辅助排除脚本死循环。"],
+        ["Web 与企微移动端同步", "支持顶栏一键切换「App 审批端 375px」查看企微移动端审批卡片，任意一端处理后全局状态实时闭环。"]
+      ]
+    },
+    "D_OWNER_DECISION": {
+      "page": "p-owner-approval",
+      "title": "负责人审批结论？",
+      "isDecision": true,
+      "branchVar": "owner_decision",
+      "change": "unchanged",
+      "anno": [
+        ["加签裁决分支", "同意加额则实时更新配额缓存并解除密钥 429 拦截；驳回则维持 $2,000 原上限并将复核意见回传申请人。"]
+      ]
+    },
+    "F_QUOTA_ACTIVE": {
+      "page": "p-quota-active",
+      "title": "额度生效与密钥恢复",
+      "change": "unchanged",
+      "anno": [
+        ["秒级解封与不可篡改审计", "空间总额度更新至 $2,800（水位降至 66%），10 秒内恢复全部受限密钥调用，并生成含哈希签名的 FinOps 审计流水。"]
+      ]
+    },
+    "F_REJECT_HOLD": {
+      "page": "p-key-paused",
+      "title": "驳回申请并维持原上限",
+      "change": "unchanged",
+      "anno": [
+        ["维持原硬顶保护态", "加额申请被驳回后，空间继续维持 $2,000 硬顶及超额保护状态，申请人可根据复核意见优化调用侧缓存后重新发起。"]
+      ]
+    }
+  },
+  "pages": {
+    "p-usage-dash": {
+      "frame": "wide",
+      "platform": "web",
+      "title": "团队额度与密钥监控总览（Web 控制台）",
+      "components": [
+        { "comp_id": "dash.guardrail.btn", "comp_name": "配置预算风控按钮", "role": "control" },
+        { "comp_id": "dash.request.btn", "comp_name": "申请临时加额按钮", "role": "control" },
+        { "comp_id": "dash.preview_pause.btn", "comp_name": "预览触顶熔断态按钮", "role": "control" },
+        { "comp_id": "dash.goto_approval.btn", "comp_name": "前往负责人审批台按钮", "role": "control" },
+        { "comp_id": "dash.env_filter.select", "comp_name": "密钥环境筛选框", "role": "control" },
+        { "comp_id": "dash.row_prod_expand.btn", "comp_name": "客服密钥申请加额按钮", "role": "control" }
+      ]
+    },
+    "p-guardrail-modal": {
+      "frame": "wide",
+      "platform": "web",
+      "title": "预算风控与超限熔断配置（Web 控制台）",
+      "components": [
+        { "comp_id": "policy.cap.input", "comp_name": "月度硬顶金额输入框", "role": "control" },
+        { "comp_id": "policy.threshold.input", "comp_name": "自动放行阈值输入框", "role": "control" },
+        { "comp_id": "policy.strategy.select", "comp_name": "达到硬顶策略选择框", "role": "control" },
+        { "comp_id": "policy.wecom.switch", "comp_name": "企微机器人告警开关", "role": "control" },
+        { "comp_id": "policy.webhook.switch", "comp_name": "Webhook告警开关", "role": "control" },
+        { "comp_id": "policy.save.btn", "comp_name": "保存风控策略按钮", "role": "control" }
+      ]
+    },
+    "p-quota-request": {
+      "frame": "wide",
+      "platform": "web",
+      "title": "成员申请临时加额（Web 控制台）",
+      "components": [
+        { "comp_id": "req.key.select", "comp_name": "归属项目密钥下拉框", "role": "control" },
+        { "comp_id": "req.amount.input", "comp_name": "申请追加额度输入框", "role": "control" },
+        { "comp_id": "req.cost_center.select", "comp_name": "成本中心归属下拉框", "role": "control" },
+        { "comp_id": "req.ttl.select", "comp_name": "临时额度有效期下拉框", "role": "control" },
+        { "comp_id": "req.reason.textarea", "comp_name": "业务峰值事由输入框", "role": "control" },
+        { "comp_id": "req.submit.btn", "comp_name": "提交加额申请按钮", "role": "control" }
+      ]
+    },
+    "p-owner-approval": {
+      "frame": "wide",
+      "platform": "web",
+      "title": "空间负责人加签审批台（Web 控制台）",
+      "components": [
+        { "comp_id": "approve.compare.card", "comp_name": "消耗速率异常排查对比表", "role": "container" },
+        { "comp_id": "approve.note.textarea", "comp_name": "复核备注输入框", "role": "control" },
+        { "comp_id": "approve.reject.btn", "comp_name": "驳回并维持原上限按钮", "role": "control" },
+        { "comp_id": "approve.confirm.btn", "comp_name": "同意加额并解封按钮", "role": "control" }
+      ]
+    },
+    "p-key-paused": {
+      "frame": "wide",
+      "platform": "web",
+      "title": "额度耗尽自动熔断拦截（Web 控制台）",
+      "components": [
+        { "comp_id": "paused.alert.banner", "comp_name": "保护性暂停警示横幅", "role": "feedback" },
+        { "comp_id": "paused.edit_policy.btn", "comp_name": "调整风控硬顶策略按钮", "role": "control" },
+        { "comp_id": "paused.emergency_req.btn", "comp_name": "一键发起紧急加额按钮", "role": "control" }
+      ]
+    },
+    "p-quota-active": {
+      "frame": "wide",
+      "platform": "web",
+      "title": "额度生效与密钥恢复结果（Web 控制台）",
+      "components": [
+        { "comp_id": "active.result.banner", "comp_name": "额度扩容生效横幅", "role": "feedback" },
+        { "comp_id": "active.export_csv.btn", "comp_name": "导出审计流水按钮", "role": "control" },
+        { "comp_id": "active.back_dash.btn", "comp_name": "返回额度监控台按钮", "role": "control" }
+      ]
+    },
+    "p-app-usage-dash": {
+      "variant_of": "p-usage-dash",
+      "frame": "phone",
+      "platform": "app",
+      "title": "团队额度监控（App 审批端 375px）"
+    },
+    "p-app-guardrail-modal": {
+      "variant_of": "p-guardrail-modal",
+      "frame": "phone",
+      "platform": "app",
+      "title": "预算风控策略（App 审批端 375px）"
+    },
+    "p-app-quota-request": {
+      "variant_of": "p-quota-request",
+      "frame": "phone",
+      "platform": "app",
+      "title": "申请临时加额（App 审批端 375px）"
+    },
+    "p-app-owner-approval": {
+      "variant_of": "p-owner-approval",
+      "frame": "phone",
+      "platform": "app",
+      "title": "企微负责人加签卡片（App 审批端 375px）"
+    },
+    "p-app-key-paused": {
+      "variant_of": "p-key-paused",
+      "frame": "phone",
+      "platform": "app",
+      "title": "密钥熔断告警（App 审批端 375px）"
+    },
+    "p-app-quota-active": {
+      "variant_of": "p-quota-active",
+      "frame": "phone",
+      "platform": "app",
+      "title": "额度恢复与审计回执（App 审批端 375px）"
+    }
+  },
+  "spec_cards": [
+    {
+      "id": "SC-01",
+      "title": "月度预算水位监控与风控入口收敛",
+      "page": "p-usage-dash",
+      "anchor": "dash.guardrail.btn",
+      "body": "在团队额度总览顶栏收敛「配置预算风控」与「申请临时加额」操作，联动三联 KPI 卡实时展示已用额度进度（$1,840 / $2,000 [92%]）、活跃密钥消耗速率与待批单数。"
+    },
+    {
+      "id": "SC-02",
+      "title": "月度硬顶熔断与 $500 免审阈值双轨策略",
+      "page": "p-guardrail-modal",
+      "anchor": "policy.cap.input",
+      "body": "支持空间 Owner 配置月度预算硬顶金额（校验不低于当月已发生账单）与单次免审放行阈值（默认 $500），达 100% 硬顶时可按策略自动暂停超限密钥或仅推送企微/Webhook 告警。"
+    },
+    {
+      "id": "SC-03",
+      "title": "临时加额实时阶梯分流（<= $500 免审 / > $500 加签）",
+      "page": "p-quota-request",
+      "anchor": "req.amount.input",
+      "body": "成员输入申请追加金额时实时触发 setVar('request_tier', ...) 预判审批路径：<= $500 自动放行；> $500（如 $800 大促峰值）关联成本中心流转负责人加签，次月 1 日自动回落原上限。"
+    },
+    {
+      "id": "SC-04",
+      "title": "消耗速率比对复核与秒级密钥解封",
+      "page": "p-owner-approval",
+      "anchor": "approve.confirm.btn",
+      "body": "审批台内置目标密钥近 24h 消耗速率、5xx 重试率与同空间均值对比表以排除死循环刷量；点击「同意加额并解封」后 10 秒内恢复密钥正常转发并落盘不可篡改审计流水。"
+    }
+  ],
+  "memos": []
+}

@@ -1,174 +1,192 @@
 <div align="center">
 
-# OpenPM
+<img src="./assets/banner-en.svg" alt="OpenPM: Turn rough product ideas into clickable wireframes, orthogonal flows, and surgical PRDs." width="100%" />
 
-**把一句话想法，变成「可点选评审、可精准回写、可推企微/Wiki」的活原型工作台**
-
-*开源、零第三方依赖、任何公司任何产品经理拿去即用的 AI 需求生产闭环*
-
-[![License: MIT](https://img.shields.io/badge/License-MIT-d97706.svg)](./LICENSE)
-[![Zero Dependencies](https://img.shields.io/badge/Runtime-Python_3_Stdlib_Only-262626.svg)](#)
-[![Zero Telemetry](https://img.shields.io/badge/Privacy-100%25_Local_%26_Zero_Telemetry-262626.svg)](#)
-[![Obsidian Ready](https://img.shields.io/badge/Workspace-Obsidian_Ready-525252.svg)](#)
-[![Multi-Agent](https://img.shields.io/badge/Agents-Claude_Code_%7C_Cursor_%7C_Antigravity_%7C_WorkBuddy_%7C_dsh-171717.svg)](./AGENTS.md)
-
-> 💡 **项目缘起**：本项目源于核心合作者 **[@roxorlt](https://github.com/roxorlt)** 的灵感、交互创意及其开源项目 **[roxorlt/UEmaster](https://github.com/roxorlt/UEmaster)**。
+<br/>
 
 <p>
-  <a href="https://silassolivagus.github.io/OpenPM/"><strong>🌐 免安装在线体验门户</strong></a> ·
-  <a href="https://silassolivagus.github.io/OpenPM/projects/b-end-approval-flow/walkthrough.html"><strong>💼 B 端采购审批流 Demo</strong></a> ·
-  <a href="https://silassolivagus.github.io/OpenPM/projects/demo-captcha-publish/walkthrough.html"><strong>📱 C 端双端安全验证 Demo</strong></a> ·
-  <a href="https://silassolivagus.github.io/OpenPM/guide.html"><strong>📖 新手交互使用指南</strong></a>
+  <strong>English</strong> | <a href="./README.zh-CN.md">简体中文</a>
 </p>
 
-<img src="./assets/hero-demo.gif" alt="OpenPM 三栏联动与点选评审演示" width="100%" />
+<p>
+  <a href="./LICENSE"><img src="https://img.shields.io/badge/License-MIT-d97706.svg" alt="MIT License" /></a>
+  <a href="./scripts"><img src="https://img.shields.io/badge/Runtime-Python_3_Stdlib_Only-18181b.svg" alt="Python 3 Stdlib Only" /></a>
+  <a href="#privacy--zero-telemetry"><img src="https://img.shields.io/badge/Privacy-100%25_Local_%26_Zero_Telemetry-18181b.svg" alt="100% Local & Zero Telemetry" /></a>
+  <a href="./AGENTS.md"><img src="https://img.shields.io/badge/Works_with-Claude_Code_%C2%B7_Cursor_%C2%B7_Codex_%C2%B7_Antigravity_%C2%B7_WorkBuddy-27272a.svg" alt="Works with Claude Code, Cursor, Codex, Antigravity, WorkBuddy" /></a>
+</p>
+
+<p>
+  <a href="https://silassolivagus.github.io/OpenPM/"><strong>Live Playground Portal</strong></a> ·
+  <a href="https://silassolivagus.github.io/OpenPM/projects/ai-workspace-guardrails/walkthrough.html"><strong>Flagship EN Demo (AI Workspace Spend Guardrails)</strong></a> ·
+  <a href="https://silassolivagus.github.io/OpenPM/projects/ai-workspace-guardrails-zh/walkthrough.html"><strong>Flagship ZH Demo (AI 团队额度风控工作台)</strong></a> ·
+  <a href="https://silassolivagus.github.io/OpenPM/guide.html"><strong>Quickstart Manual</strong></a>
+</p>
 
 </div>
 
+> **Origin & Co-Creator**: OpenPM originated from core collaborator **[@roxorlt](https://github.com/roxorlt)**, his interaction design ideas, and his open-source project **[roxorlt/UEmaster](https://github.com/roxorlt/UEmaster)**, now co-built together with **[@SilasSolivagus](https://github.com/SilasSolivagus)**.
+
+<p align="center">
+  <img src="./assets/hero-demo.gif" alt="OpenPM 3-column interactive workbench and inline @component review" width="100%" />
+</p>
+
 ---
 
-## 为什么不用普通提示词写 PRD？
+## Why Prompting an LLM for a PRD Breaks in Real Teams
 
-大多数人用 AI 写需求，卡死在**「生成长篇废话 → 没法对着界面开评审会 → 让 AI 改一处结果把别的页面全改崩」**。OpenPM 用工程化契约彻底解决这 4 个痛点：
+Asking a chat model to "write a PRD" produces 3,000 words of plausible prose that nobody reads in a spec review. Engineers cannot tell what actually changed this sprint, reviewers argue over unnamed buttons in chat threads, and asking the model to revise one rule quietly rewrites three other screens.
 
-| 真实痛点 | 传统 AI 对话写需求 | OpenPM 标准工作台 |
+OpenPM replaces freeform PRD generation with a deterministic `spec-v2` compiler and static preflight gate:
+
+| Team Bottleneck | Raw LLM Chat Prompts | OpenPM Deterministic Workbench |
 | :--- | :--- | :--- |
-| **研发看不清重点** | 几千字纯文字盲盒，存量功能与本期改动混成一锅粥 | **95% 纯黑白灰底图 + 5% 琥珀橙 `#D97706` 增量标引**，1 秒看清本期改了哪几个节点和控件 |
-| **评审意见难对齐** | 会议室里口头指认“右上角第二个按钮下面那行字”，多人意见打架 | **多人点选 `@[组件名]` + 冲突检测**：支持评审人署名、一键导入合并多人 `.jsonl/.md`，多人改同一按钮意见冲突自动提醒 PM 拍板 |
-| **AI 改稿越改越乱** | 改一句话重写整份文档，旧细节悄悄丢失 | **局部精准回写 + 双盲自进化**：只改被 `@` 点名的章节与组件；独立裁判双盲打分 + Confluence XML 零破表验证，持续压低手动改稿率 |
-| **交付脱节难归档** | 聊天记录散落在对话框，还要手工贴图搬去公司 Wiki | **单文件 HTML 离线双击即开**，定稿一句话自动组装「左图右文」推到**企业微信 / Confluence / 飞书 / Obsidian** |
+| **Scope blindness** | Walls of prose mix existing product behavior with new sprint scope. | **95% Monochrome + 5% `#D97706` Engineering Delta**: Grayscale `wt-*` wireframes push legacy UI into the background; amber highlights mark only new/modified flow nodes and anchored controls. |
+| **Ambiguous design crits** | Teammates type "change the button under the second card" in Slack; reviewers contradict each other. | **Multi-Reviewer `@[Component]` Pills + Conflict Detection**: Reviewers click any control in `walkthrough.html` to insert `@[Button]`, sign their name, export `.jsonl`, and flag conflicting feedback before edits happen. |
+| **Full-doc regressions** | Asking AI to tweak one validation rule rewrites unrelated sections and drops edge cases. | **Surgical Write-back + Version Snapshots**: Updates touch only the targeted `prd.md` section and `pages/*.html` fragment, backed by immutable `versions/vN` snapshots and `preflight_check.py`. |
+| **Manual wiki handoff & stagnant prompts** | Copy-pasting screenshots into docs; repeating the same formatting corrections every week. | **Native Wiki Push + Blind A/B Self-Evolution**: Publishes side-by-side UI + spec tables to a native WeCom online doc, Confluence (validated Storage XML), Feishu, or Obsidian, while a randomized double-blind A/B judge records your taste into `evals/taste-profile.md`. |
 
 ---
 
-## ⚡ 30 秒极速上手（小白零门槛）
+## 30-Second Agent Install
 
-### 第 1 步：复制这一句话发给你的 AI 工具
+### Step 1: Paste one line into your AI coding agent
 
-无论你用的是 **Antigravity（反重力）、Claude Code、Cursor、WorkBuddy 还是 `dsh`（deepseek-harness）**，不需要敲任何命令行，直接复制下面这句话发给它：
+Open **Claude Code, Cursor, Codex, Antigravity, WorkBuddy, or `dsh`** and send:
 
 ```text
-帮我安装并启动 https://github.com/SilasSolivagus/OpenPM
+Install and initialize https://github.com/SilasSolivagus/OpenPM
 ```
 
-> AI 会自动完成下载、问你 5 个基础业务背景问题（1 分钟答完，不答也能跑），帮你把密钥存进本机隔离文件，然后直接问你要做什么需求。
+Your agent clones OpenPM, asks 5 quick context questions (takes under a minute, or skip to use monochrome defaults), stores any Wiki credentials strictly inside local git-ignored `.env.local`, and asks for your first feature idea.
 
-### 第 2 步：装好之后，日常只需要会说这 4 句大白话
+### Step 2: The Only 4 Plain-Language Prompts You Need
 
-| 你在什么阶段 | 直接对 AI 说这句大白话 | AI 在后台替你干什么 |
+| Job to Be Done | Say This to Your Agent | What OpenPM Compiles Behind the Scenes |
 | :--- | :--- | :--- |
-| **1. 做全新功能** | *“我要做一个【大文件上传断点续传】需求，先帮我出 PRD 和交互原型”* | 写结构化 `prd.md` → 画纯黑白灰原型 → 画拓扑流程图 → 自动做门禁体检 → 给你单文件 `walkthrough.html` |
-| **2. 改线上老功能** | *“这是旧版 Wiki 链接/文档，本期要增加【超 5 万加签财务复核】”* | 先拉取旧文档做差异对比 → 用**琥珀橙 `#D97706`** 精准标出新增分支与改动控件 |
-| **3. 开完评审会改稿** | *“这是刚才评审导出的 `review-feedback.md`，按里面的 `@组件` 备注改一下”* | 精准定位被 `@` 的控件与对应 PRD 段落做局部微调，绝不乱改其他页面，并自动存历史快照 |
-| **4. 定稿发团队群/Wiki** | *“定稿了，帮我推到企业微信 / Confluence / 飞书”* | 自动打包「左图右文」对照表 + 交互 HTML 压缩包上传目标平台，并在后台自动算出本轮返工率与得分 |
-| **5. 定期进化（可选）** | *“复盘优化一下”*（平时满 3 单也会自动提醒你） | 汇总你常改的槽点做 A/B 双盲评测，把你的个人品味固化进 `evals/taste-profile.md`，越用越懂你 |
+| **1. Spec a 0-to-1 feature** | *"Spec a new feature for [resumable large-file uploads] with a PRD and clickable wireframe."* | Writes `prd.md`, builds 95% monochrome `pages/*.html` + orthogonal `flow.svg`, passes `preflight_check.py`, and outputs single-file `walkthrough.html`. |
+| **2. Modify a live feature** | *"Here is our current Wiki link/doc. Add [VP sign-off when monthly AI spend exceeds $5,000]."* | Diffs the baseline first, keeps existing screens in grayscale, and marks only the delta nodes and controls in `#D97706` amber. |
+| **3. Apply multi-reviewer feedback** | *"Merge the `.jsonl` review files from eng and QA, check for conflicts, and update the spec."* | Detects conflicting edits on the same `@[Component]`, asks you to resolve ties, rewrites only affected sections, and saves a `versions/vN` snapshot. |
+| **4. Ship to Wiki / WeCom / Feishu** | *"This spec is final. Push the side-by-side table to Confluence / WeCom / Feishu."* | Packages screenshots + spec tables + `walkthrough.html.zip` to your target doc platform and logs rework metrics (`"Run a taste retrospective"` every 3 specs to update `evals/taste-profile.md`). |
 
-### 🔄 已经装过旧版？一句话无损升级（不丢密钥、不覆盖你的需求）
+### 1-Line Safe Upgrade (Keeps `.env.local` and `projects/` Intact)
 
-如果你的 **Codex / Claude Code / Cursor / 反重力** 之前已经装过旧版 OpenPM，只需在原来的项目会话里发这一句，AI 会自动拉取最新编译器与门禁、完整保留你的 `.env.local` 和 `projects/` 业务需求，并把旧页面重新修复编译：
+Already running an earlier OpenPM workspace? Send this in your existing project session:
 
 ```text
-帮我从 https://github.com/SilasSolivagus/OpenPM 无损升级最新核心脚本与门禁规范（保留我的 .env.local 和 projects/ 现有需求），并按最新门禁把当前项目的流程图和 walkthrough.html 重新修复编译一遍
+Safely upgrade OpenPM from https://github.com/SilasSolivagus/OpenPM using python3 scripts/upgrade_openpm.py (keep my .env.local and projects/ intact) and re-verify my current walkthrough.html.
 ```
 
 ---
 
-## ✨ 三大核心交互亮点
+## Product Mechanics Inside `walkthrough.html`
 
-### 1. 95% 纯黑白灰骨架 + 5% 琥珀橙增量高亮，三栏实时联动
-左侧拓扑流程图（支持菱形条件分支点击切换）、中间高保真纯灰阶线框原型、右侧分支条件与节点规则实时同步；右上角一键开关**「改动高亮」**，存量背景退后，本期新增/修改的节点与控件一目了然：
+Every compiled `walkthrough.html` is a zero-dependency single HTML file you can drop into Slack, WeCom, or email and open offline in any browser.
 
-![三栏联动与琥珀橙增量标引](./assets/shot-flow-delta.png)
+### 1. Three-Pane Sync: Orthogonal TD Flow + 95% Monochrome Wireframe + 5% `#D97706` Delta
+Click any flow node or decision diamond on the left to switch the live wireframe state in the center and inspect branch rules on the right. Toggle **Delta Highlight** in the top bar to isolate every changed node and UI control in `#D97706` amber:
 
-### 2. 单页改点模式：需求规则卡与界面控件贝塞尔曲线直连
-切换到顶部**「单页改点」**视图，点击右侧任意需求改点卡片，画布自动切到对应页面并用琥珀橙虚线直连目标输入框或按钮，研发再也不用猜“这条规则对应页面哪个字段”：
+![Three-pane sync and 5% Amber engineering delta](./assets/shot-flow-delta.png)
 
-![单页改点贝塞尔曲线直连](./assets/shot-spec-tether.png)
+### 2. Spec Tether Mode: Cubic Bezier Links from Rules to Controls
+Switch to **Spec Delta** view and click any requirement card on the right. OpenPM jumps to the target screen and draws a `#D97706` dashed cubic Bezier curve directly to the anchored input, modal, or button:
 
-### 3. 原型点选 `@[组件名]` 胶囊批注，零损耗回写 AI
-点击**「+ 记备注」**后直接点选原型上的任意按钮、输入框或弹窗，自动向输入框插入 `@[组件名]` 胶囊（`Backspace` 一键整颗删除，支持换行分条与多组件同时 `@`），评审结束一键导出 `.md` 或 `.jsonl` 喂回 AI：
+![Cubic Bezier tether from spec card to UI control](./assets/shot-spec-tether.png)
 
-![内联组件胶囊点选批注](./assets/shot-inline-mention.png)
+### 3. Inline `@[Component]` Click-to-Comment & Multi-Reviewer Merge
+Click **+ Add Note**, enter your name and role (for example `Maya - Frontend`), and click any UI element on the wireframe to insert an atomic `@[Component Name]` pill (`Backspace` deletes the whole pill). Export `.jsonl` or `.md` for surgical AI write-back:
+
+![Inline @component mention composer](./assets/shot-inline-mention.png)
 
 ---
 
-## 核心闭环架构
+## Deterministic 6+1 Pipeline Architecture
 
-```mermaid
-flowchart LR
-  W1["01 Pull Wiki<br/>旧文档基线拉取对比"] --> P["02 Draft PRD<br/>结构化 prd.md"]
-  P --> W2["03 Wireframe<br/>纯黑白灰原型 pages/*.html"]
-  P --> F["04 Flow Canvas<br/>拓扑流程图 flow.svg"]
-  W2 --> C["05 Build Walkthrough<br/>确定性编译 walkthrough.html"]
-  F --> C
-  C --> G{"Preflight Gate<br/>静态门禁体检"}
-  G -- 零报错通过 --> R["团队离线点选评审<br/>内联 @组件名 胶囊批注"]
-  R -- 导出 .md / .jsonl --> P
-  P --> V["Version Manager<br/>快照 · Diff · 一键回滚"]
-  V --> W3["06 Push Wiki<br/>企微 / Confluence / 飞书 / Obsidian"]
-  R -. 双盲评分 & 品味沉淀 .-> I["07 Iterate Skills<br/>越用越懂你的业务"]
-```
+<p align="center">
+  <img src="./assets/pipeline-en.svg" alt="OpenPM 6+1 Deterministic Pipeline" width="100%" />
+</p>
+
+1. **`01-pull-wiki`**: Pulls existing Wiki / WeCom / Feishu pages into `history/prd-remote.md` and `history/pull-diff.md` (or initializes a 0-to-1 baseline).
+2. **`02-draft-prd`**: Reads `evals/taste-profile.md` first, then authors structured `prd.md` with explicit state tables and edge cases.
+3. **`03-prd-to-wireframe-prototype`**: Generates 100% monochrome `wt-*` wireframes (`pages/*.html`) with dot-namespaced `data-comp-id` anchors.
+4. **`04-flow-canvas`**: Builds a Top-Down (`TD`) orthogonal `flow.svg` with clickable `D_*` decision diamonds and caps delta nodes at `<= 75%`.
+5. **`05-flow-walkthrough`**: Runs `scripts/preflight_check.py` and `scripts/build_walkthrough.py` to compile a verified single-file `walkthrough.html`.
+6. **`06-push-wiki`**: Publishes a single native WeCom online document, Confluence page, Feishu doc, or local Obsidian package via `scripts/wiki_sync.py`.
+7. **`07-iterate-skills`**: Runs randomized double-blind A/B evaluation (`candidate_first` vs `baseline_first`) to promote proven rules into `evals/taste-profile.md`.
 
 ---
 
 <details>
-<summary><strong>🤖 Agent 自动安装与启动规范（写给 AI Agent 读取，人类用户无需展开）</strong></summary>
+<summary><strong>🤖 Agent Auto-Install &amp; Onboarding Protocol (For AI Agents Reading This Repo)</strong></summary>
 
 <br/>
 
-> **注意（写给读取本 README 的 AI Agent）**：当用户向你发送上述仓库链接或要求安装/启动 `OpenPM` 时，请**静默完成安装并严格按以下流程交互，严禁输出冗长的工程安装报告、PID 或自动启动无关示例项目的本地服务**：
-> 1. **静默克隆与挂载**：克隆本仓库，复制 `templates/.env.local.example` 为 `.env.local`（若不存在）；若在 `dsh` 环境，将 `skills/01-*` ~ `07-*` 软链至 `~/.dsh/skills/`。
-> 2. **执行两步交互配置（详见 [AGENTS.md](./AGENTS.md)）**：
->    - 先调用 `AskUserQuestion` 发起基础 5 问（公司/业务/产品/端形态/参考与 Wiki 平台）；
->    - 若 PM 选择了企业微信（`wecom`）、`confluence` 或飞书（`feishu`），**必须立即开口向 PM 索要 `Bot ID` + `Secret`、`CONFLUENCE_PAT` 或 `FEISHU_APP_ID` + `FEISHU_APP_SECRET`，拿到后由你直接代写入本地 `.env.local`**，严禁甩锅让 PM 自己去手动改文件！（若 PM 选择暂不提供或跳过，则启用本地离线兜底）。
-> 3. **极简收口、发《新手使用指南》并进入首个需求（最多 10 行）**：
->    - 用两句话向 PM 交代清楚 **「东西在本地放哪（`projects/<产品名>/` 与 `.env.local`，100% 零后台遥测）、什么时候才会往远端传（仅定稿执行 `06-push-wiki` 时）」**；
->    - 将本仓库内置的交互式新手手册 **[guide.html](./guide.html)**（及 [QUICKSTART.md](./QUICKSTART.md)）路径链接直接发给 PM 留存备查；
->    - 立即开口问 PM：**“现在一切就绪！请告诉我你要做的第一个需求是什么？”**，直接进入 `01-pull-wiki` 或 `02-draft-prd` 环节。
+> **Instructions for AI Agents (`Claude Code`, `Cursor`, `Codex`, `Antigravity`, `WorkBuddy`, `dsh`)**: When a user sends you this repository URL or asks to install/initialize `OpenPM`, execute setup silently and follow this exact 3-step onboarding flow (full rules in [AGENTS.md](./AGENTS.md)). **Never dump installation logs, process PIDs, port numbers, file byte sizes, or auto-start HTTP servers for sample projects.**
+>
+> 1. **Silent Clone & Workspace Bootstrap**:
+>    - Clone this repository and copy `templates/.env.local.example` to `.env.local` if `.env.local` does not exist. If running inside `dsh`, symlink `skills/01-*` through `07-*` into `~/.dsh/skills/`.
+>    - Match the user's conversation language automatically: English sessions produce English artifacts and set `"lang": "en"` in `spec.json`; Chinese sessions produce Chinese artifacts (`"lang": "zh"`).
+> 2. **Two-Step Interactive Setup (Never Skip, Never Offload `.env.local` Editing to the PM)**:
+>    - **Step A (`AskUserQuestion` - 5 Quick Questions)**: Ask concisely in one turn: (1) Company / team, (2) Core business domain, (3) Product name & target users, (4) Target form factors (`App 375px` / `PC Web` / `web-admin` / `Mini-Program` / `Multi-platform`), (5) Layout references (optional screenshots in chat or `references/`) & Wiki platform (`wecom` / `confluence` / `feishu` / `local-obsidian`).
+>    - **Step B (Proactive Credential Collection Written to `.env.local`)**:
+>      - If `wecom`: ask for `WECOM_BOT_ID` + `WECOM_BOT_SECRET` (or group webhook) and optional `WECOM_FOLDER_ID`, then write them directly to git-ignored `.env.local`.
+>      - If `confluence`: ask for `WIKI_BASE_URL`, `CONFLUENCE_PAT`, and target space/parent page URL, then write them directly to `.env.local`.
+>      - If `feishu`: ask for `FEISHU_APP_ID`, `FEISHU_APP_SECRET`, and optional wiki/folder URL, then write them directly to `.env.local`.
+>      - **Fallback**: If the user skips keys or questions, never block; default cleanly to `local-obsidian` offline delivery and a standard grayscale `wt-*` `project-context.md`.
+>    - **Hard Delivery Rule for WeCom & Feishu**: Local engineering source files (`project-context.md`, `spec.json`, `confluence-storage.xml`, raw `prd.md`, `wiki-page.html`, `pages/*.html`) are strictly for local agent compilation. **Never upload raw engineering `.xml`/`.md`/`.json` files as cloud-drive attachments to WeCom folders or Feishu directories**; pushing to WeCom must create or update a single native WeCom online document (`doc_type=3` or `11`).
+> 3. **Concise Wrap-Up (`<= 10` Lines Total) & First Feature Prompt**:
+>    - State clearly in 2 short sentences where local files live (`projects/<product>/` for Obsidian-ready specs and `.env.local` for local-only keys, with 100% zero telemetry) and when remote sync occurs (only when the PM confirms finalization and runs `06-push-wiki`).
+>    - Share clickable links to **[guide.html](./guide.html)** and **[QUICKSTART.md](./QUICKSTART.md)**.
+>    - Ask immediately: **"Everything is ready. What is the first feature you want to spec? (Share an existing doc/link to start from `01 Pull & Diff`, or describe a new idea to start from `02 Draft PRD`.)"**
 
 </details>
 
 <details>
-<summary><strong>🛠️ 底层目录结构与命令行工具参考（通常由 AI 自动调用，无需手敲）</strong></summary>
+<summary><strong>🛠️ Repository Layout &amp; CLI Reference (Executed Automatically by Your Agent)</strong></summary>
 
 <br/>
 
-### 仓库核心目录
-- `AGENTS.md` / `CLAUDE.md` / `WORKBUDDY.md` / `.cursorrules`：跨客户端统一智能体行为与交互规范
-- `skills/01-*` ~ `07-*`：从拉取旧文档、写 PRD、画灰阶线框、画拓扑图、编译走查台到推送 Wiki 与自我迭代的 6+1 标准技能包
-- `specs/`：`spec-v2` JSON Schema、组件锚点契约、正交流程图规范与静态门禁清单
-- `adapters/`：企业微信（`wecom`）、Confluence（`confluence`）、飞书（`feishu`）与本地 Obsidian（`local-obsidian`）交付适配器
-- `projects/`：各产品需求独立工作区（内置 `b-end-approval-flow` 与 `demo-captcha-publish` 两个完整可运行样板）
+### Core Directories
+- `AGENTS.md` / `CLAUDE.md` / `WORKBUDDY.md` / `.cursorrules`: Cross-agent onboarding, monochrome invariants, and pipeline routing rules
+- `skills/01-*` to `07-*`: Modular 6+1 pipeline skills from baseline diffing to randomized blind A/B self-evolution
+- `specs/`: `spec-v2` JSON Schema, `data-comp-id` anchor contract, orthogonal `TD` flow rules, and preflight gate checks
+- `adapters/`: Delivery adapters for WeCom (`wecom`), Confluence (`confluence`), Feishu (`feishu`), and Obsidian (`local-obsidian`)
+- `projects/`: Isolated per-feature workspaces including runnable English and Chinese reference demos
 
-### 常用脚本命令
+### Deterministic Scripts (Python 3 Standard Library Only)
 ```bash
-# 1. 交付前静态门禁校验（先校验 spec.json，编译后再校验 walkthrough.html）
-python3 scripts/preflight_check.py projects/b-end-approval-flow/spec.json
+# 1. Static preflight check (validate spec.json before build, then walkthrough.html after build)
+python3 scripts/preflight_check.py projects/ai-workspace-guardrails/spec.json
 
-# 2. 编译单文件三栏交互 HTML（可选 --skeleton-css 仅微调圆角/间距/字号）
+# 2. Compile self-contained 3-column interactive HTML
 python3 scripts/build_walkthrough.py \
-  --spec projects/b-end-approval-flow/spec.json \
-  --svg projects/b-end-approval-flow/flow.svg \
-  --pages-dir projects/b-end-approval-flow/pages \
-  --out projects/b-end-approval-flow/walkthrough.html
+  --spec projects/ai-workspace-guardrails/spec.json \
+  --svg projects/ai-workspace-guardrails/flow.svg \
+  --pages-dir projects/ai-workspace-guardrails/pages \
+  --out projects/ai-workspace-guardrails/walkthrough.html
 
-python3 scripts/preflight_check.py projects/b-end-approval-flow/walkthrough.html
+python3 scripts/preflight_check.py projects/ai-workspace-guardrails/walkthrough.html
 
-# 3. Wiki 拉取与图文对照推送
-python3 scripts/wiki_sync.py pull projects/b-end-approval-flow
-python3 scripts/wiki_sync.py push projects/b-end-approval-flow
+# 3. Pull Wiki baseline or push side-by-side wireframe + spec table
+python3 scripts/wiki_sync.py pull projects/ai-workspace-guardrails
+python3 scripts/wiki_sync.py push projects/ai-workspace-guardrails
 
-# 4. 版本快照、Diff 对照与回滚
-python3 scripts/version_manager.py snapshot projects/b-end-approval-flow --note "评审后局部更新"
-python3 scripts/version_manager.py diff projects/b-end-approval-flow v1 v2
-python3 scripts/version_manager.py rollback projects/b-end-approval-flow v1
+# 4. Immutable version snapshots, structural diff, and instant rollback
+python3 scripts/version_manager.py snapshot projects/ai-workspace-guardrails --note "Post-review update"
+python3 scripts/version_manager.py diff projects/ai-workspace-guardrails v1 v2
+python3 scripts/version_manager.py rollback projects/ai-workspace-guardrails v1
+
+# 5. Lossless workspace upgrade
+python3 scripts/upgrade_openpm.py
 ```
 
 </details>
 
 ---
 
-## 🌟 灵感缘起、核心合作者与开源许可
+## Privacy, Credits & License
 
-- **灵感与创意致谢**：本项目源于核心合作者 **[@roxorlt](https://github.com/roxorlt)** 的灵感、交互创意及其开创性的开源项目 **[roxorlt/UEmaster](https://github.com/roxorlt/UEmaster)**。OpenPM 在其「正交拓扑流程图 + 线框原型实时联动走查」核心创意的基础上，进一步扩展构建了 `spec-v2` 契约体系、95% 纯黑白灰 + 5% 琥珀橙增量标引、多人 `@组件` 点选合并与冲突检测回写、跨公司 Wiki 交付适配器以及随机双盲 A/B 独立裁判自进化闭环，并由 [@SilasSolivagus](https://github.com/SilasSolivagus) 与 [@roxorlt](https://github.com/roxorlt) 共同协作演进。
-- **100% 零后台遥测承诺**：OpenPM 纯本地离线运行，不包含任何后台统计上报或追踪代码，全力守护产品经理的内部未公开业务数据安全。如果本项目对你的日常工作有帮助，欢迎在右上角点亮一颗 **Star ★** 支持开源共建！
-- **开源协议**：基于 [MIT License](./LICENSE) 开源（Copyright © 2026 SilasSolivagus & Contributors）。
+<a id="privacy--zero-telemetry"></a>
+
+- **Co-Creator & Inspiration Credit**: OpenPM grew directly out of the original inspiration, interaction creativity, and open-source **[roxorlt/UEmaster](https://github.com/roxorlt/UEmaster)** project created by **[@roxorlt](https://github.com/roxorlt)**. Building on that foundation of linking orthogonal flow topologies to live wireframe walkthroughs, **[@SilasSolivagus](https://github.com/SilasSolivagus)** and **[@roxorlt](https://github.com/roxorlt)** co-built OpenPM's `spec-v2` deterministic compiler, 95% monochrome + 5% `#D97706` delta contract, multi-reviewer `@[Component]` conflict detection, native enterprise Wiki adapters, and double-blind A/B evaluation loop.
+- **100% Local & Zero Telemetry**: OpenPM runs entirely on Python 3's standard library on your machine. There are zero analytics pings, zero cloud relays, and zero hidden network calls. Unreleased product specs stay on your disk until you explicitly push them to your own Wiki.
+- **License**: Released under the [MIT License](./LICENSE) (Copyright © 2026 SilasSolivagus, roxorlt & Contributors). Star the repo on GitHub if OpenPM saves your team a painful spec review.

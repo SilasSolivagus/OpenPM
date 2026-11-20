@@ -1,0 +1,212 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 980" width="860" height="980">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8.5 5 L 0 8.5 z" fill="#555555" />
+    </marker>
+    <pattern id="bg-grid" width="24" height="24" patternUnits="userSpaceOnUse">
+      <circle cx="1" cy="1" r="0.8" fill="#e5e5e5" />
+    </pattern>
+  </defs>
+
+  <!-- Subtle monochrome dot grid background -->
+  <rect x="0" y="0" width="860" height="980" fill="url(#bg-grid)" />
+
+  <!-- Swimlane / Stage header caption -->
+  <text x="24" y="22" font-size="11" font-weight="600" fill="#888888">星云 AI 团队工作台 · 用量预算风控与超额加签拓扑（Top-Down 纵向主干）</text>
+
+  <!-- ==================== ORTHOGONAL EDGES (<polyline>) ==================== -->
+  <!-- 1. F_USAGE_DASH -> F_GUARDRAIL_CFG -->
+  <polyline
+    points="430,88 430,124"
+    fill="none"
+    stroke="#666666"
+    stroke-width="1.8"
+    data-from="F_USAGE_DASH"
+    data-to="F_GUARDRAIL_CFG"
+    marker-end="url(#arrow)" />
+
+  <!-- 2. F_GUARDRAIL_CFG -> D_HARD_CAP -->
+  <polyline
+    points="430,182 430,218"
+    fill="none"
+    stroke="#666666"
+    stroke-width="1.8"
+    data-from="F_GUARDRAIL_CFG"
+    data-to="D_HARD_CAP"
+    marker-end="url(#arrow)" />
+
+  <!-- 3. D_HARD_CAP -> F_QUOTA_REQ (within_cap) -->
+  <polyline
+    points="430,294 430,418"
+    fill="none"
+    stroke="#666666"
+    stroke-width="1.8"
+    data-from="D_HARD_CAP"
+    data-to="F_QUOTA_REQ"
+    data-branch="within_cap"
+    marker-end="url(#arrow)" />
+  <text x="418" y="356" text-anchor="end" font-size="11" fill="#666666">预警期内 (&lt;100% 主动扩容)</text>
+
+  <!-- 4. D_HARD_CAP -> F_KEY_PAUSED (hit_pause) -->
+  <polyline
+    points="560,258 700,258 700,326"
+    fill="none"
+    stroke="#666666"
+    stroke-width="1.8"
+    data-from="D_HARD_CAP"
+    data-to="F_KEY_PAUSED"
+    data-branch="hit_pause"
+    marker-end="url(#arrow)" />
+  <text x="632" y="249" text-anchor="middle" font-size="11" fill="#666666">达 100% 自动熔断</text>
+
+  <!-- 5. F_KEY_PAUSED -> F_QUOTA_REQ -->
+  <polyline
+    points="700,384 700,449 554,449"
+    fill="none"
+    stroke="#666666"
+    stroke-width="1.8"
+    data-from="F_KEY_PAUSED"
+    data-to="F_QUOTA_REQ"
+    marker-end="url(#arrow)" />
+  <text x="692" y="440" text-anchor="end" font-size="11" fill="#666666">一键发起紧急加额</text>
+
+  <!-- 6. F_QUOTA_REQ -> D_THRESHOLD -->
+  <polyline
+    points="430,476 430,514"
+    fill="none"
+    stroke="#666666"
+    stroke-width="1.8"
+    data-from="F_QUOTA_REQ"
+    data-to="D_THRESHOLD"
+    marker-end="url(#arrow)" />
+
+  <!-- 7. D_THRESHOLD -> F_QUOTA_ACTIVE (le_500) -->
+  <polyline
+    points="300,554 180,554 180,872"
+    fill="none"
+    stroke="#666666"
+    stroke-width="1.8"
+    data-from="D_THRESHOLD"
+    data-to="F_QUOTA_ACTIVE"
+    data-branch="le_500"
+    marker-end="url(#arrow)" />
+  <text x="238" y="545" text-anchor="middle" font-size="11" fill="#666666">&lt;= $500 免审自动放行</text>
+
+  <!-- 8. D_THRESHOLD -> F_OWNER_APPROVAL (gt_500) -->
+  <polyline
+    points="430,590 430,638"
+    fill="none"
+    stroke="#666666"
+    stroke-width="1.8"
+    data-from="D_THRESHOLD"
+    data-to="F_OWNER_APPROVAL"
+    data-branch="gt_500"
+    marker-end="url(#arrow)" />
+  <text x="442" y="618" text-anchor="start" font-size="11" fill="#666666">&gt; $500 负责人加签</text>
+
+  <!-- 9. F_OWNER_APPROVAL -> D_OWNER_DECISION -->
+  <polyline
+    points="430,696 430,736"
+    fill="none"
+    stroke="#666666"
+    stroke-width="1.8"
+    data-from="F_OWNER_APPROVAL"
+    data-to="D_OWNER_DECISION"
+    marker-end="url(#arrow)" />
+
+  <!-- 10. D_OWNER_DECISION -> F_QUOTA_ACTIVE (approve) -->
+  <polyline
+    points="300,776 280,776 280,872"
+    fill="none"
+    stroke="#666666"
+    stroke-width="1.8"
+    data-from="D_OWNER_DECISION"
+    data-to="F_QUOTA_ACTIVE"
+    data-branch="approve"
+    marker-end="url(#arrow)" />
+  <text x="292" y="832" text-anchor="start" font-size="11" fill="#666666">同意加额并解封</text>
+
+  <!-- 11. D_OWNER_DECISION -> F_REJECT_HOLD (reject) -->
+  <polyline
+    points="560,776 630,776 630,872"
+    fill="none"
+    stroke="#666666"
+    stroke-width="1.8"
+    data-from="D_OWNER_DECISION"
+    data-to="F_REJECT_HOLD"
+    data-branch="reject"
+    marker-end="url(#arrow)" />
+  <text x="638" y="832" text-anchor="start" font-size="11" fill="#666666">驳回维持原上限</text>
+
+  <!-- ==================== PROCESS & DECISION NODES (<g data-node>) ==================== -->
+
+  <!-- 1. F_USAGE_DASH (unchanged) -->
+  <g class="flow-node" data-node="F_USAGE_DASH" data-node-type="start" role="button" tabindex="0">
+    <rect x="310" y="34" width="240" height="54" rx="8" fill="#ffffff" stroke="#333333" stroke-width="1.6" />
+    <text x="430" y="57" text-anchor="middle" font-size="13" font-weight="700" fill="#222222">团队额度与密钥监控总览</text>
+    <text x="430" y="75" text-anchor="middle" font-size="11" fill="#777777">已用 $1,840 / $2,000 [预警 92%]</text>
+  </g>
+
+  <!-- 2. F_GUARDRAIL_CFG (modified) -->
+  <g class="flow-node" data-node="F_GUARDRAIL_CFG" data-node-type="process" role="button" tabindex="0">
+    <rect x="310" y="128" width="240" height="54" rx="8" fill="#ffffff" stroke="#555555" stroke-width="1.6" />
+    <text x="430" y="151" text-anchor="middle" font-size="13" font-weight="700" fill="#222222">预算风控与超限熔断配置</text>
+    <text x="430" y="169" text-anchor="middle" font-size="11" fill="#777777">硬顶 $2,000 · 免审阈值 $500 [改动]</text>
+  </g>
+
+  <!-- 3. D_HARD_CAP (new, decision) -->
+  <g class="flow-node flow-decision" data-node="D_HARD_CAP" data-node-type="decision" role="button" tabindex="0">
+    <polygon points="430,222 560,258 430,294 300,258" fill="#fafafa" stroke="#444444" stroke-width="1.6" />
+    <text x="430" y="255" text-anchor="middle" font-size="12.5" font-weight="700" fill="#222222">消耗达 100% 硬顶？</text>
+    <text x="430" y="272" text-anchor="middle" font-size="10.5" fill="#777777">实时流式计量网关</text>
+  </g>
+
+  <!-- 4. F_KEY_PAUSED (new) -->
+  <g class="flow-node" data-node="F_KEY_PAUSED" data-node-type="process" role="button" tabindex="0">
+    <rect x="590" y="330" width="220" height="54" rx="8" fill="#ffffff" stroke="#555555" stroke-width="1.6" />
+    <text x="700" y="353" text-anchor="middle" font-size="13" font-weight="700" fill="#222222">额度耗尽自动熔断拦截</text>
+    <text x="700" y="371" text-anchor="middle" font-size="11" fill="#777777">暂停密钥 sk-prod-...8f2a [新增]</text>
+  </g>
+
+  <!-- 5. F_QUOTA_REQ (modified) -->
+  <g class="flow-node" data-node="F_QUOTA_REQ" data-node-type="process" role="button" tabindex="0">
+    <rect x="310" y="422" width="240" height="54" rx="8" fill="#ffffff" stroke="#555555" stroke-width="1.6" />
+    <text x="430" y="445" text-anchor="middle" font-size="13" font-weight="700" fill="#222222">成员申请临时加额</text>
+    <text x="430" y="463" text-anchor="middle" font-size="11" fill="#777777">填写追加金额与成本中心 [改动]</text>
+  </g>
+
+  <!-- 6. D_THRESHOLD (new, decision) -->
+  <g class="flow-node flow-decision" data-node="D_THRESHOLD" data-node-type="decision" role="button" tabindex="0">
+    <polygon points="430,518 560,554 430,590 300,554" fill="#fafafa" stroke="#444444" stroke-width="1.6" />
+    <text x="430" y="551" text-anchor="middle" font-size="12.5" font-weight="700" fill="#222222">追加额度 &gt; $500？</text>
+    <text x="430" y="568" text-anchor="middle" font-size="10.5" fill="#777777">阶梯免审路由判断</text>
+  </g>
+
+  <!-- 7. F_OWNER_APPROVAL (new) -->
+  <g class="flow-node" data-node="F_OWNER_APPROVAL" data-node-type="process" role="button" tabindex="0">
+    <rect x="310" y="642" width="240" height="54" rx="8" fill="#ffffff" stroke="#555555" stroke-width="1.6" />
+    <text x="430" y="665" text-anchor="middle" font-size="13" font-weight="700" fill="#222222">空间负责人加签审批</text>
+    <text x="430" y="683" text-anchor="middle" font-size="11" fill="#777777">消耗速率比对与备注复核 [新增]</text>
+  </g>
+
+  <!-- 8. D_OWNER_DECISION (unchanged, decision) -->
+  <g class="flow-node flow-decision" data-node="D_OWNER_DECISION" data-node-type="decision" role="button" tabindex="0">
+    <polygon points="430,740 560,776 430,812 300,776" fill="#fafafa" stroke="#444444" stroke-width="1.6" />
+    <text x="430" y="773" text-anchor="middle" font-size="12.5" font-weight="700" fill="#222222">负责人审批结论？</text>
+    <text x="430" y="790" text-anchor="middle" font-size="10.5" fill="#777777">Web / 企微移动端双端同步</text>
+  </g>
+
+  <!-- 9. F_QUOTA_ACTIVE (unchanged) -->
+  <g class="flow-node" data-node="F_QUOTA_ACTIVE" data-node-type="end" role="button" tabindex="0">
+    <rect x="130" y="876" width="240" height="56" rx="8" fill="#ffffff" stroke="#333333" stroke-width="1.6" />
+    <text x="250" y="900" text-anchor="middle" font-size="13" font-weight="700" fill="#222222">额度生效与密钥恢复</text>
+    <text x="250" y="918" text-anchor="middle" font-size="11" fill="#777777">总额度 $2,800 · 审计归档 [已生效]</text>
+  </g>
+
+  <!-- 10. F_REJECT_HOLD (unchanged) -->
+  <g class="flow-node" data-node="F_REJECT_HOLD" data-node-type="end" role="button" tabindex="0">
+    <rect x="510" y="876" width="240" height="56" rx="8" fill="#f5f5f5" stroke="#555555" stroke-width="1.6" />
+    <text x="630" y="900" text-anchor="middle" font-size="13" font-weight="700" fill="#222222">驳回申请并维持原上限</text>
+    <text x="630" y="918" text-anchor="middle" font-size="11" fill="#777777">保留 $2,000 硬顶与熔断态 [已拦截]</text>
+  </g>
+</svg>

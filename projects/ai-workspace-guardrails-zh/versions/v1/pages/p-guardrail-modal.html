@@ -1,0 +1,124 @@
+<div class="page" id="p-guardrail-modal" data-page="p-guardrail-modal" data-page-id="p-guardrail-modal">
+  <div class="wt-app-shell" data-comp-id="policy.shell.container" data-comp-name="风控配置页主布局" data-comp-role="container">
+    <aside class="wt-sidebar" data-comp-id="policy.sidebar.nav" data-comp-name="左侧控制台导航栏" data-comp-role="nav">
+      <div class="wt-brand-row">
+        <span class="wt-brand-mark">N</span>
+        <span>星云 AI 工作台</span>
+      </div>
+      <div class="wt-side-label">研发中心空间</div>
+      <button type="button" class="wt-side-item" onclick="goNode('F_USAGE_DASH')" data-comp-id="policy.nav_overview.btn" data-comp-name="概览菜单按钮" data-comp-role="nav">
+        <span>概览</span>
+      </button>
+      <button type="button" class="wt-side-item" onclick="goNode('F_USAGE_DASH')" data-comp-id="policy.nav_members.btn" data-comp-name="成员管理菜单按钮" data-comp-role="nav">
+        <span>成员管理</span>
+        <span class="wt-muted">42</span>
+      </button>
+      <button type="button" class="wt-side-item" onclick="goNode('F_USAGE_DASH')" data-comp-id="policy.nav_keys.btn" data-comp-name="API密钥菜单按钮" data-comp-role="nav">
+        <span>API 密钥</span>
+        <span class="wt-muted">18</span>
+      </button>
+      <button type="button" class="wt-side-item active" onclick="goNode('F_GUARDRAIL_CFG')" data-comp-id="policy.nav_guardrails.btn" data-comp-name="额度与风控菜单按钮" data-comp-role="nav">
+        <span>额度与风控</span>
+        <span class="wt-badge">[激活]</span>
+      </button>
+      <button type="button" class="wt-side-item" onclick="goNode('F_QUOTA_ACTIVE')" data-comp-id="policy.nav_audit.btn" data-comp-name="审计日志菜单按钮" data-comp-role="nav">
+        <span>审计日志</span>
+      </button>
+    </aside>
+
+    <main class="wt-main">
+      <div class="wt-between">
+        <div class="wt-col" style="gap: 2px;">
+          <div class="wt-breadcrumb">额度与风控 / <span>配置预算风控与熔断策略</span></div>
+          <strong style="font-size: 15px;">预算风控与超限熔断配置</strong>
+        </div>
+        <button type="button" class="wt-btn" onclick="goNode('F_USAGE_DASH')" data-comp-id="policy.back.btn" data-comp-name="返回监控总览按钮" data-comp-role="control">← 返回总览</button>
+      </div>
+
+      <div class="wt-kpi-grid">
+        <div class="wt-kpi-card">
+          <div class="wt-kpi-label"><span>当前已发生消耗</span><span class="wt-badge">[下限基线]</span></div>
+          <div class="wt-kpi-val wt-mono">$1,840.00</div>
+          <div class="wt-meter"><div class="wt-meter-fill" style="width: 92%;"></div></div>
+        </div>
+        <div class="wt-kpi-card">
+          <div class="wt-kpi-label"><span>分级预警水位</span><span class="wt-badge">[已启用]</span></div>
+          <div class="wt-kpi-val wt-mono">80% / 90% / 100%</div>
+          <div class="wt-kpi-sub">已触发 80% 与 90% 企微提醒</div>
+        </div>
+        <div class="wt-kpi-card">
+          <div class="wt-kpi-label"><span>网关下发延迟</span><span class="wt-badge">[SLA]</span></div>
+          <div class="wt-kpi-val wt-mono">&lt;= 10 秒</div>
+          <div class="wt-kpi-sub">全球 4 节点配额缓存同步</div>
+        </div>
+      </div>
+
+      <div class="wt-card" data-comp-id="policy.drawer.card" data-comp-name="风控规则配置抽屉卡片" data-comp-role="modal">
+        <div class="wt-card-hd wt-between">
+          <span>月度硬顶与免审自动放行规则</span>
+          <span class="wt-badge">仅空间 Owner 可编辑</span>
+        </div>
+        <div class="wt-card-bd wt-form">
+          <div class="wt-Split2">
+            <div class="wt-field">
+              <label class="wt-label">月度预算硬顶金额（USD） *</label>
+              <input class="wt-input wt-mono" type="number" min="1840" step="100" value="2000" data-comp-id="policy.cap.input" data-comp-name="月度硬顶金额输入框" data-comp-role="control" />
+              <span class="wt-help">不可低于当月已出账消耗 $1,840；次月 1 日零点重置计量。</span>
+            </div>
+
+            <div class="wt-field">
+              <label class="wt-label">单次免审自动放行阈值（USD） *</label>
+              <input class="wt-input wt-mono" type="number" min="0" step="50" value="500" data-comp-id="policy.threshold.input" data-comp-name="自动放行阈值输入框" data-comp-role="control" />
+              <span class="wt-help">成员申请加额 &lt;= $500（当月首次）免审秒级生效；超出需加签。</span>
+            </div>
+          </div>
+
+          <div class="wt-field">
+            <label class="wt-label">达到 100% 硬顶执行策略 *</label>
+            <select class="wt-select" onchange="setVar('enforcement_mode', this.value)" data-comp-id="policy.strategy.select" data-comp-name="达到硬顶策略选择框" data-comp-role="control">
+              <option value="auto_pause" selected>自动暂停密钥（推荐：返回 HTTP 429 保护性熔断，阻断失控账单）</option>
+              <option value="alert_only">仅发送告警（不阻断线上 API 请求，超支部分按实结算）</option>
+            </select>
+            <div class="wt-banner" data-when-var="enforcement_mode" data-when-val="auto_pause">
+              <strong>[当前策略：自动暂停密钥]</strong> 累计消耗达 $2,000.00 时自动暂停当前空间密钥，进行中流式响应正常收尾，不影响其他业务空间。
+            </div>
+            <div class="wt-banner hidden" data-when-var="enforcement_mode" data-when-val="alert_only">
+              <strong>[当前策略：仅发送告警]</strong> 累计消耗达 $2,000.00 时保持 API 正常放行，每超额 $200 向空间负责人追加推送高优账单通知。
+            </div>
+          </div>
+
+          <div class="wt-Split2">
+            <div class="wt-switch-row">
+              <div class="wt-col" style="gap: 2px;">
+                <span class="wt-label">企业微信群机器人预警</span>
+                <span class="wt-help">80% / 90% / 100% 实时推送卡片</span>
+              </div>
+              <input type="checkbox" checked data-comp-id="policy.wecom.switch" data-comp-name="企微机器人告警开关" data-comp-role="control" />
+            </div>
+
+            <div class="wt-switch-row">
+              <div class="wt-col" style="gap: 2px;">
+                <span class="wt-label">FinOps Webhook 实时回调</span>
+                <span class="wt-help">同步推送至内部财务成本中心</span>
+              </div>
+              <input type="checkbox" checked data-comp-id="policy.webhook.switch" data-comp-name="Webhook告警开关" data-comp-role="control" />
+            </div>
+          </div>
+
+          <div class="wt-field">
+            <label class="wt-label">告警回调终端标识（内部网关路由）</label>
+            <input class="wt-input wt-mono" type="text" value="finops-bus.nebula.internal/v2/guardrail-events" data-comp-id="policy.webhook_endpoint.input" data-comp-name="Webhook回调端点输入框" data-comp-role="control" />
+          </div>
+        </div>
+
+        <div class="wt-card-ft wt-between">
+          <span class="wt-muted">最近变更：周琳 (Owner) · 2026-11-12 10:20</span>
+          <div class="wt-row">
+            <button type="button" class="wt-btn" onclick="goNode('F_USAGE_DASH')" data-comp-id="policy.cancel.btn" data-comp-name="取消风控配置按钮" data-comp-role="control">取消</button>
+            <button type="button" class="wt-btn wt-btn-primary" onclick="goNode('D_HARD_CAP')" data-comp-id="policy.save.btn" data-comp-name="保存风控策略按钮" data-comp-role="control">保存风控策略</button>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>

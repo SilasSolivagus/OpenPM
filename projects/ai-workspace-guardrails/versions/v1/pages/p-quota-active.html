@@ -1,0 +1,112 @@
+<div class="page" id="p-quota-active" data-page="p-quota-active" data-page-id="p-quota-active">
+  <div class="wt-app-shell">
+    <aside class="wt-sidebar">
+      <div class="wt-brand-row">
+        <span class="wt-brand-mark">AC</span>
+        <span>Acme AI Cloud</span>
+      </div>
+      <div class="wt-side-label">Workspace</div>
+      <button type="button" class="wt-side-item" data-comp-id="active.nav.overview.btn" data-comp-name="Active View Overview Nav Item" onclick="goNode('F_USAGE_DASH')">
+        <span>Overview</span>
+      </button>
+      <button type="button" class="wt-side-item" data-comp-id="active.nav.members.btn" data-comp-name="Active View Members Nav Item" onclick="goNode('F_OWNER_REVIEW')">
+        <span>Members</span>
+      </button>
+      <button type="button" class="wt-side-item" data-comp-id="active.nav.keys.btn" data-comp-name="Active View API Keys Nav Item" onclick="goNode('F_KEY_PAUSED')">
+        <span>API Keys</span>
+      </button>
+      <button type="button" class="wt-side-item" data-comp-id="active.nav.usage.btn" data-comp-name="Active View Usage Nav Item" onclick="goNode('F_USAGE_DASH')">
+        <span>Usage &amp; Limits</span>
+      </button>
+      <button type="button" class="wt-side-item active" data-comp-id="active.nav.audit.btn" data-comp-name="Active View Audit Logs Nav Item" onclick="goNode('F_QUOTA_ACTIVE')">
+        <span>Audit Logs</span>
+      </button>
+    </aside>
+
+    <main class="wt-main">
+      <div class="wt-between">
+        <div>
+          <div class="wt-breadcrumb">Acme Corp / Audit Logs / <b>Quota Updated</b></div>
+          <div style="font-size: 15px; font-weight: 700;">Monthly Cap Updated &amp; API Keys Active</div>
+        </div>
+        <span class="wt-pill-strong">[ALL KEYS ACTIVE]</span>
+      </div>
+
+      <div class="wt-alert" data-when-var="request_tier" data-when-val="gt_500" data-comp-id="active.owner.banner" data-comp-name="Owner Approved Confirmation Banner">
+        <b>[APPROVED &amp; UNLOCKED]</b> Workspace Owner (<b>jordan.lee</b>) approved <b>REQ-2049 (+$800.00)</b>. Monthly cap raised to <b>$2,800.00</b>; <span class="wt-mono">sk-prod-...8f2a</span> restored in 1.8s.
+      </div>
+      <div class="wt-alert hidden" data-when-var="request_tier" data-when-val="le_500" data-comp-id="active.auto.banner" data-comp-name="Auto-Approved Confirmation Banner">
+        <b>[AUTO-APPROVED IN 1.2s]</b> Guardrail policy auto-approved <b>REQ-2049 (+$300.00 &lt;= $500 limit)</b>. Monthly cap raised to <b>$2,300.00</b>; all 18 keys active.
+      </div>
+
+      <div class="wt-kpi-grid" data-comp-id="active.kpi.grid" data-comp-name="Updated Quota KPI Grid">
+        <div class="wt-kpi-card">
+          <div class="wt-kpi-label"><span>Updated Monthly Cap</span><span class="wt-badge">[LIVE]</span></div>
+          <div class="wt-kpi-val" data-when-var="request_tier" data-when-val="gt_500">$2,800.00</div>
+          <div class="wt-kpi-val hidden" data-when-var="request_tier" data-when-val="le_500">$2,300.00</div>
+          <div class="wt-meter"><div class="wt-meter-fill" style="width: 66%;"></div></div>
+          <div class="wt-kpi-sub">$1,840.00 spent · Headroom restored</div>
+        </div>
+        <div class="wt-kpi-card">
+          <div class="wt-kpi-label"><span>Gateway Key State</span><span class="wt-badge">18/18</span></div>
+          <div class="wt-kpi-val">[ACTIVE]</div>
+          <div class="wt-kpi-sub">Propagation latency: 1.8s global</div>
+        </div>
+        <div class="wt-kpi-card">
+          <div class="wt-kpi-label"><span>Next Alert Trigger</span><span class="wt-badge">90%</span></div>
+          <div class="wt-kpi-val">$2,520.00</div>
+          <div class="wt-kpi-sub">Slack #finops-ai-alerts armed</div>
+        </div>
+      </div>
+
+      <div class="wt-card" data-comp-id="active.audit.card" data-comp-name="Immutable FinOps Audit Trail Card">
+        <div class="wt-card-hd wt-between">
+          <span>FinOps Immutable Audit Trail</span>
+          <span class="wt-mono wt-muted">Retention: 365 Days</span>
+        </div>
+        <table class="wt-table">
+          <thead>
+            <tr>
+              <th>Timestamp (UTC)</th>
+              <th>Event</th>
+              <th>Actor</th>
+              <th>Cap Delta</th>
+              <th>Cost Center</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="wt-mono">14:26:19</td>
+              <td><b>quota.cap_updated</b> · Keys Unlocked</td>
+              <td>jordan.lee / Policy</td>
+              <td class="wt-mono">$2,000 -&gt; $2,800</td>
+              <td class="wt-mono">CC-402</td>
+            </tr>
+            <tr>
+              <td class="wt-mono">14:23:04</td>
+              <td><b>quota.topup_requested</b> (REQ-2049)</td>
+              <td>maya.chen</td>
+              <td class="wt-mono">+$800.00 req</td>
+              <td class="wt-mono">CC-402</td>
+            </tr>
+            <tr>
+              <td class="wt-mono">14:22:08</td>
+              <td><b>guardrail.hard_cap_paused</b></td>
+              <td>system.edge</td>
+              <td class="wt-mono">100% ($2,000)</td>
+              <td class="wt-mono">ALL</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="wt-card-ft wt-between">
+          <button type="button" class="wt-btn" data-comp-id="active.policy.btn" data-comp-name="Edit Guardrail Policy Button" onclick="goNode('F_GUARDRAIL_POLICY')">
+            Adjust Guardrail Policy
+          </button>
+          <button type="button" class="wt-btn wt-btn-primary" data-comp-id="active.back.btn" data-comp-name="Back to Dashboard Button" onclick="goNode('F_USAGE_DASH')">
+            Back to Dashboard
+          </button>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>

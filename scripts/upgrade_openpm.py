@@ -18,7 +18,12 @@ import sys
 from pathlib import Path
 
 REPO_URL = "https://github.com/SilasSolivagus/OpenPM.git"
-BUILTIN_DEMOS = {"b-end-approval-flow", "demo-captcha-publish"}
+BUILTIN_DEMOS = {
+    "b-end-approval-flow",
+    "demo-captcha-publish",
+    "ai-workspace-guardrails",
+    "ai-workspace-guardrails-zh",
+}
 CORE_PATHS = [
     "AGENTS.md",
     "CLAUDE.md",
@@ -26,14 +31,17 @@ CORE_PATHS = [
     ".cursorrules",
     ".gitignore",
     "README.md",
+    "README.zh-CN.md",
     "QUICKSTART.md",
     "guide.html",
     "index.html",
+    "assets",
     "scripts",
     "skills",
     "specs",
     "adapters",
     "templates",
+    "evals/judge-rubric.md",
     "evals/test-cases",
 ]
 

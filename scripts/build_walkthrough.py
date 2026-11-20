@@ -723,6 +723,55 @@ WT_WIREFRAME_CSS = """\
   padding: 8px 12px; border-radius: 6px; border: 1px solid var(--wt-border);
   background: var(--wt-bg); font-size: 12px;
 }
+
+/* High-Density SaaS & Mobile Layout Primitives (wt-* · 100% Monochrome) */
+.wt-app-shell { display: grid; grid-template-columns: 148px minmax(0, 1fr); min-height: 520px; background: var(--wt-white); }
+.wt-sidebar {
+  border-right: 1px solid var(--wt-border-light); background: #fafafa; padding: 12px 8px;
+  display: flex; flex-direction: column; gap: 3px;
+}
+.wt-brand-row {
+  display: flex; align-items: center; gap: 7px; padding: 4px 8px 10px; margin-bottom: 4px;
+  border-bottom: 1px solid var(--wt-border-light); font-size: 12.5px; font-weight: 700;
+}
+.wt-brand-mark {
+  width: 20px; height: 20px; border-radius: 5px; background: var(--wt-accent); color: var(--wt-white);
+  display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700;
+}
+.wt-side-label { font-size: 10px; font-weight: 700; color: var(--wt-light); padding: 8px 8px 2px; text-transform: uppercase; letter-spacing: 0.4px; }
+.wt-side-item {
+  display: flex; align-items: center; justify-content: space-between; width: 100%; text-align: left;
+  padding: 6px 8px; border-radius: 5px; border: 1px solid transparent; background: transparent;
+  font-size: 12px; color: var(--wt-dim); cursor: pointer;
+}
+.wt-side-item:hover { background: var(--wt-fill); color: var(--wt-text); }
+.wt-side-item.active { background: var(--wt-white); border-color: var(--wt-border-light); color: var(--wt-text); font-weight: 600; }
+.wt-main { padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.wt-kpi-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.wt-kpi-card {
+  border: 1px solid var(--wt-border-light); border-radius: 7px; padding: 10px 12px;
+  background: var(--wt-white); display: flex; flex-direction: column; gap: 4px;
+}
+.wt-kpi-label { font-size: 11px; color: var(--wt-dim); display: flex; align-items: center; justify-content: space-between; }
+.wt-kpi-val { font-size: 18px; font-weight: 700; letter-spacing: -0.3px; color: var(--wt-text); }
+.wt-kpi-sub { font-size: 11px; color: var(--wt-dim); }
+.wt-meter { width: 100%; height: 6px; border-radius: 999px; background: var(--wt-fill); overflow: hidden; margin-top: 2px; }
+.wt-meter-fill { height: 100%; background: var(--wt-accent); border-radius: 999px; }
+.wt-mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; }
+.wt-pill-strong {
+  display: inline-flex; align-items: center; padding: 1px 7px; border-radius: 999px;
+  background: var(--wt-accent); color: var(--wt-white); font-size: 10.5px; font-weight: 600;
+}
+.wt-Split2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.wt-switch-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 8px 10px; border: 1px solid var(--wt-border-light); border-radius: 6px; background: #fafafa;
+}
+.wt-phone-shell { display: flex; flex-direction: column; min-height: 636px; justify-content: space-between; background: var(--wt-bg); }
+.wt-phone-statusbar {
+  height: 26px; padding: 0 16px; display: flex; align-items: center; justify-content: space-between;
+  font-size: 11px; font-weight: 600; color: var(--wt-text); background: var(--wt-white);
+}
 .wt-alert-danger {
   border-color: var(--wt-accent); background: #f0f0f0; color: var(--wt-text); font-weight: 600;
 }
@@ -777,6 +826,46 @@ function computeDocVersionHash() {
 
 var DOC_VERSION_HASH = computeDocVersionHash();
 var PROJECT_SLUG = (typeof META === "object" && META && META.project) ? String(META.project) : "default";
+var IS_EN = (typeof META === "object" && META && String(META.lang || "").toLowerCase().indexOf("en") === 0);
+var UI_TEXT = IS_EN ? {
+  branchTag: "Branch",
+  localTag: "Scoped",
+  jumpTo: "Jump to: ",
+  noAnno: "No node specification notes.",
+  showDetail: "Show Inspector",
+  fullCanvas: "Full Canvas",
+  ctxPrefix: "Context: ",
+  pickedPrefix: "Inserted @",
+  hoverPrefix: "Click to mention @",
+  memoToggle: "Comments",
+  memoEmpty: "No review comments yet.<br>Click '+ New' and click any UI element to insert an @chip.",
+  invalidBadge: "Stale Anchor",
+  conflictBadge: "Multi-Review",
+  conflictTitle: "Multiple comments target this same component",
+  delBtn: "Delete",
+  emptyHint: "Please write your comment after the @component chip.",
+  copied: "Copied",
+  noMemosAlert: "No review comments to export."
+} : {
+  branchTag: "分支条件",
+  localTag: "局部组件",
+  jumpTo: "跳转至：",
+  noAnno: "暂无节点规则说明",
+  showDetail: "显示详情",
+  fullCanvas: "全屏画布",
+  ctxPrefix: "当前上下文：",
+  pickedPrefix: "已插入 @",
+  hoverPrefix: "点击添加 @",
+  memoToggle: "评审备注",
+  memoEmpty: "暂无评审备注。<br>点击「+ 新增」后，可直接点选原型组件添加 @ 胶囊。",
+  invalidBadge: "落点已失效",
+  conflictBadge: "同组件多方意见",
+  conflictTitle: "多条备注指向同一组件",
+  delBtn: "删除",
+  emptyHint: "请输入具体修改意见（仅选择 @组件 无法保存）",
+  copied: "已复制",
+  noMemosAlert: "当前没有可导出的评审备注。"
+};
 var MEMO_STORAGE_KEY = "wt_memos_" + PROJECT_SLUG;
 var REVIEWER_STORAGE_KEY = "wt_reviewer_name";
 
@@ -985,7 +1074,7 @@ function renderScopedVars() {
   }
 
   body.innerHTML = scoped.map(function (v) {
-    var tag = v.kind === "branch" ? "分支条件" : "局部组件";
+    var tag = v.kind === "branch" ? UI_TEXT.branchTag : UI_TEXT.localTag;
     var curOpt = (v.options || []).find(function (o) { return o.id === varValues[v.id]; });
     var optsHtml = (v.options || []).map(function (o) {
       var curCls = varValues[v.id] === o.id ? " cur" : "";
@@ -995,7 +1084,7 @@ function renderScopedVars() {
     }).join("");
     var goHtml = (v.kind === "branch" && curOpt && curOpt.target && NODES[curOpt.target])
       ? '<button type="button" class="branch-go-btn" onclick="goBranch(\\'' +
-        escapeHtml(v.id) + '\\')">跳转至：' +
+        escapeHtml(v.id) + '\\')">' + UI_TEXT.jumpTo +
         escapeHtml(NODES[curOpt.target].title || curOpt.target) + ' →</button>'
       : "";
     return '<div class="var-block"><div class="var-head"><b>' + escapeHtml(v.label) +
@@ -1268,7 +1357,7 @@ function setViewByNode(nodeId) {
   if (annoEl) {
     annoEl.innerHTML = (n.anno || []).map(function (p) {
       return '<div class="anno-item"><b>' + escapeHtml(p[0]) + '</b>' + escapeHtml(p[1]) + '</div>';
-    }).join("") || '<div class="wt-muted">暂无节点规则说明</div>';
+    }).join("") || ('<div class="wt-muted">' + UI_TEXT.noAnno + '</div>');
   }
 
   renderStates();
@@ -1420,7 +1509,7 @@ function toggleFs(force) {
   var on = force !== undefined ? force : !p.classList.contains("fs");
   p.classList.toggle("fs", on);
   var btn = document.getElementById("fs-btn");
-  if (btn) btn.textContent = on ? "显示详情" : "全屏画布";
+  if (btn) btn.textContent = on ? UI_TEXT.showDetail : UI_TEXT.fullCanvas;
   fitBootZoom();
 }
 
@@ -1834,7 +1923,7 @@ function insertMentionChipInEditor(targetObj) {
 function updateMemoFormCtx() {
   var ctxEl = document.getElementById("memo-ctx");
   if (ctxEl) {
-    ctxEl.textContent = "当前上下文：" + (currentNode || "-") + " · " + (currentPage || "-");
+    ctxEl.textContent = UI_TEXT.ctxPrefix + (currentNode || "-") + " · " + (currentPage || "-");
   }
 }
 
@@ -1865,7 +1954,7 @@ function handlePickSelect(rawTarget) {
   });
   lastPickedEl = compEl;
   updateMemoFormCtx();
-  positionPickOverlay(compEl, "已插入 @" + compName);
+  positionPickOverlay(compEl, UI_TEXT.pickedPrefix + compName);
 }
 
 function handlePickHover(rawTarget) {
@@ -1881,7 +1970,7 @@ function handlePickHover(rawTarget) {
     return;
   }
   var name = getCompDisplayName(compEl);
-  positionPickOverlay(compEl, "点击添加 @" + name);
+  positionPickOverlay(compEl, UI_TEXT.hoverPrefix + name);
 }
 
 getStageContainers().forEach(function (container) {
@@ -2130,11 +2219,11 @@ function validateMemoAnchor(memo) {
 
 function renderMemos() {
   var toggleBtn = document.getElementById("memo-toggle-btn");
-  if (toggleBtn) toggleBtn.textContent = "评审备注 (" + memos.length + ")";
+  if (toggleBtn) toggleBtn.textContent = UI_TEXT.memoToggle + " (" + memos.length + ")";
   var listEl = document.getElementById("memo-list");
   if (!listEl) return;
   if (!memos.length) {
-    listEl.innerHTML = '<div class="memo-empty">暂无评审备注。<br>点击「+ 新增」后，可直接点选原型组件添加 @ 胶囊。</div>';
+    listEl.innerHTML = '<div class="memo-empty">' + UI_TEXT.memoEmpty + '</div>';
     return;
   }
   var compTouchMap = {};
@@ -2156,8 +2245,8 @@ function renderMemos() {
       : (m.page || m.node || "-");
     var titleLabel = "[" + (m.node || m.page || "-") + "] " + compNameLabel;
     var badgeHtml = isValid
-      ? (hasMultiTouch ? '<span class="memo-conflict-badge" title="多条备注指向同一组件">同组件多方意见</span>' : "")
-      : '<span class="memo-invalid-badge">落点已失效</span>';
+      ? (hasMultiTouch ? '<span class="memo-conflict-badge" title="' + escapeHtml(UI_TEXT.conflictTitle) + '">' + escapeHtml(UI_TEXT.conflictBadge) + '</span>' : "")
+      : '<span class="memo-invalid-badge">' + escapeHtml(UI_TEXT.invalidBadge) + '</span>';
     var authorHtml = m.author ? '<span class="memo-author-pill">' + escapeHtml(m.author) + '</span>' : "";
     var tagsHtml = "";
     if (targets.length > 0) {
@@ -2171,14 +2260,14 @@ function renderMemos() {
       : ("page · " + (m.page || "-"));
     return '<div class="memo-item' + (isValid ? "" : " invalid") + '">' +
       '<div class="memo-item-hd">' +
-        '<div class="memo-item-ctx" onclick="jumpToMemo(' + i + ')" title="点击定位">' + authorHtml + escapeHtml(titleLabel) + '</div>' +
+        '<div class="memo-item-ctx" onclick="jumpToMemo(' + i + ')" title="Jump">' + authorHtml + escapeHtml(titleLabel) + '</div>' +
         badgeHtml +
       '</div>' +
       tagsHtml +
       '<div class="memo-item-meta">' + escapeHtml(metaText) + '</div>' +
       '<div class="memo-item-txt">' + escapeHtml(m.text) + '</div>' +
       '<div class="memo-item-ft"><span>' + escapeHtml((m.author ? m.author + " · " : "") + (m.time || "")) + '</span>' +
-        '<button type="button" class="memo-del-btn" onclick="deleteMemoItem(' + i + ')">删除</button></div>' +
+        '<button type="button" class="memo-del-btn" onclick="deleteMemoItem(' + i + ')">' + escapeHtml(UI_TEXT.delBtn) + '</button></div>' +
     '</div>';
   }).join("");
 }
@@ -2664,9 +2753,68 @@ def compile_walkthrough(
     phone_pages_html, wide_pages_html, page_frame = _build_pages_html(pages, pages_dir)
     variant_map = _build_variant_map(pages)
 
+    is_en = str(meta.get("lang") or "").strip().lower().startswith("en")
+    L = (
+        {
+            "html_lang": "en",
+            "v_flow": "Global Flow",
+            "v_spec": "Spec Tether",
+            "fit": "Fit",
+            "full": "Full Canvas",
+            "delta": "Delta Highlight",
+            "memo_btn": "Comments (0)",
+            "brand_tip": "Built with OpenPM · Star on GitHub",
+            "add_memo": "+ Comment",
+            "collapse": "Hide ✕",
+            "vars_hd": "Branch & State Controls",
+            "state_hd": "Page State",
+            "anno_hd": "Node Spec",
+            "memo_hd": "Review Comments",
+            "merge_btn": "Merge",
+            "merge_tip": "Import & merge multiple reviewers' .jsonl or .md files",
+            "new_btn": "+ New",
+            "reviewer_lbl": "Reviewer",
+            "reviewer_ph": "Optional: e.g. Alex (FE) / Sam (QA)",
+            "editor_ph": "Click any element in the prototype to insert an @component chip, then type feedback (Cmd/Ctrl+Enter to save)",
+            "cancel": "Cancel",
+            "save": "Save",
+            "copy_md": "Copy MD",
+            "exp_md": "Export .md",
+            "exp_jsonl": "Export .jsonl",
+        }
+        if is_en
+        else {
+            "html_lang": "zh-CN",
+            "v_flow": "全局流程",
+            "v_spec": "单页改点",
+            "fit": "适宽",
+            "full": "全屏画布",
+            "delta": "改动高亮",
+            "memo_btn": "评审备注 (0)",
+            "brand_tip": "由 OpenPM 开源工作台生成 · 点击前往 GitHub 点亮 Star",
+            "add_memo": "+ 记备注",
+            "collapse": "收起 ✕",
+            "vars_hd": "条件与局部控制",
+            "state_hd": "页面状态切换",
+            "anno_hd": "当前节点规则",
+            "memo_hd": "评审备注",
+            "merge_btn": "导入合并",
+            "merge_tip": "导入合并多位同事导出的 .jsonl 或 .md 评审文件",
+            "new_btn": "+ 新增",
+            "reviewer_lbl": "评审人",
+            "reviewer_ph": "选填署名（如：前端-王工 / 测试-小李）",
+            "editor_ph": "记录评审结论或待确认项，可直接点选原型插入 @组件（Cmd/Ctrl+Enter 保存）",
+            "cancel": "取消",
+            "save": "保存",
+            "copy_md": "复制 MD",
+            "exp_md": "导出 .md",
+            "exp_jsonl": "导出 .jsonl",
+        }
+    )
+
     escaped_title = html.escape(title)
     html_doc = f"""<!doctype html>
-<html lang="zh-CN">
+<html lang="{L['html_lang']}">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -2681,8 +2829,8 @@ def compile_walkthrough(
 <header class="wb-topbar">
   <div class="fp-title">{escaped_title}</div>
   <div class="seg-group hidden" id="view-switch">
-    <button type="button" class="seg-btn active" data-wbview="flow" onclick="switchWbView('flow')">全局流程</button>
-    <button type="button" class="seg-btn" data-wbview="spec" onclick="switchWbView('spec')">单页改点</button>
+    <button type="button" class="seg-btn active" data-wbview="flow" onclick="switchWbView('flow')">{L['v_flow']}</button>
+    <button type="button" class="seg-btn" data-wbview="spec" onclick="switchWbView('spec')">{L['v_spec']}</button>
   </div>
   <div class="wb-global-vars" id="global-vars-bar"></div>
   <div class="topbar-spacer"></div>
@@ -2691,12 +2839,12 @@ def compile_walkthrough(
     <span class="zb" onclick="setZoom(-1)">&#65293;</span>
     <span class="zv" id="zv">100%</span>
     <span class="zb" onclick="setZoom(1)">&#65291;</span>
-    <span class="zb" onclick="setZoom(0)">适宽</span>
-    <span class="zb" id="fs-btn" onclick="toggleFs()">全屏画布</span>
+    <span class="zb" onclick="setZoom(0)">{L['fit']}</span>
+    <span class="zb" id="fs-btn" onclick="toggleFs()">{L['full']}</span>
   </div>
-  <button type="button" class="zb active" id="delta-toggle-btn" onclick="toggleDeltaHighlight()">改动高亮</button>
-  <button type="button" class="memo-toggle" id="memo-toggle-btn" onclick="toggleMemo()">评审备注 (0)</button>
-  <a class="wb-brand-link" href="https://github.com/SilasSolivagus/OpenPM" target="_blank" rel="noopener" title="由 OpenPM 开源工作台生成 · 点击前往 GitHub 点亮 Star">OpenPM &#9733;</a>
+  <button type="button" class="zb active" id="delta-toggle-btn" onclick="toggleDeltaHighlight()">{L['delta']}</button>
+  <button type="button" class="memo-toggle" id="memo-toggle-btn" onclick="toggleMemo()">{L['memo_btn']}</button>
+  <a class="wb-brand-link" href="https://github.com/SilasSolivagus/OpenPM" target="_blank" rel="noopener" title="{L['brand_tip']}">OpenPM &#9733;</a>
 </header>
 
 <div class="wb-stage">
@@ -2706,8 +2854,8 @@ def compile_walkthrough(
       <div class="insp-head">
         <span class="insp-badge" id="insp-node-id"></span>
         <span id="anno-node-title"></span>
-        <button type="button" onclick="openMemoForCurrent()">+ 记备注</button>
-        <button type="button" onclick="toggleFs(true)">收起 ✕</button>
+        <button type="button" onclick="openMemoForCurrent()">{L['add_memo']}</button>
+        <button type="button" onclick="toggleFs(true)">{L['collapse']}</button>
       </div>
       <div class="insp-body">
         <div class="stage" id="flow-stage">
@@ -2720,15 +2868,15 @@ def compile_walkthrough(
         </div>
         <aside class="anno-panel">
           <div class="anno-card hidden" id="vars-card">
-            <div class="anno-card-title">条件与局部控制</div>
+            <div class="anno-card-title">{L['vars_hd']}</div>
             <div id="vars-body"></div>
           </div>
           <div class="anno-card hidden" id="state-card">
-            <div class="anno-card-title">页面状态切换</div>
+            <div class="anno-card-title">{L['state_hd']}</div>
             <div id="state-body"></div>
           </div>
           <div class="anno-card">
-            <div class="anno-card-title">当前节点规则</div>
+            <div class="anno-card-title">{L['anno_hd']}</div>
             <div id="anno-body"></div>
           </div>
         </aside>
@@ -2747,31 +2895,31 @@ def compile_walkthrough(
 
   <aside class="memo-drawer hidden" id="memo-drawer">
     <div class="memo-hd">
-      <b>评审备注</b>
+      <b>{L['memo_hd']}</b>
       <div style="display:flex;gap:6px">
-        <button type="button" onclick="document.getElementById('memo-import-file').click()" title="导入合并多位同事导出的 .jsonl 或 .md 评审文件">导入合并</button>
-        <button type="button" onclick="openMemoForCurrent()">+ 新增</button>
+        <button type="button" onclick="document.getElementById('memo-import-file').click()" title="{L['merge_tip']}">{L['merge_btn']}</button>
+        <button type="button" onclick="openMemoForCurrent()">{L['new_btn']}</button>
       </div>
     </div>
     <div class="memo-reviewer-bar">
-      <span>评审人</span>
-      <input id="memo-reviewer-input" type="text" placeholder="选填署名（如：前端-王工 / 测试-小李）" oninput="saveReviewerName(this.value)" />
+      <span>{L['reviewer_lbl']}</span>
+      <input id="memo-reviewer-input" type="text" placeholder="{L['reviewer_ph']}" oninput="saveReviewerName(this.value)" />
       <input id="memo-import-file" type="file" multiple accept=".jsonl,.md,.json" class="hidden" onchange="importFeedbackFiles(this.files)" />
     </div>
     <div class="memo-form hidden" id="memo-form">
       <div class="memo-ctx" id="memo-ctx"></div>
-      <div id="memo-input" class="memo-editor" contenteditable="true" data-placeholder="记录评审结论或待确认项，可直接点选原型插入 @组件（Cmd/Ctrl+Enter 保存）"></div>
+      <div id="memo-input" class="memo-editor" contenteditable="true" data-placeholder="{L['editor_ph']}"></div>
       <div class="memo-form-hint hidden" id="memo-form-hint"></div>
       <div style="display:flex;justify-content:flex-end;gap:6px">
-        <button type="button" onclick="closeMemoForm()">取消</button>
-        <button type="button" class="primary" onclick="saveMemoItem()">保存</button>
+        <button type="button" onclick="closeMemoForm()">{L['cancel']}</button>
+        <button type="button" class="primary" onclick="saveMemoItem()">{L['save']}</button>
       </div>
     </div>
     <div class="memo-list" id="memo-list"></div>
     <div class="memo-export">
-      <button type="button" id="copy-md-btn" onclick="copyMemosMd()">复制 MD</button>
-      <button type="button" class="primary" onclick="downloadMemosMd()">导出 .md</button>
-      <button type="button" onclick="downloadMemosJsonl()">导出 .jsonl</button>
+      <button type="button" id="copy-md-btn" onclick="copyMemosMd()">{L['copy_md']}</button>
+      <button type="button" class="primary" onclick="downloadMemosMd()">{L['exp_md']}</button>
+      <button type="button" onclick="downloadMemosJsonl()">{L['exp_jsonl']}</button>
     </div>
   </aside>
 </div>

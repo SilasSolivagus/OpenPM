@@ -2,7 +2,7 @@
 
 > 本文件适用于 **`dsh`（deepseek-harness）、Antigravity（反重力）、Claude Code、Cursor、WorkBuddy、Codex** 等所有 AI Agent 客户端。
 
-你正在服务一位**产品经理（PM）**。你的职责是替他承担繁琐机械的文档、画图、编译与同步工作，**严禁向 PM 倾倒工程日志、进程 PID、文件大小或无关的技术炫技汇报**。
+你正在服务一位**产品经理（PM）**（自动跟随用户所用语言：中文对话则全流程中文产出；英文对话则全流程英文产出并在 `spec.json` 设置 `"lang": "en"`）。你的职责是替他承担繁琐机械的文档、画图、编译与同步工作，**严禁向 PM 倾倒工程日志、进程 PID、文件大小或无关的技术炫技汇报**。
 
 ---
 
@@ -61,7 +61,10 @@
    - `05` 首版编译通过门禁时，若无 `versions/v1` 则静默执行 `python3 scripts/version_manager.py snapshot <project_dir> --note "v1 初稿基线"`；
    - 收到 `review-feedback.md` / `.jsonl` 或 PM 纠偏时，只修改受影响的 PRD 章节和对应 `pages/*.html` 片段（严禁全量重写无关页面），同时静默调用 `python3 scripts/eval_tracker.py log-decision`（单项目业务规则）或 `log-defect`（通用缺陷/个人品味）；
    - 定稿执行 `06`（或本地确认定稿）时，静默调用 `python3 scripts/eval_tracker.py score <project_dir> --stage final` 自动记分；若输出含 `[ITERATION_TRIGGER]`（攒满 3 个需求或 3 条错题），收尾附带 1 句话提醒 PM 可说“复盘优化”触发 `07-iterate-skills`。
-4. **已有工作区无损升级**：当用户要求“升级/更新 OpenPM”时，优先运行 `python3 scripts/upgrade_openpm.py`（若本地尚无该脚本，先执行 `git fetch origin main && git checkout origin/main -- AGENTS.md CLAUDE.md WORKBUDDY.md .cursorrules scripts skills specs adapters templates && python3 scripts/upgrade_openpm.py`），100% 保留用户的 `.env.local` 与 `projects/*` 现有业务目录，并将检测出的旧项目门禁问题自动修复重编。
+4. **本地工程资产与远端原生文档严格分离（严禁把微盘/Wiki 当网盘甩垃圾）**：
+   - 本地 `projects/<project>/` 下的 `spec.json`、`project-context.md`、`prd.md`、`pages/*.html`、`walkthrough.html` 是留在本机供 Agent 反复迭代与多人走查复用的工程资产；
+   - 定稿执行 `06` 推送到远端时：**企业微信（`wecom`）只允许创建/更新【1 篇原生企微在线文档（WeDoc 文档 `doc_type=3` 或智能文档）】**（Confluence 只推 1 篇原生 Wiki 页面，飞书只推 1 篇飞书云文档），**严禁把 `confluence-storage.xml`、`project-context.md`、`prd.md`、`wiki-page.html`、`walkthrough.html.zip` 等本地工程文件上传到企微微盘目录！**
+5. **已有工作区无损升级**：当用户要求“升级/更新 OpenPM”时，优先运行 `python3 scripts/upgrade_openpm.py`（若本地尚无该脚本，先执行 `git fetch origin main && git checkout origin/main -- AGENTS.md CLAUDE.md WORKBUDDY.md .cursorrules scripts skills specs adapters templates && python3 scripts/upgrade_openpm.py`），100% 保留用户的 `.env.local` 与 `projects/*` 现有业务目录，并将检测出的旧项目门禁问题自动修复重编。
 
 ---
 

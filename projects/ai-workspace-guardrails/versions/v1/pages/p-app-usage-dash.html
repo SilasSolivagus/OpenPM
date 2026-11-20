@@ -1,0 +1,83 @@
+<div class="page" id="p-app-usage-dash" data-page="p-app-usage-dash" data-page-id="p-app-usage-dash">
+  <div class="wt-phone-shell">
+    <div>
+      <div class="wt-phone-statusbar">
+        <span>9:41</span>
+        <span>Acme Cloud · 5G [100%]</span>
+      </div>
+      <div class="wt-navbar">
+        <span>Acme AI · Usage</span>
+        <span class="wt-pill-strong">92% CAP</span>
+      </div>
+
+      <div style="padding: 12px;" class="wt-stack">
+        <div class="wt-card" data-comp-id="dash.kpi.grid" data-comp-name="Mobile Monthly Spend Summary Card">
+          <div class="wt-card-bd wt-stack">
+            <div class="wt-between">
+              <span class="wt-muted">Monthly Budget (Nov)</span>
+              <span class="wt-badge">Auto-Pause ON</span>
+            </div>
+            <div style="font-size: 20px; font-weight: 700;">$1,840.00 <span class="wt-muted" style="font-weight: 400;">/ $2,000</span></div>
+            <div class="wt-meter"><div class="wt-meter-fill" style="width: 92%;"></div></div>
+            <div class="wt-between wt-muted">
+              <span>18 Active Keys</span>
+              <span>2 Pending Top-Ups</span>
+            </div>
+          </div>
+          <div class="wt-card-ft wt-Split2">
+            <button type="button" class="wt-btn wt-btn-sm" data-comp-id="dash.guardrail.btn" data-comp-name="Configure Guardrails Button" onclick="goNode('F_GUARDRAIL_POLICY')">
+              Guardrails
+            </button>
+            <button type="button" class="wt-btn wt-btn-primary wt-btn-sm" data-comp-id="dash.request.btn" data-comp-name="Request Quota Top-Up Button" onclick="goNode('F_QUOTA_REQ')">
+              + Top-Up Quota
+            </button>
+          </div>
+        </div>
+
+        <div class="wt-alert wt-between" data-comp-id="dash.threshold.banner" data-comp-name="Mobile 92 Percent Spend Alert">
+          <span><b>[92%]</b> $160 left before auto-pause.</span>
+          <button type="button" class="wt-btn wt-btn-sm" data-comp-id="dash.simulate.pause.btn" data-comp-name="Preview 100 Percent Pause State Button" onclick="setVar('cap_status','paused'); goNode('F_KEY_PAUSED')">
+            100% State
+          </button>
+        </div>
+
+        <div class="wt-card" data-comp-id="dash.keys.card" data-comp-name="Mobile Top API Keys List">
+          <div class="wt-card-hd wt-between">
+            <span>Top Keys by Burn</span>
+            <span class="wt-muted">MTD</span>
+          </div>
+          <div class="wt-list">
+            <div class="wt-list-item">
+              <div>
+                <div style="font-weight: 600; font-size: 12.5px;">Core Agent Prod</div>
+                <div class="wt-mono wt-muted">sk-prod-...8f2a · $1,120.40</div>
+              </div>
+              <button type="button" class="wt-btn wt-btn-sm" data-comp-id="dash.row1.topup.btn" data-comp-name="Mobile Core Agent Top-Up Button" onclick="goNode('F_QUOTA_REQ')">Top Up</button>
+            </div>
+            <div class="wt-list-item">
+              <div>
+                <div style="font-weight: 600; font-size: 12.5px;">Code Review Bot</div>
+                <div class="wt-mono wt-muted">sk-prod-...3c19 · $468.90</div>
+              </div>
+              <span class="wt-badge">[ACTIVE]</span>
+            </div>
+            <div class="wt-list-item">
+              <div>
+                <div style="font-weight: 600; font-size: 12.5px;">RAG Eval Nightly</div>
+                <div class="wt-mono wt-muted">sk-eval-...91d0 · $250.70</div>
+              </div>
+              <button type="button" class="wt-btn wt-btn-sm" data-comp-id="dash.row3.review.btn" data-comp-name="Mobile Review Request Button" onclick="goNode('F_OWNER_REVIEW')">Review</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="wt-tabbar">
+      <div class="wt-tabbar-item active" role="button" tabindex="0" data-comp-id="app.dash.tab.usage" data-comp-name="Mobile Usage Tab" onclick="goNode('F_USAGE_DASH')">Usage</div>
+      <div class="wt-tabbar-item" role="button" tabindex="0" data-comp-id="app.dash.tab.keys" data-comp-name="Mobile Keys Tab" onclick="goNode('F_KEY_PAUSED')">Keys</div>
+      <div class="wt-tabbar-item" role="button" tabindex="0" data-comp-id="app.dash.tab.approvals" data-comp-name="Mobile Approvals Tab" onclick="goNode('F_OWNER_REVIEW')">Approvals (2)</div>
+      <div class="wt-tabbar-item" role="button" tabindex="0" data-comp-id="app.dash.tab.audit" data-comp-name="Mobile Audit Tab" onclick="goNode('F_QUOTA_ACTIVE')">Audit</div>
+    </div>
+  </div>
+</div>

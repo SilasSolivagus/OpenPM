@@ -1,0 +1,125 @@
+<div class="page" id="p-usage-dash" data-page="p-usage-dash" data-page-id="p-usage-dash">
+  <div class="wt-app-shell">
+    <aside class="wt-sidebar" data-comp-id="dash.sidebar.nav" data-comp-name="Workspace Sidebar Navigation" data-comp-role="nav">
+      <div class="wt-brand-row">
+        <span class="wt-brand-mark">AC</span>
+        <span>Acme AI Cloud</span>
+      </div>
+      <div class="wt-side-label">Workspace</div>
+      <button type="button" class="wt-side-item" data-comp-id="dash.nav.overview.btn" data-comp-name="Overview Nav Item" onclick="goNode('F_USAGE_DASH')">
+        <span>Overview</span>
+      </button>
+      <button type="button" class="wt-side-item" data-comp-id="dash.nav.members.btn" data-comp-name="Members Nav Item" onclick="goNode('F_OWNER_REVIEW')">
+        <span>Members</span>
+        <span class="wt-badge">14</span>
+      </button>
+      <button type="button" class="wt-side-item" data-comp-id="dash.nav.keys.btn" data-comp-name="API Keys Nav Item" onclick="goNode('F_KEY_PAUSED')">
+        <span>API Keys</span>
+        <span class="wt-badge">18</span>
+      </button>
+      <button type="button" class="wt-side-item active" data-comp-id="dash.nav.usage.btn" data-comp-name="Usage and Limits Nav Item" onclick="goNode('F_USAGE_DASH')">
+        <span>Usage &amp; Limits</span>
+      </button>
+      <button type="button" class="wt-side-item" data-comp-id="dash.nav.audit.btn" data-comp-name="Audit Logs Nav Item" onclick="goNode('F_QUOTA_ACTIVE')">
+        <span>Audit Logs</span>
+      </button>
+      <div class="wt-divider"></div>
+      <div class="wt-side-label">Cycle</div>
+      <div class="wt-muted" style="padding: 2px 8px;">Nov 1 - Nov 30<br>Tier: Enterprise v2.4</div>
+    </aside>
+
+    <main class="wt-main">
+      <div class="wt-between">
+        <div>
+          <div class="wt-breadcrumb">Acme Corp / Billing &amp; FinOps / <b>Usage &amp; Limits</b></div>
+          <div style="font-size: 15px; font-weight: 700; margin-top: 2px;">Spend Guardrails &amp; API Key Usage</div>
+        </div>
+        <div class="wt-row">
+          <button type="button" class="wt-btn" data-comp-id="dash.guardrail.btn" data-comp-name="Configure Guardrails Button" data-comp-role="control" onclick="goNode('F_GUARDRAIL_POLICY')">
+            Configure Guardrails
+          </button>
+          <button type="button" class="wt-btn wt-btn-primary" data-comp-id="dash.request.btn" data-comp-name="Request Quota Top-Up Button" data-comp-role="control" onclick="goNode('F_QUOTA_REQ')">
+            + Request Quota Top-Up
+          </button>
+        </div>
+      </div>
+
+      <div class="wt-alert wt-between" data-comp-id="dash.threshold.banner" data-comp-name="92 Percent Spend Alert Banner" data-comp-role="feedback">
+        <span><b>[ALERT 92%]</b> Monthly workspace spend reached <b>$1,840.00 / $2,000.00</b>. Auto-pause triggers at 100% hard cap.</span>
+        <button type="button" class="wt-btn wt-btn-sm" data-comp-id="dash.simulate.pause.btn" data-comp-name="Simulate 100 Percent Cap Trigger Button" onclick="setVar('cap_status','paused'); goNode('F_KEY_PAUSED')">
+          Preview 100% Cap State
+        </button>
+      </div>
+
+      <div class="wt-kpi-grid" data-comp-id="dash.kpi.grid" data-comp-name="Workspace Spend KPI Grid" data-comp-role="container">
+        <div class="wt-kpi-card">
+          <div class="wt-kpi-label"><span>Monthly Spend</span><span class="wt-pill-strong">92%</span></div>
+          <div class="wt-kpi-val">$1,840 <span class="wt-muted" style="font-weight: 400;">/ $2,000</span></div>
+          <div class="wt-meter"><div class="wt-meter-fill" style="width: 92%;"></div></div>
+          <div class="wt-kpi-sub">$160.00 remaining · Auto-Pause ON</div>
+        </div>
+        <div class="wt-kpi-card">
+          <div class="wt-kpi-label"><span>Active API Keys</span><span class="wt-badge">[LIVE]</span></div>
+          <div class="wt-kpi-val">18 <span class="wt-muted" style="font-weight: 400;">keys</span></div>
+          <div class="wt-kpi-sub">4 prod · 9 staging · 5 eval</div>
+          <div class="wt-kpi-sub">Peak burn: $94.20 / day</div>
+        </div>
+        <div class="wt-kpi-card">
+          <div class="wt-kpi-label"><span>Pending Requests</span><span class="wt-badge">QUEUE</span></div>
+          <div class="wt-kpi-val">2 <span class="wt-muted" style="font-weight: 400;">open</span></div>
+          <div class="wt-kpi-sub">Auto-approve ceiling: &lt;= $500</div>
+          <div class="wt-kpi-sub">Owner SLA: &lt; 15 mins</div>
+        </div>
+      </div>
+
+      <div class="wt-card" data-comp-id="dash.keys.card" data-comp-name="Project API Key Spend Breakdown Table" data-comp-role="container">
+        <div class="wt-card-hd wt-between">
+          <span>API Key &amp; Member Spend Breakdown (MTD)</span>
+          <select class="wt-select" style="width: 156px; padding: 3px 7px; font-size: 11.5px;" data-comp-id="dash.filter.select" data-comp-name="Project Environment Filter Select">
+            <option value="all">All Environments (18)</option>
+            <option value="prod">Production Keys (4)</option>
+            <option value="staging">Staging &amp; Eval (14)</option>
+          </select>
+        </div>
+        <table class="wt-table">
+          <thead>
+            <tr>
+              <th>Project / Key Prefix</th>
+              <th>Owner</th>
+              <th>MTD Spend</th>
+              <th>Share</th>
+              <th>Status</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><b>Core Agent Prod</b><br><span class="wt-mono wt-muted">sk-prod-...8f2a</span></td>
+              <td>maya.chen</td>
+              <td class="wt-mono">$1,120.40</td>
+              <td>60.9%</td>
+              <td><span class="wt-pill-strong">[NEAR CAP]</span></td>
+              <td><button type="button" class="wt-btn wt-btn-sm" data-comp-id="dash.row1.topup.btn" data-comp-name="Core Agent Row Top-Up Button" onclick="goNode('F_QUOTA_REQ')">Top Up</button></td>
+            </tr>
+            <tr>
+              <td><b>Code Review Bot</b><br><span class="wt-mono wt-muted">sk-prod-...3c19</span></td>
+              <td>alex.rivera</td>
+              <td class="wt-mono">$468.90</td>
+              <td>25.5%</td>
+              <td><span class="wt-badge">[ACTIVE]</span></td>
+              <td><button type="button" class="wt-btn wt-btn-sm" data-comp-id="dash.row2.policy.btn" data-comp-name="Code Review Bot Limit Button" onclick="goNode('F_GUARDRAIL_POLICY')">Limits</button></td>
+            </tr>
+            <tr>
+              <td><b>RAG Eval Nightly</b><br><span class="wt-mono wt-muted">sk-eval-...91d0</span></td>
+              <td>devon.park</td>
+              <td class="wt-mono">$250.70</td>
+              <td>13.6%</td>
+              <td><span class="wt-badge">[ACTIVE]</span></td>
+              <td><button type="button" class="wt-btn wt-btn-sm" data-comp-id="dash.row3.review.btn" data-comp-name="Review Pending Request Button" onclick="goNode('F_OWNER_REVIEW')">Review Req</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </main>
+  </div>
+</div>

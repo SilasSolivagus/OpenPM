@@ -1,0 +1,115 @@
+<div class="page" id="p-owner-approval" data-page="p-owner-approval" data-page-id="p-owner-approval">
+  <div class="wt-app-shell" data-comp-id="approve.shell.container" data-comp-name="负责人审批台主布局" data-comp-role="container">
+    <aside class="wt-sidebar" data-comp-id="approve.sidebar.nav" data-comp-name="左侧控制台导航栏" data-comp-role="nav">
+      <div class="wt-brand-row">
+        <span class="wt-brand-mark">N</span>
+        <span>星云 AI 工作台</span>
+      </div>
+      <div class="wt-side-label">研发中心空间</div>
+      <button type="button" class="wt-side-item" onclick="goNode('F_USAGE_DASH')" data-comp-id="approve.nav_overview.btn" data-comp-name="概览菜单按钮" data-comp-role="nav">
+        <span>概览</span>
+      </button>
+      <button type="button" class="wt-side-item" onclick="goNode('F_USAGE_DASH')" data-comp-id="approve.nav_members.btn" data-comp-name="成员管理菜单按钮" data-comp-role="nav">
+        <span>成员管理</span>
+        <span class="wt-muted">42</span>
+      </button>
+      <button type="button" class="wt-side-item" onclick="goNode('F_USAGE_DASH')" data-comp-id="approve.nav_keys.btn" data-comp-name="API密钥菜单按钮" data-comp-role="nav">
+        <span>API 密钥</span>
+        <span class="wt-muted">18</span>
+      </button>
+      <button type="button" class="wt-side-item active" onclick="goNode('F_OWNER_APPROVAL')" data-comp-id="approve.nav_guardrails.btn" data-comp-name="额度与风控菜单按钮" data-comp-role="nav">
+        <span>额度与风控</span>
+        <span class="wt-badge">[待批 2]</span>
+      </button>
+      <button type="button" class="wt-side-item" onclick="goNode('F_QUOTA_ACTIVE')" data-comp-id="approve.nav_audit.btn" data-comp-name="审计日志菜单按钮" data-comp-role="nav">
+        <span>审计日志</span>
+      </button>
+    </aside>
+
+    <main class="wt-main">
+      <div class="wt-between">
+        <div class="wt-col" style="gap: 2px;">
+          <div class="wt-row">
+            <strong style="font-size: 15px;">空间负责人加签审批台</strong>
+            <span class="wt-pill-strong">[待加签 #QR-20261120-08]</span>
+          </div>
+          <span class="wt-muted">审批人视角：周琳 (Workspace Owner) · 支持切换顶栏「App 审批端 375px」查看企微卡片</span>
+        </div>
+        <button type="button" class="wt-btn" onclick="goNode('F_USAGE_DASH')" data-comp-id="approve.back_dash.btn" data-comp-name="返回监控台按钮" data-comp-role="control">返回总览</button>
+      </div>
+
+      <div class="wt-kpi-grid">
+        <div class="wt-kpi-card">
+          <div class="wt-kpi-label"><span>申请人 / 成本中心</span><span class="wt-badge">[实名核验]</span></div>
+          <div class="wt-kpi-val" style="font-size: 15px;">林哲 · CC-204</div>
+          <div class="wt-kpi-sub">智能客服 Agent 生产网关</div>
+        </div>
+        <div class="wt-kpi-card">
+          <div class="wt-kpi-label"><span>本次申请追加</span><span class="wt-pill-strong">[+$800]</span></div>
+          <div class="wt-kpi-val wt-mono">$2,000 → $2,800</div>
+          <div class="wt-kpi-sub">仅 2026-11 账期有效（次月回落）</div>
+        </div>
+        <div class="wt-kpi-card">
+          <div class="wt-kpi-label"><span>部门 Q4 预算余量</span><span class="wt-badge">[充足]</span></div>
+          <div class="wt-kpi-val wt-mono">$14,200.00</div>
+          <div class="wt-kpi-sub">审批后占部门总池 19.7%</div>
+        </div>
+      </div>
+
+      <div class="wt-card" data-comp-id="approve.compare.card" data-comp-name="消耗速率异常排查对比表" data-comp-role="container">
+        <div class="wt-card-hd wt-between">
+          <span>申请人密钥与同空间基线消耗速率对比</span>
+          <span class="wt-badge">风控引擎诊断: [正常业务峰值]</span>
+        </div>
+        <div class="wt-card-bd" style="padding: 0;">
+          <table class="wt-table">
+            <thead>
+              <tr>
+                <th>核查指标</th>
+                <th>申请密钥 (sk-prod-...8f2a)</th>
+                <th>空间生产均值</th>
+                <th>风控诊断结论</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>近 24h 消耗速率</td>
+                <td class="wt-mono"><strong>$6.80 / 小时</strong></td>
+                <td class="wt-mono">$2.95 / 小时</td>
+                <td><span class="wt-badge">[+130% 与大促流量吻合]</span></td>
+              </tr>
+              <tr>
+                <td>异常重试 / 5xx 占比</td>
+                <td class="wt-mono">0.42%</td>
+                <td class="wt-mono">0.38%</td>
+                <td><span class="wt-badge">[正常 · 排除死循环脚本]</span></td>
+              </tr>
+              <tr>
+                <td>单通会话推理成本</td>
+                <td class="wt-mono">$0.014 / 通</td>
+                <td class="wt-mono">$0.016 / 通</td>
+                <td><span class="wt-badge">[Prompt 缓存命中率 64%]</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="wt-card-ft">
+          <span class="wt-muted"><strong>申请人事由：</strong>双十一返场大促客户咨询并发增长 2.3 倍，日均消耗升至 $190，申请追加 $800 保障月底前生产流量零中断。</span>
+        </div>
+      </div>
+
+      <div class="wt-card" data-comp-id="approve.decision.card" data-comp-name="负责人复核决策卡片" data-comp-role="container">
+        <div class="wt-card-bd wt-form">
+          <div class="wt-field">
+            <label class="wt-label">复核备注（同步抄送申请人与财务审计台账）</label>
+            <textarea class="wt-textarea" style="min-height: 56px;" data-comp-id="approve.note.textarea" data-comp-name="复核备注输入框" data-comp-role="control">已核对客服工单监控与 Prompt 缓存命中率，确属大促真实流量峰值，同意当月临时调增上限至 $2,800，12 月 1 日恢复 $2,000。</textarea>
+          </div>
+        </div>
+        <div class="wt-card-ft wt-between">
+          <button type="button" class="wt-btn wt-btn-danger" onclick="setVar('owner_decision','reject'); goNode('F_REJECT_HOLD')" data-comp-id="approve.reject.btn" data-comp-name="驳回并维持原上限按钮" data-comp-role="control">驳回并维持原上限</button>
+          <button type="button" class="wt-btn wt-btn-primary" onclick="setVar('owner_decision','approve'); goNode('F_QUOTA_ACTIVE')" data-comp-id="approve.confirm.btn" data-comp-name="同意加额并解封按钮" data-comp-role="control">同意加额并解封</button>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>

@@ -1,0 +1,60 @@
+<div class="page" id="p-app-quota-request" data-page="p-app-quota-request" data-page-id="p-app-quota-request">
+  <div class="wt-phone-shell" data-comp-id="req.mobile_shell.container" data-comp-name="移动端申请加额外壳" data-comp-role="container">
+    <div class="wt-col" style="gap: 0;">
+      <div class="wt-phone-statusbar">
+        <span>9:41</span>
+        <span>5G · 100%</span>
+      </div>
+      <div class="wt-navbar">
+        <button type="button" class="wt-btn wt-btn-sm" onclick="goNode('F_USAGE_DASH')" data-comp-id="req.back.btn" data-comp-name="返回监控页按钮" data-comp-role="control">← 返回</button>
+        <span>申请临时加额</span>
+        <span class="wt-badge">[成员端]</span>
+      </div>
+
+      <div class="wt-stack" style="padding: 12px;">
+        <div class="wt-banner" data-when-var="request_tier" data-when-val="gt_500">
+          <strong>[需负责人加签]</strong> 追加额度 &gt; $500，将推送周琳复核。
+        </div>
+        <div class="wt-banner hidden" data-when-var="request_tier" data-when-val="le_500">
+          <strong>[系统免审直通]</strong> 追加额度 &lt;= $500，提交后 3 秒自动生效。
+        </div>
+
+        <div class="wt-card" data-comp-id="req.form.card" data-comp-name="移动端临时加额表单卡片" data-comp-role="container">
+          <div class="wt-card-bd wt-form">
+            <div class="wt-field">
+              <label class="wt-label">归属项目密钥 *</label>
+              <select class="wt-select" data-comp-id="req.key.select" data-comp-name="归属项目密钥下拉框" data-comp-role="control">
+                <option value="sk-prod-8f2a" selected>sk-prod-...8f2a · 智能客服</option>
+                <option value="sk-eval-3c19">sk-eval-...3c19 · 回归评测</option>
+              </select>
+            </div>
+
+            <div class="wt-field">
+              <label class="wt-label">申请追加额度（USD） *</label>
+              <input class="wt-input wt-mono" type="number" min="50" step="50" value="800" oninput="setVar('request_tier', parseFloat(this.value || 0) > 500 ? 'gt_500' : 'le_500')" data-comp-id="req.amount.input" data-comp-name="申请追加额度输入框" data-comp-role="control" />
+              <span class="wt-help">扩容后总额度 $2,800（12 月 1 日自动回落 $2,000）</span>
+            </div>
+
+            <div class="wt-field">
+              <label class="wt-label">成本中心归属 *</label>
+              <select class="wt-select" data-comp-id="req.cost_center.select" data-comp-name="成本中心归属下拉框" data-comp-role="control">
+                <option value="CC-204" selected>CC-204 · 智能客服研发部</option>
+                <option value="CC-108">CC-108 · 模型评测平台组</option>
+              </select>
+            </div>
+
+            <div class="wt-field">
+              <label class="wt-label">业务峰值事由 *</label>
+              <textarea class="wt-textarea" style="min-height: 64px;" data-comp-id="req.reason.textarea" data-comp-name="业务峰值事由输入框" data-comp-role="control">双十一返场大促咨询量激增 2.3 倍，需临时追加 $800 保障线上客服零中断。</textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="wt-card-ft wt-between" style="background: #ffffff;">
+      <button type="button" class="wt-btn" onclick="setVar('request_tier','le_500')" data-comp-id="req.fill_300.btn" data-comp-name="试算免审按钮" data-comp-role="control">试算免审</button>
+      <button type="button" class="wt-btn wt-btn-primary" style="flex: 1;" onclick="goBranch('request_tier')" data-comp-id="req.submit.btn" data-comp-name="提交加额申请按钮" data-comp-role="control">提交加额申请</button>
+    </div>
+  </div>
+</div>

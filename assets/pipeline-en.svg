@@ -1,0 +1,132 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 250" width="1200" height="250" role="img" aria-label="OpenPM 6+1 Deterministic Pipeline Architecture">
+  <defs>
+    <pattern id="light-grid" width="24" height="24" patternUnits="userSpaceOnUse">
+      <circle cx="2" cy="2" r="1" fill="#E4E4E7"/>
+    </pattern>
+    <marker id="arrow-dark" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 1 1.5 L 8.5 5 L 1 8.5 z" fill="#3F3F46"/>
+    </marker>
+    <marker id="arrow-amber" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 1 1.5 L 8.5 5 L 1 8.5 z" fill="#D97706"/>
+    </marker>
+  </defs>
+
+  <!-- Outer Card -->
+  <rect x="2" y="2" width="1196" height="246" rx="14" fill="#FAFAFA" stroke="#E0E0E0" stroke-width="1.5"/>
+  <rect x="4" y="4" width="1192" height="242" rx="12" fill="url(#light-grid)"/>
+
+  <!-- Header Strip -->
+  <g font-family="-apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', system-ui, sans-serif">
+    <text x="28" y="27" fill="#52525B" font-size="10.5" font-weight="700" letter-spacing="0.8">OPENPM 6+1 DETERMINISTIC PIPELINE · SPEC-V2 CONTRACT</text>
+    <g transform="translate(812, 16)" font-size="10.5" font-weight="600">
+      <rect x="0" y="2" width="10" height="10" rx="2" fill="#18181B"/>
+      <text x="15" y="11" fill="#52525B">Standard Artifact</text>
+      <rect x="132" y="2" width="10" height="10" rx="2" fill="#D97706"/>
+      <text x="147" y="11" fill="#92400E">Preflight Gate &amp; Surgical Loop</text>
+    </g>
+    <line x1="24" y1="38" x2="1176" y2="38" stroke="#E5E5E5" stroke-width="1"/>
+
+    <!-- Orthogonal Forward Connectors -->
+    <!-- 01 -> 02 -->
+    <line x1="176" y1="116" x2="196" y2="116" stroke="#3F3F46" stroke-width="1.5" marker-end="url(#arrow-dark)"/>
+    <!-- 02 -> 03 & 04 -->
+    <path d="M 350 116 L 363 116 L 363 75 L 376 75" fill="none" stroke="#3F3F46" stroke-width="1.5" marker-end="url(#arrow-dark)"/>
+    <path d="M 350 116 L 363 116 L 363 157 L 376 157" fill="none" stroke="#3F3F46" stroke-width="1.5" marker-end="url(#arrow-dark)"/>
+    <!-- 03 & 04 -> 05 -->
+    <path d="M 554 75 L 568 75 L 568 116 L 580 116" fill="none" stroke="#3F3F46" stroke-width="1.5" marker-end="url(#arrow-dark)"/>
+    <path d="M 554 157 L 568 157 L 568 116" fill="none" stroke="#3F3F46" stroke-width="1.5"/>
+    <!-- 05 -> Multi-Reviewer -->
+    <line x1="772" y1="116" x2="794" y2="116" stroke="#D97706" stroke-width="1.8" marker-end="url(#arrow-amber)"/>
+    <!-- Multi-Reviewer -> 06 & 07 -->
+    <path d="M 974 116 L 987 116 L 987 77 L 998 77" fill="none" stroke="#3F3F46" stroke-width="1.5" marker-end="url(#arrow-dark)"/>
+    <path d="M 974 116 L 987 116 L 987 155 L 998 155" fill="none" stroke="#D97706" stroke-width="1.5" stroke-dasharray="4 2" marker-end="url(#arrow-amber)"/>
+
+    <!-- Surgical Write-back Loop (Amber #D97706) -->
+    <path d="M 885 160 L 885 216 L 274 216 L 274 152" fill="none" stroke="#D97706" stroke-width="1.8" marker-end="url(#arrow-amber)"/>
+    <path d="M 465 216 L 465 188" fill="none" stroke="#D97706" stroke-width="1.6" marker-end="url(#arrow-amber)"/>
+    <rect x="430" y="203" width="332" height="24" rx="12" fill="#FFFBEB" stroke="#D97706" stroke-width="1.2"/>
+    <text x="596" y="218.5" text-anchor="middle" fill="#92400E" font-size="10.5" font-weight="700">Surgical Write-back (Delta Only) · Conflict Check · Snapshot</text>
+
+    <!-- STAGE 01: Pull Baseline -->
+    <g transform="translate(26, 82)">
+      <rect x="0" y="0" width="150" height="68" rx="8" fill="#FFFFFF" stroke="#D4D4D8" stroke-width="1.2"/>
+      <rect x="10" y="10" width="24" height="16" rx="4" fill="#18181B"/>
+      <text x="22" y="21" text-anchor="middle" fill="#FFFFFF" font-size="9.5" font-weight="700">01</text>
+      <text x="40" y="22" fill="#18181B" font-size="12" font-weight="700">Pull Baseline</text>
+      <text x="10" y="42" fill="#52525B" font-size="10">Diff live Wiki or start 0-to-1</text>
+      <text x="10" y="57" fill="#71717A" font-size="9.5" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">history/pull-diff.md</text>
+    </g>
+
+    <!-- STAGE 02: Draft PRD -->
+    <g transform="translate(198, 82)">
+      <rect x="0" y="0" width="152" height="68" rx="8" fill="#18181B" stroke="#18181B" stroke-width="1.2"/>
+      <rect x="10" y="10" width="24" height="16" rx="4" fill="#3F3F46"/>
+      <text x="22" y="21" text-anchor="middle" fill="#FAFAFA" font-size="9.5" font-weight="700">02</text>
+      <text x="40" y="22" fill="#FAFAFA" font-size="12" font-weight="700">Structured PRD</text>
+      <text x="10" y="42" fill="#D4D4D8" font-size="10">Rules + Taste Profile</text>
+      <text x="10" y="57" fill="#A1A1AA" font-size="9.5" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">prd.md · spec.json</text>
+    </g>
+
+    <!-- STAGE 03: Grayscale Wireframe -->
+    <g transform="translate(378, 46)">
+      <rect x="0" y="0" width="176" height="58" rx="8" fill="#FFFFFF" stroke="#D4D4D8" stroke-width="1.2"/>
+      <rect x="10" y="9" width="24" height="16" rx="4" fill="#18181B"/>
+      <text x="22" y="20" text-anchor="middle" fill="#FFFFFF" font-size="9.5" font-weight="700">03</text>
+      <text x="40" y="21" fill="#18181B" font-size="11.5" font-weight="700">Grayscale Wireframe</text>
+      <text x="10" y="40" fill="#52525B" font-size="9.5">95% wt-* + data-comp-id</text>
+      <text x="10" y="52" fill="#71717A" font-size="9" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">pages/*.html</text>
+    </g>
+
+    <!-- STAGE 04: Orthogonal Flow -->
+    <g transform="translate(378, 128)">
+      <rect x="0" y="0" width="176" height="58" rx="8" fill="#FFFFFF" stroke="#D4D4D8" stroke-width="1.2"/>
+      <rect x="10" y="9" width="24" height="16" rx="4" fill="#18181B"/>
+      <text x="22" y="20" text-anchor="middle" fill="#FFFFFF" font-size="9.5" font-weight="700">04</text>
+      <text x="40" y="21" fill="#18181B" font-size="11.5" font-weight="700">Orthogonal TD Flow</text>
+      <text x="10" y="40" fill="#52525B" font-size="9.5">Clickable decision diamonds</text>
+      <text x="10" y="52" fill="#71717A" font-size="9" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">flow.svg (delta &lt;= 75%)</text>
+    </g>
+
+    <!-- STAGE 05: Deterministic Compiler + Preflight Gate (Amber Highlight) -->
+    <g transform="translate(582, 72)">
+      <rect x="0" y="0" width="190" height="88" rx="9" fill="#FFFBEB" stroke="#D97706" stroke-width="1.8"/>
+      <rect x="10" y="10" width="24" height="16" rx="4" fill="#D97706"/>
+      <text x="22" y="21" text-anchor="middle" fill="#FFFFFF" font-size="9.5" font-weight="700">05</text>
+      <text x="40" y="22" fill="#18181B" font-size="11.5" font-weight="800">Deterministic Compiler</text>
+      <rect x="10" y="33" width="170" height="20" rx="4" fill="#D97706" fill-opacity="0.15" stroke="#D97706" stroke-opacity="0.5" stroke-width="1"/>
+      <text x="95" y="46.5" text-anchor="middle" fill="#92400E" font-size="9.5" font-weight="700">PREFLIGHT GATE · 0 ERRORS</text>
+      <text x="10" y="68" fill="#52525B" font-size="9.5">Self-contained 3-pane HTML</text>
+      <text x="10" y="81" fill="#78350F" font-size="9" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">walkthrough.html</text>
+    </g>
+
+    <!-- TEAM REVIEW: Multi-Reviewer @Component -->
+    <g transform="translate(796, 72)">
+      <rect x="0" y="0" width="178" height="88" rx="9" fill="#18181B" stroke="#D97706" stroke-width="1.5"/>
+      <rect x="10" y="10" width="104" height="16" rx="4" fill="#D97706" fill-opacity="0.22"/>
+      <text x="16" y="21" fill="#FBBF24" font-size="9.5" font-weight="700">@[Component] Pill</text>
+      <text x="10" y="42" fill="#FAFAFA" font-size="11.5" font-weight="700">Multi-Reviewer Crit</text>
+      <text x="10" y="59" fill="#D4D4D8" font-size="9.5">Signed notes + merge drawer</text>
+      <text x="10" y="76" fill="#A1A1AA" font-size="9" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">review-feedback.jsonl</text>
+    </g>
+
+    <!-- STAGE 06: Native Wiki Push -->
+    <g transform="translate(1000, 46)">
+      <rect x="0" y="0" width="174" height="62" rx="8" fill="#FFFFFF" stroke="#D4D4D8" stroke-width="1.2"/>
+      <rect x="10" y="9" width="24" height="16" rx="4" fill="#18181B"/>
+      <text x="22" y="20" text-anchor="middle" fill="#FFFFFF" font-size="9.5" font-weight="700">06</text>
+      <text x="40" y="21" fill="#18181B" font-size="11.5" font-weight="700">Native Wiki Push</text>
+      <text x="10" y="40" fill="#52525B" font-size="9.5">Side-by-side UI + Spec table</text>
+      <text x="10" y="54" fill="#71717A" font-size="9">WeCom · Confluence · Feishu</text>
+    </g>
+
+    <!-- STAGE 07: Blind A/B Self-Evolution -->
+    <g transform="translate(1000, 124)">
+      <rect x="0" y="0" width="174" height="62" rx="8" fill="#FFFBEB" stroke="#D97706" stroke-opacity="0.7" stroke-width="1.2"/>
+      <rect x="10" y="9" width="24" height="16" rx="4" fill="#D97706"/>
+      <text x="22" y="20" text-anchor="middle" fill="#FFFFFF" font-size="9.5" font-weight="700">07</text>
+      <text x="40" y="21" fill="#18181B" font-size="11.5" font-weight="700">Blind A/B Evolution</text>
+      <text x="10" y="40" fill="#52525B" font-size="9.5">Randomized judge scoring</text>
+      <text x="10" y="54" fill="#92400E" font-size="9" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">evals/taste-profile.md</text>
+    </g>
+  </g>
+</svg>
