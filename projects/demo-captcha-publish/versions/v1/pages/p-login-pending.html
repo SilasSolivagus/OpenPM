@@ -1,0 +1,34 @@
+<div style="position:relative;min-height:560px;">
+  <div class="wt-navbar">
+    <span>发布原创动态</span>
+    <span class="wt-tag">底层草稿已保留</span>
+  </div>
+  <div class="wt-stack" style="padding:12px;opacity:0.45;">
+    <div class="wt-card">
+      <div class="wt-card-bd">
+        <p>#周末徒步路线 分享今天实测的山脊环线轨迹，全程 11 公里爬升温和，水源补给点清晰。</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="wt-mask">
+    <div class="wt-modal" data-comp-id="login.sheet" data-comp-name="登录浮层" data-comp-role="modal" data-anchor="anchor-login-sheet">
+      <div class="wt-modal-hd">
+        <span>登录后继续发布（待完成）</span>
+        <button type="button" class="wt-btn wt-btn-ghost wt-btn-sm" data-comp-id="login.cancel.btn" data-comp-name="关闭登录浮层按钮" data-comp-role="control" onclick="setVar('login_result','cancel');goNode('F_CANCEL_LOGIN')">✕</button>
+      </div>
+      <div class="wt-modal-bd wt-stack">
+        <div class="wt-alert">
+          短信验证码有误或尚未完成确认，请核对后重试（不计入人机验证失败次数）。
+        </div>
+        <div class="wt-field">
+          <label class="wt-label">重新输入短信验证码</label>
+          <input type="text" class="wt-input" value="839204" data-comp-id="login.code.input" data-comp-name="短信验证码输入框" data-comp-role="control" />
+        </div>
+      </div>
+      <div class="wt-modal-ft">
+        <button type="button" class="wt-btn wt-btn-primary wt-btn-sm" data-comp-id="login.continue.btn" data-comp-name="重新输入并完成登录按钮" data-comp-role="control" onclick="setVar('login_result','ok');goNode('F_RECHECK')">完成登录并继续</button>
+      </div>
+    </div>
+  </div>
+</div>

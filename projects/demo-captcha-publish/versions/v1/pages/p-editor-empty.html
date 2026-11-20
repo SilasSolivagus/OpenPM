@@ -1,0 +1,22 @@
+<div class="wt-navbar">
+  <button type="button" class="wt-btn wt-btn-ghost wt-btn-sm" data-comp-id="editor.cancel.btn" data-comp-name="取消按钮" data-comp-role="control" onclick="goNode('F_ENTRY')">取消</button>
+  <span>发布动态（同页校验态）</span>
+  <button type="button" class="wt-btn wt-btn-sm" disabled data-comp-id="editor.publish.btn" data-comp-name="发布按钮" data-comp-role="control">发布</button>
+</div>
+
+<div class="wt-stack" style="padding:12px;">
+  <div class="wt-toast" data-comp-id="common.toast" data-comp-name="全局提示 Toast" data-comp-role="feedback" data-anchor="anchor-toast">
+    请输入动态正文或添加图片后再发布（不触发风控请求）
+  </div>
+
+  <div class="wt-card">
+    <div class="wt-card-bd wt-stack">
+      <textarea class="wt-textarea" style="min-height:108px;" placeholder="分享你的新鲜事或观点（当前为空）..." data-comp-id="editor.content.input" data-comp-name="正文编辑区" data-comp-role="control"></textarea>
+      <span class="wt-help">前端同页拦截：未输入有效内容时不请求云端风控接口，也不弹出人机验证。</span>
+    </div>
+    <div class="wt-card-ft wt-between">
+      <span class="wt-muted">已输入 0 / 2000 字</span>
+      <button type="button" class="wt-btn wt-btn-primary wt-btn-sm" data-comp-id="editor.fill_back.btn" data-comp-name="恢复填写内容按钮" data-comp-role="control" onclick="goState('editor','filled')">恢复已填写内容</button>
+    </div>
+  </div>
+</div>

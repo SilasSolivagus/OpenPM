@@ -10,41 +10,61 @@
   },
   "vars": [
     {
+      "id": "leader_decision",
+      "label": "直属主管初审结论",
+      "kind": "branch",
+      "default": "approve",
+      "diamond": "D_AUDIT_LEADER",
+      "nodes": ["F_LEADER", "D_AUDIT_LEADER"],
+      "options": [
+        {
+          "id": "approve",
+          "label": "同意",
+          "target": "D_AMOUNT_50K"
+        },
+        {
+          "id": "reject",
+          "label": "驳回（保留草稿）",
+          "target": "F_REJECTED"
+        }
+      ]
+    },
+    {
       "id": "amount_tier",
       "label": "采购金额区间",
       "kind": "branch",
       "default": "gt_50k",
       "diamond": "D_AMOUNT_50K",
-      "nodes": ["D_AMOUNT_50K", "F_LEADER", "F_FINANCE"],
+      "nodes": ["F_FORM", "F_LEADER", "D_AMOUNT_50K", "F_FINANCE"],
       "options": [
         {
           "id": "le_50k",
-          "label": "<=5万",
-          "target": "F_LEADER"
+          "label": "<=5万（单级办结）",
+          "target": "F_DONE"
         },
         {
           "id": "gt_50k",
-          "label": ">5万",
+          "label": ">5万（加签财务总监）",
           "target": "F_FINANCE"
         }
       ]
     },
     {
       "id": "audit_decision",
-      "label": "审批决策",
+      "label": "财务总监复核结论",
       "kind": "branch",
       "default": "approve",
       "diamond": "D_AUDIT_OK",
-      "nodes": ["D_AUDIT_OK", "F_DONE", "F_REJECTED"],
+      "nodes": ["F_FINANCE", "D_AUDIT_OK", "F_DONE", "F_REJECTED"],
       "options": [
         {
           "id": "approve",
-          "label": "通过",
+          "label": "复核通过",
           "target": "F_DONE"
         },
         {
           "id": "reject",
-          "label": "驳回",
+          "label": "复核驳回（保留草稿）",
           "target": "F_REJECTED"
         }
       ]
@@ -54,15 +74,36 @@
     "F_LIST": {
       "page": "p-apply-list",
       "title": "采购申请列表",
+      "change": "unchanged",
       "anno": [
-        ["列表入口", "展示全部采购单及当前审批节点状态，支持新建采购单与驳回重提快捷入口。"]
+        ["列表入口", "展示全部采购单及当前审批节点状态，支持点击「+ 新建采购单」或驳回单据「重新编辑」直接流转。"]
       ]
     },
     "F_FORM": {
       "page": "p-apply-form",
       "title": "新建/编辑采购申请单",
+      "change": "modified",
       "anno": [
-        ["金额阈值提示", "填写采购金额与采购事由，系统实时提示 > 50,000 元将加签财务总监复核。"]
+        ["金额阈值提示（v2.0 修改）", "填写采购金额与采购事由，系统提示 > 50,000 元将在直属主管初审同意后加签财务总监复核。"],
+        ["实时联动", "修改采购金额或切换右侧「采购金额区间」后点击「确认发起审批」，将进入直属主管初审。"]
+      ]
+    },
+    "F_LEADER": {
+      "page": "p-leader-audit",
+      "title": "直属主管初审",
+      "change": "unchanged",
+      "anno": [
+        ["全量必经初审", "所有采购单提交后均先由直属主管初审：点击「同意」按金额区间路由（<=5万直接办结，>5万加签财务复核）；点击「驳回」保留草稿。"]
+      ]
+    },
+    "D_AUDIT_LEADER": {
+      "page": "p-leader-audit",
+      "title": "主管是否同意？",
+      "isDecision": true,
+      "branchVar": "leader_decision",
+      "change": "modified",
+      "anno": [
+        ["初审分流（v2.0 升级）", "直属主管同意后进入金额阈值判断节点（D_AMOUNT_50K）；驳回不再直接作废，统一流转至草稿保留页（F_REJECTED）。"]
       ]
     },
     "D_AMOUNT_50K": {
@@ -70,45 +111,43 @@
       "title": "金额 > 5万？",
       "isDecision": true,
       "branchVar": "amount_tier",
+      "change": "new",
       "anno": [
-        ["金额路由判断", "采购金额 <= 5万走直属主管单级审批；> 5万在主管同意后加签财务总监复核。"]
-      ]
-    },
-    "F_LEADER": {
-      "page": "p-leader-audit",
-      "title": "直属主管审批",
-      "anno": [
-        ["主管初审", "直属主管查看采购金额与事由，可执行「同意」或「驳回（保留草稿）」。"]
+        ["金额阈值路由（v2.0 新增）", "主管初审通过后判断采购单金额：<= 5万直接进入审批通过结果页（F_DONE）；> 5万自动加签进入财务总监复核（F_FINANCE）。"]
       ]
     },
     "F_FINANCE": {
       "page": "p-finance-audit",
       "title": "财务总监复核",
+      "change": "new",
       "anno": [
-        ["大额加签复核", "仅当采购金额 > 5万元时触发，财务总监需填写复核意见后通过或驳回。"]
+        ["大额加签复核（v2.0 新增）", "仅当采购金额 > 5万元且直属主管同意后触发，财务总监核查预算归属并填写复核意见后选择通过或驳回。"]
       ]
     },
     "D_AUDIT_OK": {
-      "page": "p-leader-audit",
-      "title": "审批是否通过？",
+      "page": "p-finance-audit",
+      "title": "复核是否通过？",
       "isDecision": true,
       "branchVar": "audit_decision",
+      "change": "new",
       "anno": [
-        ["审批结果分流", "审批通过流转至结果页；驳回流转至草稿保留提示页并支持重新编辑提交。"]
+        ["财务复核分流（v2.0 新增）", "复核通过流转至审批通过结果页（F_DONE）；复核驳回同样流转至草稿保留提示页（F_REJECTED）。"]
       ]
     },
     "F_DONE": {
       "page": "p-audit-done",
       "title": "审批通过结果页",
+      "change": "unchanged",
       "anno": [
-        ["流程办结", "展示审批通过状态与完整审批轨迹，可执行采购或返回列表。"]
+        ["流程办结", "展示审批通过状态与完整审批轨迹，可返回采购申请列表或继续新建采购单。"]
       ]
     },
     "F_REJECTED": {
       "page": "p-audit-rejected",
       "title": "驳回保留草稿提示页",
+      "change": "new",
       "anno": [
-        ["驳回重提闭环", "完整保留原采购单草稿，支持点击「重新编辑」直接返回填报页修改重提。"]
+        ["驳回重提闭环（v2.0 新增）", "无论是直属主管还是财务总监驳回，均完整保留原采购单草稿，点击「重新编辑」直接回跳填报页（F_FORM）修改重提。"]
       ]
     }
   },
@@ -176,10 +215,10 @@
   "spec_cards": [
     {
       "id": "SC_AMOUNT_THRESHOLD",
-      "title": "改点 1：金额 > 5 万元触发财务总监加签",
+      "title": "改点 1：主管初审后按 5 万元阈值分流加签",
       "page": "p-apply-form",
       "anchor": "form.amount.input",
-      "body": "在采购申请单填写采购金额时，系统以 50,000 元为阈值进行路由判断（D_AMOUNT_50K）：<= 5万仅直属主管审批；> 5万在主管同意后自动加签财务总监复核。"
+      "body": "所有采购单均先由直属主管初审；主管同意后以 50,000 元为阈值路由（D_AMOUNT_50K）：<= 5万直接办结通过；> 5万自动加签财务总监复核。"
     },
     {
       "id": "SC_FINANCE_REVIEW",
@@ -193,7 +232,7 @@
       "title": "改点 3：驳回后保留草稿支持一键重新编辑",
       "page": "p-audit-rejected",
       "anchor": "rejected.reedit.btn",
-      "body": "无论是主管还是财务驳回，均保留原采购单金额与事由草稿数据，在驳回提示页点击「重新编辑」（rejected.reedit.btn）可直接回跳填报页修改重提。"
+      "body": "无论是主管初审驳回还是财务复核驳回，均保留原采购单金额与事由草稿数据，在驳回提示页点击「重新编辑」（rejected.reedit.btn）可直接回跳填报页修改重提。"
     }
   ]
 }

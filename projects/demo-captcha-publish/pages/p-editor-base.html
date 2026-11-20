@@ -1,0 +1,38 @@
+<div class="wt-navbar">
+  <button type="button" class="wt-btn wt-btn-ghost wt-btn-sm" data-comp-id="editor.cancel.btn" data-comp-name="取消按钮" data-comp-role="control" onclick="goNode('F_ENTRY')">取消</button>
+  <span data-when-var="publish_scene" data-when-val="original">发布原创动态</span>
+  <span data-when-var="publish_scene" data-when-val="repost" class="hidden">转发社区动态</span>
+  <button type="button" class="wt-btn wt-btn-primary wt-btn-sm" data-comp-id="editor.publish.btn" data-comp-name="发布按钮" data-comp-role="control" data-anchor="anchor-pub-btn" onclick="goBranch('login_state')">发布</button>
+</div>
+
+<div class="wt-stack" style="padding:12px;">
+  <div class="wt-card">
+    <div class="wt-card-bd wt-stack">
+      <textarea class="wt-textarea" style="min-height:108px;" placeholder="分享你的新鲜事或观点..." data-comp-id="editor.content.input" data-comp-name="正文编辑区" data-comp-role="control">#周末徒步路线 分享今天实测的山脊环线轨迹，全程 11 公里爬升温和，水源补给点清晰。</textarea>
+
+      <div data-when-var="publish_scene" data-when-val="original" class="wt-stack">
+        <div class="wt-row" style="gap:8px;">
+          <div class="wt-card" style="width:72px;height:72px;display:flex;align-items:center;justify-content:center;background:var(--wt-bg);">
+            <span class="wt-muted">配图 1</span>
+          </div>
+          <div class="wt-card" style="width:72px;height:72px;display:flex;align-items:center;justify-content:center;background:var(--wt-bg);">
+            <span class="wt-muted">配图 2</span>
+          </div>
+        </div>
+        <div class="wt-row">
+          <span class="wt-chip"># 周末徒步路线</span>
+          <span class="wt-chip">[定位] 香山森林公园</span>
+        </div>
+      </div>
+
+      <div data-when-var="publish_scene" data-when-val="repost" class="wt-alert hidden">
+        <strong>原动态引用（@林晓）：</strong>
+        <p class="wt-muted" style="margin-top:4px;">今天整理的秋季近郊徒步装备清单，轻量化背包控制在 6kg 以内体验舒适很多……</p>
+      </div>
+    </div>
+    <div class="wt-card-ft wt-between">
+      <span class="wt-muted">已输入 42 / 2000 字</span>
+      <button type="button" class="wt-btn wt-btn-sm" data-comp-id="editor.empty_state.btn" data-comp-name="切换空内容校验预览按钮" data-comp-role="control" onclick="goState('editor','empty')">预览空内容提示</button>
+    </div>
+  </div>
+</div>

@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://antigravity.local/specs/spec-v2.schema.json",
+  "$id": "https://openpm.dev/specs/spec-v2.schema.json",
   "title": "Walkthrough Spec v2",
-  "description": "Single source of truth schema (spec-v2) for flow-walkthrough projects.",
+  "description": "Single source of truth schema (spec-v2) for OpenPM flow-walkthrough projects.",
   "type": "object",
   "required": ["version", "meta", "vars", "nodes", "pages"],
   "additionalProperties": false,
@@ -141,6 +141,10 @@
         "isDecision": { "type": "boolean" },
         "branchVar": { "type": "string", "minLength": 1 },
         "state": { "type": "string", "minLength": 1 },
+        "change": {
+          "type": "string",
+          "enum": ["unchanged", "modified", "new"]
+        },
         "anno": {
           "type": "array",
           "items": {
@@ -240,21 +244,37 @@
       },
       "additionalProperties": false
     },
+    "memoTargetDef": {
+      "type": "object",
+      "required": ["page", "comp_id", "comp_name", "fallback_selector"],
+      "properties": {
+        "page": { "type": "string", "minLength": 1 },
+        "comp_id": { "type": "string", "minLength": 1 },
+        "comp_name": { "type": "string", "minLength": 1 },
+        "fallback_selector": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
     "memoDef": {
       "type": "object",
-      "required": ["id", "body"],
+      "required": ["id", "version_hash", "status", "view", "node", "page", "vars", "targets", "text", "time"],
       "properties": {
         "id": { "type": "string", "minLength": 1 },
-        "node": { "type": "string" },
-        "page": { "type": "string" },
-        "comp_id": { "type": "string" },
-        "comp_name": { "type": "string" },
-        "granularity": { "type": "string", "enum": ["element", "component", "page"] },
-        "vars": { "type": "object" },
+        "version_hash": { "type": "string", "minLength": 1 },
         "status": { "type": "string", "enum": ["valid", "invalid"] },
-        "body": { "type": "string" }
+        "view": { "type": "string", "enum": ["flow", "spec"] },
+        "node": { "type": "string" },
+        "page": { "type": "string", "minLength": 1 },
+        "spec_id": { "type": "string" },
+        "vars": { "type": "object" },
+        "targets": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/memoTargetDef" }
+        },
+        "text": { "type": "string", "minLength": 1 },
+        "time": { "type": "string" }
       },
-      "additionalProperties": true
+      "additionalProperties": false
     }
   }
 }

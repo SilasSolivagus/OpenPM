@@ -1,0 +1,3547 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>动态社区内容发布器人机验证交互走查</title>
+<style>
+:root {
+  --wt-bg: #f7f7f7; --wt-white: #ffffff;
+  --wt-border: #c0c0c0; --wt-border-light: #e0e0e0;
+  --wt-text: #333333; --wt-dim: #888888; --wt-light: #aaaaaa;
+  --wt-fill: #e8e8e8; --wt-fill-dark: #d0d0d0; --wt-accent: #555555;
+  --wt-spot: #d97706; --wt-spot-bg: rgba(217, 119, 6, 0.08); --wt-spot-border: rgba(217, 119, 6, 0.55);
+  --wt-danger: #dc2626;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  height: 100%; background: var(--wt-bg); color: var(--wt-text);
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-size: 13px; line-height: 1.5; overflow: hidden;
+}
+button, input, textarea, select { font: inherit; color: inherit; }
+button {
+  cursor: pointer; border: 1px solid var(--wt-border); background: var(--wt-white);
+  color: var(--wt-text); border-radius: 5px; padding: 5px 10px; font-size: 12px;
+}
+button:hover:not(:disabled) { background: var(--wt-fill); }
+button:disabled { opacity: 0.45; cursor: default; }
+button.primary, button.primary:hover:not(:disabled) {
+  background: var(--wt-accent); color: var(--wt-white); border-color: var(--wt-accent);
+}
+.hidden { display: none !important; }
+
+/* Workbench Topbar */
+.wb-topbar {
+  height: 50px; background: var(--wt-white); border-bottom: 1px solid var(--wt-border);
+  display: flex; align-items: center; padding: 0 16px; gap: 12px;
+  position: relative; z-index: 200; user-select: none;
+}
+.fp-title { font-size: 15px; font-weight: 700; white-space: nowrap; }
+.seg-group {
+  display: inline-flex; align-items: center; background: var(--wt-bg);
+  border: 1px solid var(--wt-border); border-radius: 6px; padding: 2px; gap: 2px; flex-shrink: 0;
+}
+.seg-btn {
+  border: none; background: transparent; padding: 4px 10px; border-radius: 4px;
+  font-size: 12px; color: var(--wt-dim); white-space: nowrap;
+}
+.seg-btn:hover:not(.active) { background: var(--wt-fill); color: var(--wt-text); }
+.seg-btn.active, .seg-btn.active:hover {
+  background: var(--wt-accent); color: var(--wt-white); font-weight: 600;
+}
+.wb-global-vars { display: inline-flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.wb-gvar { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--wt-dim); white-space: nowrap; }
+.topbar-spacer { flex: 1; min-width: 8px; }
+#flow-node-ref {
+  font-size: 12px; color: var(--wt-dim); max-width: 240px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.fp-bar {
+  display: inline-flex; align-items: center; gap: 5px; font-size: 12px;
+  color: var(--wt-dim); flex-shrink: 0; white-space: nowrap;
+}
+.zb {
+  padding: 3px 9px; border: 1px solid var(--wt-border); border-radius: 4px;
+  cursor: pointer; background: var(--wt-white); user-select: none;
+  color: var(--wt-text); white-space: nowrap; font-size: 12px;
+}
+.zb:hover { background: var(--wt-fill); }
+.zb.active, .zb.active:hover {
+  border-color: var(--wt-spot); color: var(--wt-spot); background: var(--wt-spot-bg); font-weight: 600;
+}
+.zv { min-width: 42px; text-align: center; }
+.memo-toggle { white-space: nowrap; flex-shrink: 0; }
+.memo-toggle.active, .memo-toggle.active:hover {
+  background: var(--wt-accent); color: var(--wt-white); border-color: var(--wt-accent);
+}
+
+/* Workbench Stage & Flow Canvas */
+.wb-stage { position: relative; width: 100vw; height: calc(100vh - 50px); display: flex; overflow: hidden; }
+.flow-panel { flex: 1; min-width: 0; height: 100%; position: relative; overflow: hidden; display: flex; flex-direction: column; }
+.flow-panel.fs .inspector-drawer { display: none !important; }
+.flow-svg {
+  flex: 1; width: 100%; height: 100%; overflow: hidden; background: var(--wt-bg);
+  cursor: grab; touch-action: none; user-select: none; position: relative;
+}
+.flow-svg:active { cursor: grabbing; }
+.flow-canvas-inner { transform-origin: 0 0; will-change: transform; }
+.flow-canvas-inner.smooth { transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1); }
+.flow-svg svg {
+  width: 100%; height: auto; display: block; background: var(--wt-white);
+  border: 1px solid var(--wt-border-light); border-radius: 8px;
+}
+.flow-svg g[data-node] { cursor: pointer; }
+.flow-svg g[data-node]:hover rect,
+.flow-svg g[data-node]:hover polygon { stroke: #333333; stroke-width: 2.5px; }
+.flow-svg polyline.branch-active { stroke: #111111 !important; stroke-width: 2.8px !important; }
+.flow-svg polyline.branch-dim { opacity: 0.32; }
+
+/* Delta Highlight Callouts (5% Amber #d97706 when body.show-delta is active) */
+body.show-delta .flow-svg g.wt-delta-node rect,
+body.show-delta .flow-svg g.wt-delta-node polygon {
+  stroke: var(--wt-spot); stroke-width: 2px;
+}
+body.show-delta .flow-svg g.wt-delta-node[data-change="modified"] rect,
+body.show-delta .flow-svg g.wt-delta-node[data-change="modified"] polygon {
+  stroke-dasharray: 5 3;
+}
+.flow-svg .wt-delta-dot { display: none; pointer-events: none; }
+body.show-delta .flow-svg .wt-delta-dot { display: block; }
+body.show-delta .wt-delta-target {
+  outline: 1.5px dashed var(--wt-spot-border); outline-offset: 2px;
+  box-shadow: 0 0 0 3px var(--wt-spot-bg);
+}
+
+/* Inspector Drawer & Device Frames */
+.inspector-drawer {
+  position: absolute; top: 12px; right: 12px; bottom: 12px; width: 706px;
+  max-width: calc(100% - 24px); z-index: 90; background: var(--wt-white);
+  border: 1px solid var(--wt-border); border-radius: 10px;
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.inspector-drawer.wide-mode { width: min(1040px, calc(100% - 24px)); }
+.insp-head {
+  height: 46px; padding: 0 14px; border-bottom: 1px solid var(--wt-border-light);
+  background: var(--wt-bg); display: flex; align-items: center; gap: 8px; flex-shrink: 0;
+}
+.insp-badge {
+  font-size: 11px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  padding: 2px 7px; border: 1px solid var(--wt-border); border-radius: 4px;
+  background: var(--wt-white); color: var(--wt-dim);
+}
+#anno-node-title {
+  font-size: 14px; font-weight: 700; flex: 1;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.insp-body {
+  flex: 1; min-height: 0; display: flex; gap: 16px; padding: 14px;
+  background: var(--wt-bg); overflow: hidden; justify-content: center;
+}
+.stage { flex-shrink: 0; display: flex; flex-direction: column; align-items: center; min-height: 0; max-height: 100%; }
+.frame-phone {
+  width: 375px; min-height: 660px; max-height: 100%; overflow-y: auto;
+  background: var(--wt-white); border: 1px solid var(--wt-border); border-radius: 14px; position: relative;
+}
+.frame-phone::-webkit-scrollbar { width: 0; }
+.frame-wide {
+  width: 690px; max-height: 100%; overflow-y: auto;
+  background: var(--wt-white); border: 1px solid var(--wt-border); border-radius: 8px; position: relative;
+}
+.pick-mode-on { outline: 2px solid var(--wt-spot); outline-offset: 2px; cursor: crosshair !important; }
+.pick-mode-on * { cursor: crosshair !important; }
+.page { display: none; padding-bottom: 24px; background: var(--wt-white); min-height: 100%; }
+.page.active { display: block; }
+
+/* Right Rule & Variable Panel */
+.anno-panel { width: 286px; flex-shrink: 0; max-height: 100%; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+.anno-card { padding: 11px 12px; border: 1px solid var(--wt-border-light); border-radius: 8px; background: var(--wt-white); }
+.anno-card-title {
+  font-size: 12px; font-weight: 700; color: var(--wt-text);
+  padding-bottom: 6px; margin-bottom: 8px; border-bottom: 1px solid var(--wt-border-light);
+}
+.anno-item { font-size: 12px; color: var(--wt-text); line-height: 1.65; margin-bottom: 8px; }
+.anno-item:last-child { margin-bottom: 0; }
+.anno-item b { display: block; color: var(--wt-text); margin-bottom: 2px; }
+.var-block { margin-bottom: 10px; }
+.var-block:last-child { margin-bottom: 0; }
+.var-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 5px; font-size: 12px; }
+.var-kind-tag {
+  font-size: 10px; padding: 1px 5px; border: 1px solid var(--wt-border-light);
+  border-radius: 3px; color: var(--wt-dim); background: var(--wt-bg);
+}
+.var-opts { display: flex; flex-wrap: wrap; gap: 5px; }
+.var-opt {
+  padding: 4px 9px; font-size: 11.5px; border-radius: 4px;
+  border: 1px solid var(--wt-border); background: var(--wt-white);
+}
+.var-opt.cur, .var-opt.cur:hover {
+  background: var(--wt-accent); color: var(--wt-white); border-color: var(--wt-accent); font-weight: 600;
+}
+.branch-go-btn { margin-top: 6px; width: 100%; font-size: 11.5px; padding: 4px 8px; }
+.st-group { display: flex; flex-direction: column; gap: 6px; }
+.st-btn {
+  width: 100%; padding: 7px 10px; text-align: left; border: 1px solid var(--wt-border);
+  border-radius: 5px; font-size: 12px; background: var(--wt-white); color: var(--wt-text); cursor: pointer;
+}
+.st-btn:hover { border-color: var(--wt-accent); }
+.st-btn.cur, .st-btn.cur:hover {
+  background: var(--wt-accent); color: var(--wt-white); border-color: var(--wt-accent);
+  cursor: default; font-weight: 600;
+}
+
+/* Spec Cards View */
+.spec-panel { flex: 1; min-width: 0; height: 100%; overflow-y: auto; padding: 24px 28px 60px; position: relative; }
+.spec-ws {
+  max-width: 1020px; margin: 0 auto; display: grid;
+  grid-template-columns: 375px minmax(380px, 1fr); gap: 44px; align-items: start; position: relative;
+}
+.spec-ws.wide-spec { max-width: 1240px; grid-template-columns: 690px minmax(340px, 1fr); gap: 32px; }
+@media (max-width: 960px) {
+  .spec-ws { grid-template-columns: 1fr; }
+  .spec-ws .spec-sticky { position: static; }
+}
+@media (max-width: 1140px) {
+  .spec-ws.wide-spec { grid-template-columns: 1fr; }
+  .spec-ws.wide-spec .spec-sticky { position: static; }
+}
+.spec-sticky { position: sticky; top: 4px; z-index: 20; }
+.spec-cards { display: flex; flex-direction: column; gap: 12px; padding-top: 8px; }
+.spec-card {
+  background: var(--wt-white); border: 1px solid var(--wt-border-light);
+  border-radius: 8px; padding: 13px 15px; cursor: pointer;
+}
+.spec-card.active { border-color: var(--wt-spot); border-width: 1.5px; box-shadow: 0 0 0 2px var(--wt-spot-bg); }
+.spec-card-hd { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.spec-idx {
+  font-size: 11px; font-weight: 700; padding: 1px 7px;
+  border: 1px solid var(--wt-border); border-radius: 4px; background: var(--wt-bg);
+}
+.spec-card-hd b { font-size: 13.5px; flex: 1; }
+.spec-card-bd { font-size: 12.5px; line-height: 1.65; color: var(--wt-text); }
+.tether-svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 45; overflow: visible; }
+.anchor-box {
+  position: absolute; pointer-events: none; border: 2px dashed var(--wt-spot);
+  border-radius: 6px; background: var(--wt-spot-bg); z-index: 44;
+}
+
+/* Memo Drawer (Minimalist Multi-Capsule Picking) */
+.memo-drawer {
+  width: 320px; flex-shrink: 0; height: 100%; background: var(--wt-white);
+  border-left: 1px solid var(--wt-border); display: flex; flex-direction: column; z-index: 120;
+}
+.memo-hd {
+  height: 46px; padding: 0 14px; border-bottom: 1px solid var(--wt-border-light);
+  background: var(--wt-bg); display: flex; align-items: center; justify-content: space-between;
+  flex-shrink: 0; gap: 6px;
+}
+.memo-form { padding: 12px; border-bottom: 1px solid var(--wt-border-light); flex-shrink: 0; background: #fafafa; }
+.memo-ctx {
+  display: block; font-size: 11px; color: var(--wt-dim); background: var(--wt-white);
+  border: 1px solid var(--wt-border-light); border-radius: 4px; padding: 4px 8px;
+  margin-bottom: 8px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.memo-editor {
+  width: 100%; min-height: 86px; max-height: 220px; overflow-y: auto;
+  border: 1px solid var(--wt-border); border-radius: 5px; padding: 7px 9px;
+  font-size: 12px; line-height: 1.55; margin-bottom: 6px; background: var(--wt-white);
+  color: var(--wt-text); outline: none; white-space: pre-wrap; word-break: break-word;
+}
+.memo-editor:focus { border-color: var(--wt-accent); }
+.memo-editor:empty::before { content: attr(data-placeholder); color: var(--wt-light); pointer-events: none; }
+.memo-form-hint {
+  font-size: 11.5px; font-weight: 600; color: var(--wt-text);
+  background: #f0f0f0; border: 1px solid var(--wt-accent);
+  border-radius: 4px; padding: 4px 8px; margin-bottom: 6px;
+}
+.memo-at-chip {
+  display: inline-flex; align-items: center; padding: 1px 6px; margin: 0 2px;
+  border-radius: 4px; background: var(--wt-fill); border: 1px solid var(--wt-border);
+  color: var(--wt-text); font-size: 11.5px; font-weight: 600; user-select: all;
+}
+.memo-list { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+.memo-empty { text-align: center; color: var(--wt-light); font-size: 12px; padding: 24px 12px; }
+.memo-item { border: 1px solid var(--wt-border-light); border-radius: 6px; padding: 10px; background: var(--wt-bg); }
+.memo-item.invalid { border-color: var(--wt-danger); background: #fef2f2; }
+.memo-item-hd { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 4px; }
+.memo-item-ctx {
+  font-size: 11px; font-weight: 600; color: var(--wt-accent); cursor: pointer;
+  flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.memo-item-ctx:hover { text-decoration: underline; }
+.memo-invalid-badge {
+  font-size: 10px; font-weight: 600; color: var(--wt-white); background: var(--wt-danger);
+  padding: 1px 6px; border-radius: 3px; flex-shrink: 0;
+}
+.memo-item-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 5px; }
+.memo-item-tag {
+  font-size: 10.5px; color: var(--wt-text); background: #f0f0f0; border: 1px solid var(--wt-accent);
+  font-weight: 600; border-radius: 999px; padding: 1px 6px;
+}
+.memo-item-meta {
+  font-size: 10.5px; color: var(--wt-dim); margin-bottom: 5px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.memo-item-txt { font-size: 12px; line-height: 1.6; white-space: pre-wrap; }
+.memo-item-ft {
+  margin-top: 7px; display: flex; justify-content: space-between; align-items: center;
+  font-size: 11px; color: var(--wt-light);
+}
+.memo-del-btn { border: none; background: transparent; color: var(--wt-dim); padding: 1px 5px; font-size: 11px; }
+.memo-del-btn:hover { color: var(--wt-danger); background: transparent; }
+.memo-export { padding: 10px 12px; border-top: 1px solid var(--wt-border-light); background: var(--wt-bg); display: flex; gap: 6px; }
+.memo-export button { flex: 1; padding: 5px 6px; font-size: 11.5px; white-space: nowrap; }
+
+#pick-highlight-overlay {
+  position: fixed; z-index: 9999; pointer-events: none;
+  border: 2px solid var(--wt-spot); background: var(--wt-spot-bg);
+  border-radius: 4px; display: none; transition: all 0.06s ease;
+}
+#pick-label-badge {
+  position: fixed; z-index: 10000; pointer-events: none;
+  background: #1f1f1f; color: #ffffff; font-size: 11.5px; font-weight: 600;
+  padding: 3px 8px; border-radius: 4px; white-space: nowrap; max-width: 300px;
+  overflow: hidden; text-overflow: ellipsis; box-shadow: 0 2px 8px rgba(0,0,0,0.22); display: none;
+}
+
+.guard-mask {
+  position: fixed; inset: 0; z-index: 10050; background: rgba(0,0,0,0.42);
+  display: flex; align-items: center; justify-content: center; padding: 16px;
+}
+.guard-modal {
+  width: 480px; max-width: 100%; background: var(--wt-white); border: 1px solid var(--wt-border);
+  border-radius: 10px; padding: 18px; box-shadow: 0 12px 32px rgba(0,0,0,0.18);
+}
+.guard-modal h3 { font-size: 15px; margin-bottom: 8px; color: var(--wt-danger); }
+.guard-modal p { font-size: 12.5px; line-height: 1.6; color: var(--wt-text); margin-bottom: 14px; }
+.guard-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 8px; }
+
+/* Neutral Wireframe Component Library (wt-* · 100% Grayscale) */
+.wt-stack { display: flex; flex-direction: column; gap: 10px; }
+.wt-row { display: flex; align-items: center; gap: 8px; }
+.wt-col { display: flex; flex-direction: column; gap: 6px; }
+.wt-between { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.wt-divider { height: 1px; background: var(--wt-border-light); margin: 8px 0; }
+.wt-muted { color: var(--wt-dim); font-size: 12px; }
+
+/* Navigation */
+.wt-navbar {
+  height: 44px; padding: 0 12px; display: flex; align-items: center; justify-content: space-between;
+  border-bottom: 1px solid var(--wt-border-light); background: var(--wt-white); font-weight: 600;
+}
+.wt-tabbar {
+  display: flex; border-top: 1px solid var(--wt-border-light); background: var(--wt-bg);
+}
+.wt-tabbar-item {
+  flex: 1; text-align: center; padding: 9px 4px; font-size: 11.5px; color: var(--wt-dim); cursor: pointer;
+}
+.wt-tabbar-item.active { color: var(--wt-text); font-weight: 700; }
+.wt-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--wt-border-light); padding: 0 12px; }
+.wt-tab {
+  padding: 8px 12px; font-size: 12.5px; color: var(--wt-dim); border: none;
+  background: transparent; border-bottom: 2px solid transparent; border-radius: 0;
+}
+.wt-tab.active { color: var(--wt-text); font-weight: 700; border-bottom-color: var(--wt-text); }
+.wt-breadcrumb { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--wt-dim); }
+
+/* Buttons */
+.wt-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+  padding: 6px 12px; border: 1px solid var(--wt-border); border-radius: 6px;
+  background: var(--wt-white); color: var(--wt-text); font-size: 12.5px; cursor: pointer;
+}
+.wt-btn:hover:not(:disabled) { background: var(--wt-fill); }
+.wt-btn-primary { background: var(--wt-accent); color: var(--wt-white); border-color: var(--wt-accent); }
+.wt-btn-primary:hover:not(:disabled) { background: #3f3f3f; }
+.wt-btn-ghost { background: transparent; border-color: transparent; }
+.wt-btn-danger { background: var(--wt-white); color: var(--wt-text); border-color: var(--wt-text); font-weight: 600; }
+.wt-btn-sm { padding: 3px 8px; font-size: 11.5px; }
+.wt-btn-block { width: 100%; }
+
+/* Cards & Lists */
+.wt-card {
+  border: 1px solid var(--wt-border-light); border-radius: 8px;
+  background: var(--wt-white); overflow: hidden;
+}
+.wt-card-hd {
+  padding: 10px 12px; border-bottom: 1px solid var(--wt-border-light);
+  background: var(--wt-bg); font-weight: 700; font-size: 12.5px;
+}
+.wt-card-bd { padding: 12px; }
+.wt-card-ft { padding: 8px 12px; border-top: 1px solid var(--wt-border-light); background: var(--wt-bg); }
+.wt-list { display: flex; flex-direction: column; }
+.wt-list-item {
+  padding: 10px 12px; border-bottom: 1px solid var(--wt-border-light);
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+}
+.wt-list-item:last-child { border-bottom: none; }
+.wt-avatar {
+  width: 32px; height: 32px; border-radius: 50%; background: var(--wt-fill);
+  border: 1px solid var(--wt-border); display: inline-flex; align-items: center;
+  justify-content: center; font-size: 12px; font-weight: 700; flex-shrink: 0;
+}
+.wt-badge, .wt-tag {
+  display: inline-block; padding: 1px 6px; font-size: 11px; border-radius: 4px;
+  border: 1px solid var(--wt-border); background: var(--wt-bg); color: var(--wt-dim);
+}
+.wt-chip {
+  display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px;
+  border-radius: 999px; border: 1px solid var(--wt-border); background: var(--wt-bg); font-size: 11.5px;
+}
+
+/* Forms */
+.wt-form { display: flex; flex-direction: column; gap: 10px; }
+.wt-field { display: flex; flex-direction: column; gap: 4px; }
+.wt-label { font-size: 12px; font-weight: 600; color: var(--wt-text); }
+.wt-input, .wt-textarea, .wt-select {
+  width: 100%; padding: 6px 9px; border: 1px solid var(--wt-border);
+  border-radius: 5px; background: var(--wt-white); font-size: 12.5px;
+}
+.wt-textarea { min-height: 72px; resize: vertical; }
+.wt-help { font-size: 11px; color: var(--wt-dim); }
+.wt-error {
+  font-size: 11px; color: var(--wt-text); font-weight: 600;
+  background: #f0f0f0; border: 1px solid var(--wt-accent); border-radius: 4px; padding: 2px 6px;
+}
+
+/* Tables */
+.wt-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.wt-table th, .wt-table td {
+  padding: 7px 9px; border: 1px solid var(--wt-border-light); text-align: left;
+}
+.wt-table th { background: var(--wt-bg); font-weight: 700; }
+
+/* Modals & Drawers */
+.wt-mask {
+  position: absolute; inset: 0; background: rgba(0, 0, 0, 0.36);
+  display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 20;
+}
+.wt-modal {
+  width: 100%; max-width: 320px; background: var(--wt-white);
+  border: 1px solid var(--wt-border); border-radius: 10px; overflow: hidden;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.16);
+}
+.wt-modal-hd {
+  padding: 10px 14px; border-bottom: 1px solid var(--wt-border-light);
+  font-weight: 700; display: flex; align-items: center; justify-content: space-between;
+}
+.wt-modal-bd { padding: 14px; font-size: 12.5px; }
+.wt-modal-ft {
+  padding: 10px 14px; border-top: 1px solid var(--wt-border-light);
+  display: flex; justify-content: flex-end; gap: 8px; background: var(--wt-bg);
+}
+
+/* Feedback & States */
+.wt-toast {
+  margin: 16px auto; max-width: 280px; padding: 9px 14px; border-radius: 6px;
+  background: #222222; color: #ffffff; text-align: center; font-size: 12px;
+}
+.wt-banner, .wt-alert {
+  padding: 8px 12px; border-radius: 6px; border: 1px solid var(--wt-border);
+  background: var(--wt-bg); font-size: 12px;
+}
+.wt-alert-danger {
+  border-color: var(--wt-accent); background: #f0f0f0; color: var(--wt-text); font-weight: 600;
+}
+.wt-empty { padding: 28px 16px; text-align: center; color: var(--wt-dim); font-size: 12px; }
+.wt-skeleton {
+  height: 14px; border-radius: 4px; background: var(--wt-fill);
+}
+
+</style>
+</head>
+<body class="show-delta">
+
+<header class="wb-topbar">
+  <div class="fp-title">动态社区内容发布器人机验证交互走查</div>
+  <div class="seg-group hidden" id="view-switch">
+    <button type="button" class="seg-btn active" data-wbview="flow" onclick="switchWbView('flow')">全局流程</button>
+    <button type="button" class="seg-btn" data-wbview="spec" onclick="switchWbView('spec')">单页改点</button>
+  </div>
+  <div class="wb-global-vars" id="global-vars-bar"></div>
+  <div class="topbar-spacer"></div>
+  <span id="flow-node-ref" aria-live="polite"></span>
+  <div class="fp-bar" id="zoom-bar">
+    <span class="zb" onclick="setZoom(-1)">&#65293;</span>
+    <span class="zv" id="zv">100%</span>
+    <span class="zb" onclick="setZoom(1)">&#65291;</span>
+    <span class="zb" onclick="setZoom(0)">适宽</span>
+    <span class="zb" id="fs-btn" onclick="toggleFs()">全屏画布</span>
+  </div>
+  <button type="button" class="zb active" id="delta-toggle-btn" onclick="toggleDeltaHighlight()">改动高亮</button>
+  <button type="button" class="memo-toggle" id="memo-toggle-btn" onclick="toggleMemo()">评审备注 (0)</button>
+</header>
+
+<div class="wb-stage">
+  <aside class="flow-panel" id="flow-panel-root">
+    <div class="flow-svg" id="flow-svg"><div class="flow-canvas-inner" id="flow-canvas-inner"><svg id="flowsvg" data-flowspec="1" viewBox="0 0 1360 1480" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#555555" />
+    </marker>
+  </defs>
+
+  <!-- Zone 1: Entry & Login Check Edges -->
+  <polyline points="520,86 520,120" fill="none" stroke="#555555" stroke-width="1.8" data-from="F_ENTRY" data-to="F_EDITOR" marker-end="url(#arrow)" />
+  <polyline points="520,176 520,210" fill="none" stroke="#555555" stroke-width="1.8" data-from="F_EDITOR" data-to="F_PUBLISH_CLICK" marker-end="url(#arrow)" />
+  <polyline points="520,266 520,304" fill="none" stroke="#555555" stroke-width="1.8" data-from="F_PUBLISH_CLICK" data-to="D_LOGGED_SUBMIT" marker-end="url(#arrow)" />
+
+  <!-- D_LOGGED_SUBMIT Branches -->
+  <polyline points="520,388 520,530" fill="none" stroke="#555555" stroke-width="1.8" data-from="D_LOGGED_SUBMIT" data-to="F_RECHECK" data-branch="in" marker-end="url(#arrow)" />
+  <text x="530" y="420" font-size="11" fill="#555555">已登录</text>
+
+  <polyline points="606,346 820,346" fill="none" stroke="#555555" stroke-width="1.8" data-from="D_LOGGED_SUBMIT" data-to="F_LOGIN" data-branch="out" marker-end="url(#arrow)" />
+  <text x="680" y="338" font-size="11" fill="#555555">未登录</text>
+
+  <polyline points="910,374 910,412" fill="none" stroke="#555555" stroke-width="1.8" data-from="F_LOGIN" data-to="D_LOGIN_OK" marker-end="url(#arrow)" />
+
+  <!-- D_LOGIN_OK Branches -->
+  <polyline points="824,454 570,454 570,530" fill="none" stroke="#555555" stroke-width="1.8" data-from="D_LOGIN_OK" data-to="F_RECHECK" data-branch="ok" marker-end="url(#arrow)" />
+  <text x="665" y="446" font-size="11" fill="#555555">登录成功</text>
+
+  <polyline points="910,496 910,530" fill="none" stroke="#555555" stroke-width="1.8" data-from="D_LOGIN_OK" data-to="F_CANCEL_LOGIN" data-branch="cancel" marker-end="url(#arrow)" />
+  <text x="920" y="516" font-size="11" fill="#888888">取消</text>
+
+  <polyline points="996,454 1110,454" fill="none" stroke="#555555" stroke-width="1.8" data-from="D_LOGIN_OK" data-to="F_LOGIN_PENDING" data-branch="pending" marker-end="url(#arrow)" />
+  <text x="1022" y="446" font-size="11" fill="#888888">尚未完成</text>
+
+  <!-- Zone 2: Cloud Risk Check Edges -->
+  <polyline points="520,586 520,630" fill="none" stroke="#555555" stroke-width="1.8" data-from="F_RECHECK" data-to="D_SUBMIT" marker-end="url(#arrow)" />
+
+  <!-- D_SUBMIT Branches -->
+  <polyline points="434,672 130,672 130,1150" fill="none" stroke="#555555" stroke-width="1.8" data-from="D_SUBMIT" data-to="F_SUBMIT" data-branch="allow" marker-end="url(#arrow)" />
+  <text x="230" y="664" font-size="11" fill="#555555">直接放行（白名单/正常）</text>
+
+  <polyline points="520,714 520,760" fill="none" stroke="#555555" stroke-width="1.8" data-from="D_SUBMIT" data-to="F_VERIFY_PUBLISH" data-branch="verify" marker-end="url(#arrow)" />
+  <text x="530" y="742" font-size="11" fill="#555555">需要验证（灰名单）</text>
+
+  <polyline points="606,672 820,672" fill="none" stroke="#555555" stroke-width="1.8" data-from="D_SUBMIT" data-to="F_BLOCK_PUBLISH" data-branch="deny" marker-end="url(#arrow)" />
+  <text x="665" y="664" font-size="11" fill="#888888">直接拒绝（黑名单）</text>
+
+  <!-- Zone 3: Captcha Verify & Result Branches -->
+  <polyline points="520,816 520,856" fill="none" stroke="#555555" stroke-width="1.8" data-from="F_VERIFY_PUBLISH" data-to="D_VERIFY_PUBLISH" marker-end="url(#arrow)" />
+
+  <!-- D_VERIFY_PUBLISH Branches -->
+  <polyline points="434,898 200,898 200,1150" fill="none" stroke="#555555" stroke-width="1.8" data-from="D_VERIFY_PUBLISH" data-to="F_SUBMIT" data-branch="pass" marker-end="url(#arrow)" />
+  <text x="275" y="890" font-size="11" fill="#555555">校验通过（清零失败计数）</text>
+
+  <polyline points="520,940 520,996" fill="none" stroke="#555555" stroke-width="1.8" data-from="D_VERIFY_PUBLISH" data-to="D_RETRY_ALLOWED" data-branch="fail" marker-end="url(#arrow)" />
+  <text x="530" y="972" font-size="11" fill="#555555">明确失败</text>
+
+  <polyline points="606,898 980,898 980,996" fill="none" stroke="#555555" stroke-width="1.8" data-from="D_VERIFY_PUBLISH" data-to="D_PUBLISH_ABORT" data-branch="abort" marker-end="url(#arrow)" />
+  <text x="735" y="890" font-size="11" fill="#888888">边界情况（不计失败）</text>
+
+  <!-- D_RETRY_ALLOWED Branches -->
+  <polyline points="428,1038 360,1038 360,1130" fill="none" stroke="#555555" stroke-width="1.8" data-from="D_RETRY_ALLOWED" data-to="F_WAIT_BLACK" data-branch="reach_n" marker-end="url(#arrow)" />
+  <text x="348" y="1028" font-size="11" fill="#888888">第 N 次入黑</text>
+
+  <polyline points="520,1080 520,1130" fill="none" stroke="#555555" stroke-width="1.8" data-from="D_RETRY_ALLOWED" data-to="F_VERIFY_FAILED_PUBLISH" data-branch="under_n" marker-end="url(#arrow)" />
+  <text x="530" y="1108" font-size="11" fill="#555555">未达 N（留浮层）</text>
+
+  <!-- D_PUBLISH_ABORT Branches -->
+  <polyline points="890,1038 805,1038 805,1130" fill="none" stroke="#555555" stroke-width="1.8" data-from="D_PUBLISH_ABORT" data-to="F_EXPIRE_PUBLISH" data-branch="expired" marker-end="url(#arrow)" />
+  <text x="802" y="1028" font-size="11" fill="#888888">验证过期</text>
+
+  <polyline points="980,1080 980,1130" fill="none" stroke="#555555" stroke-width="1.8" data-from="D_PUBLISH_ABORT" data-to="F_CANCEL_PUBLISH" data-branch="cancel" marker-end="url(#arrow)" />
+  <text x="988" y="1108" font-size="11" fill="#888888">主动取消</text>
+
+  <polyline points="1070,1038 1195,1038 1195,1130" fill="none" stroke="#555555" stroke-width="1.8" data-from="D_PUBLISH_ABORT" data-to="F_PUBLISH_NETWORK" data-branch="timeout" marker-end="url(#arrow)" />
+  <text x="1095" y="1028" font-size="11" fill="#888888">网络超时</text>
+
+  <!-- Retry Convergence & Re-check Loop -->
+  <polyline points="620,1186 620,1246" fill="none" stroke="#555555" stroke-width="1.8" data-from="F_VERIFY_FAILED_PUBLISH" data-to="F_RETRY" marker-end="url(#arrow)" />
+  <polyline points="760,1186 760,1246" fill="none" stroke="#555555" stroke-width="1.8" data-from="F_EXPIRE_PUBLISH" data-to="F_RETRY" marker-end="url(#arrow)" />
+  <polyline points="800,1274 1320,1274 1320,604 655,604 655,558 620,558" fill="none" stroke="#555555" stroke-width="1.6" stroke-dasharray="5 3" data-from="F_RETRY" data-to="F_RECHECK" marker-end="url(#arrow)" />
+  <text x="1332" y="940" font-size="11" fill="#888888" writing-mode="tb">点击「重新验证」回流重判</text>
+
+  <!-- Zone 4: Original Publish Execution Edges -->
+  <polyline points="160,1206 160,1248" fill="none" stroke="#555555" stroke-width="1.8" data-from="F_SUBMIT" data-to="D_PUBLISH_OK" marker-end="url(#arrow)" />
+
+  <polyline points="160,1332 160,1380" fill="none" stroke="#555555" stroke-width="1.8" data-from="D_PUBLISH_OK" data-to="F_SUCCESS" data-branch="yes" marker-end="url(#arrow)" />
+  <text x="170" y="1360" font-size="11" fill="#555555">确认成功</text>
+
+  <polyline points="248,1290 310,1290" fill="none" stroke="#555555" stroke-width="1.8" data-from="D_PUBLISH_OK" data-to="F_SUBMIT_FAILED" data-branch="no" marker-end="url(#arrow)" />
+  <text x="254" y="1282" font-size="10.5" fill="#888888">未成功</text>
+
+  <!-- ================= NODES ================= -->
+  <g class="flow-node" data-node="F_ENTRY" data-node-type="start" role="button" tabindex="0">
+    <rect x="425" y="30" width="190" height="56" rx="8" fill="#ffffff" stroke="#555555" stroke-width="1.8" />
+    <text x="520" y="54" text-anchor="middle" font-size="12.5" font-weight="700" fill="#333333">社区动态流发布入口</text>
+    <text x="520" y="72" text-anchor="middle" font-size="10.5" fill="#888888">F_ENTRY · p-source-base</text>
+  </g>
+
+  <g class="flow-node" data-node="F_EDITOR" data-node-type="process" role="button" tabindex="0">
+    <rect x="420" y="120" width="200" height="56" rx="8" fill="#ffffff" stroke="#555555" stroke-width="1.8" />
+    <text x="520" y="144" text-anchor="middle" font-size="12.5" font-weight="700" fill="#333333">拉起原创或转发发布器</text>
+    <text x="520" y="162" text-anchor="middle" font-size="10.5" fill="#888888">F_EDITOR · p-editor-base</text>
+  </g>
+
+  <g class="flow-node" data-node="F_PUBLISH_CLICK" data-node-type="process" role="button" tabindex="0">
+    <rect x="425" y="210" width="190" height="56" rx="8" fill="#ffffff" stroke="#555555" stroke-width="1.8" />
+    <text x="520" y="234" text-anchor="middle" font-size="12.5" font-weight="700" fill="#333333">点击发布按钮</text>
+    <text x="520" y="252" text-anchor="middle" font-size="10.5" fill="#888888">F_PUBLISH_CLICK · p-editor-base</text>
+  </g>
+
+  <g class="flow-node flow-decision" data-node="D_LOGGED_SUBMIT" data-node-type="decision" role="button" tabindex="0">
+    <polygon points="520,304 606,346 520,388 434,346" fill="#ededed" stroke="#555555" stroke-width="1.8" />
+    <text x="520" y="350" text-anchor="middle" font-size="11.5" font-weight="700" fill="#333333">当前已登录？</text>
+  </g>
+
+  <g class="flow-node" data-node="F_LOGIN" data-node-type="process" role="button" tabindex="0">
+    <rect x="820" y="318" width="180" height="56" rx="8" fill="#ffffff" stroke="#555555" stroke-width="1.8" />
+    <text x="910" y="342" text-anchor="middle" font-size="12.5" font-weight="700" fill="#333333">完成社区账号登录</text>
+    <text x="910" y="360" text-anchor="middle" font-size="10.5" fill="#888888">F_LOGIN · p-login-base</text>
+  </g>
+
+  <g class="flow-node flow-decision" data-node="D_LOGIN_OK" data-node-type="decision" role="button" tabindex="0">
+    <polygon points="910,412 996,454 910,496 824,454" fill="#ededed" stroke="#555555" stroke-width="1.8" />
+    <text x="910" y="458" text-anchor="middle" font-size="11.5" font-weight="700" fill="#333333">登录结果？</text>
+  </g>
+
+  <g class="flow-node" data-node="F_LOGIN_PENDING" data-node-type="end" role="button" tabindex="0">
+    <rect x="1110" y="426" width="180" height="56" rx="8" fill="#ffffff" stroke="#555555" stroke-width="1.8" />
+    <text x="1200" y="450" text-anchor="middle" font-size="12.5" font-weight="700" fill="#333333">停留原登录浮层</text>
+    <text x="1200" y="468" text-anchor="middle" font-size="10.5" fill="#888888">F_LOGIN_PENDING</text>
+  </g>
+
+  <g class="flow-node" data-node="F_CANCEL_LOGIN" data-node-type="end" role="button" tabindex="0">
+    <rect x="820" y="530" width="180" height="56" rx="8" fill="#ffffff" stroke="#555555" stroke-width="1.8" />
+    <text x="910" y="554" text-anchor="middle" font-size="12.5" font-weight="700" fill="#333333">保留内容本次不发</text>
+    <text x="910" y="572" text-anchor="middle" font-size="10.5" fill="#888888">F_CANCEL_LOGIN</text>
+  </g>
+
+  <g class="flow-node" data-node="F_RECHECK" data-node-type="process" role="button" tabindex="0">
+    <rect x="420" y="530" width="200" height="56" rx="8" fill="#ffffff" stroke="#555555" stroke-width="1.8" />
+    <text x="520" y="554" text-anchor="middle" font-size="12.5" font-weight="700" fill="#333333">请求发布前风控判断</text>
+    <text x="520" y="572" text-anchor="middle" font-size="10.5" fill="#888888">F_RECHECK · p-editor-base</text>
+  </g>
+
+  <g class="flow-node flow-decision" data-node="D_SUBMIT" data-node-type="decision" role="button" tabindex="0">
+    <polygon points="520,630 606,672 520,714 434,672" fill="#ededed" stroke="#555555" stroke-width="1.8" />
+    <text x="520" y="676" text-anchor="middle" font-size="11.5" font-weight="700" fill="#333333">云端风控结果？</text>
+  </g>
+
+  <g class="flow-node" data-node="F_BLOCK_PUBLISH" data-node-type="end" role="button" tabindex="0">
+    <rect x="820" y="644" width="200" height="56" rx="8" fill="#ffffff" stroke="#555555" stroke-width="1.8" />
+    <text x="920" y="668" text-anchor="middle" font-size="12.5" font-weight="700" fill="#333333">保留内容提示发布失败</text>
+    <text x="920" y="686" text-anchor="middle" font-size="10.5" fill="#888888">F_BLOCK_PUBLISH · 黑名单</text>
+  </g>
+
+  <g class="flow-node" data-node="F_VERIFY_PUBLISH" data-node-type="process" role="button" tabindex="0">
+    <rect x="415" y="760" width="210" height="56" rx="8" fill="#ffffff" stroke="#555555" stroke-width="1.8" />
+    <text x="520" y="784" text-anchor="middle" font-size="12.5" font-weight="700" fill="#333333">展示随机题型人机校验浮层</text>
+    <text x="520" y="802" text-anchor="middle" font-size="10.5" fill="#888888">F_VERIFY_PUBLISH · 三题型</text>
+  </g>
+
+  <g class="flow-node flow-decision" data-node="D_VERIFY_PUBLISH" data-node-type="decision" role="button" tabindex="0">
+    <polygon points="520,856 606,898 520,940 434,898" fill="#ededed" stroke="#555555" stroke-width="1.8" />
+    <text x="520" y="902" text-anchor="middle" font-size="11.5" font-weight="700" fill="#333333">人机校验结果？</text>
+  </g>
+
+  <g class="flow-node flow-decision" data-node="D_RETRY_ALLOWED" data-node-type="decision" role="button" tabindex="0">
+    <polygon points="520,996 612,1038 520,1080 428,1038" fill="#ededed" stroke="#555555" stroke-width="1.8" />
+    <text x="520" y="1042" text-anchor="middle" font-size="11.5" font-weight="700" fill="#333333">当日失败达 N？</text>
+  </g>
+
+  <g class="flow-node flow-decision" data-node="D_PUBLISH_ABORT" data-node-type="decision" role="button" tabindex="0">
+    <polygon points="980,996 1070,1038 980,1080 890,1038" fill="#ededed" stroke="#555555" stroke-width="1.8" />
+    <text x="980" y="1042" text-anchor="middle" font-size="11.5" font-weight="700" fill="#333333">验证中断原因？</text>
+  </g>
+
+  <g class="flow-node" data-node="F_WAIT_BLACK" data-node-type="end" role="button" tabindex="0">
+    <rect x="280" y="1130" width="180" height="56" rx="8" fill="#ffffff" stroke="#555555" stroke-width="1.8" />
+    <text x="370" y="1154" text-anchor="middle" font-size="12" font-weight="700" fill="#333333">第 N 次入黑提示失败</text>
+    <text x="370" y="1172" text-anchor="middle" font-size="10.5" fill="#888888">F_WAIT_BLACK</text>
+  </g>
+
+  <g class="flow-node" data-node="F_VERIFY_FAILED_PUBLISH" data-node-type="process" role="button" tabindex="0">
+    <rect x="480" y="1130" width="210" height="56" rx="8" fill="#ffffff" stroke="#555555" stroke-width="1.8" />
+    <text x="585" y="1154" text-anchor="middle" font-size="12" font-weight="700" fill="#333333">留浮层：验证失败与重新验证</text>
+    <text x="585" y="1172" text-anchor="middle" font-size="10.5" fill="#888888">F_VERIFY_FAILED_PUBLISH</text>
+  </g>
+
+  <g class="flow-node" data-node="F_EXPIRE_PUBLISH" data-node-type="process" role="button" tabindex="0">
+    <rect x="705" y="1130" width="190" height="56" rx="8" fill="#ffffff" stroke="#555555" stroke-width="1.8" />
+    <text x="800" y="1154" text-anchor="middle" font-size="12" font-weight="700" fill="#333333">留浮层：已过期与重新验证</text>
+    <text x="800" y="1172" text-anchor="middle" font-size="10.5" fill="#888888">F_EXPIRE_PUBLISH</text>
+  </g>
+
+  <g class="flow-node" data-node="F_CANCEL_PUBLISH" data-node-type="end" role="button" tabindex="0">
+    <rect x="905" y="1130" width="165" height="56" rx="8" fill="#ffffff" stroke="#555555" stroke-width="1.8" />
+    <text x="987.5" y="1154" text-anchor="middle" font-size="12" font-weight="700" fill="#333333">保留内容不发布</text>
+    <text x="987.5" y="1172" text-anchor="middle" font-size="10.5" fill="#888888">F_CANCEL_PUBLISH</text>
+  </g>
+
+  <g class="flow-node" data-node="F_PUBLISH_NETWORK" data-node-type="end" role="button" tabindex="0">
+    <rect x="1085" y="1130" width="195" height="56" rx="8" fill="#ffffff" stroke="#555555" stroke-width="1.8" />
+    <text x="1182.5" y="1154" text-anchor="middle" font-size="12" font-weight="700" fill="#333333">保留内容提示网络超时</text>
+    <text x="1182.5" y="1172" text-anchor="middle" font-size="10.5" fill="#888888">F_PUBLISH_NETWORK</text>
+  </g>
+
+  <g class="flow-node" data-node="F_RETRY" data-node-type="process" role="button" tabindex="0">
+    <rect x="590" y="1246" width="210" height="56" rx="8" fill="#ffffff" stroke="#555555" stroke-width="1.8" />
+    <text x="695" y="1270" text-anchor="middle" font-size="12" font-weight="700" fill="#333333">点击「重新验证」重新请求</text>
+    <text x="695" y="1288" text-anchor="middle" font-size="10.5" fill="#888888">F_RETRY · 刷新随机题型</text>
+  </g>
+
+  <g class="flow-node" data-node="F_SUBMIT" data-node-type="process" role="button" tabindex="0">
+    <rect x="65" y="1150" width="190" height="56" rx="8" fill="#ffffff" stroke="#555555" stroke-width="1.8" />
+    <text x="160" y="1174" text-anchor="middle" font-size="12.5" font-weight="700" fill="#333333">执行原有发布流程</text>
+    <text x="160" y="1192" text-anchor="middle" font-size="10.5" fill="#888888">F_SUBMIT · 提交中防重</text>
+  </g>
+
+  <g class="flow-node flow-decision" data-node="D_PUBLISH_OK" data-node-type="decision" role="button" tabindex="0">
+    <polygon points="160,1248 248,1290 160,1332 72,1290" fill="#ededed" stroke="#555555" stroke-width="1.8" />
+    <text x="160" y="1294" text-anchor="middle" font-size="11.5" font-weight="700" fill="#333333">原流程确认成功？</text>
+  </g>
+
+  <g class="flow-node" data-node="F_SUBMIT_FAILED" data-node-type="end" role="button" tabindex="0">
+    <rect x="310" y="1262" width="195" height="56" rx="8" fill="#ffffff" stroke="#555555" stroke-width="1.8" />
+    <text x="407.5" y="1286" text-anchor="middle" font-size="12" font-weight="700" fill="#333333">保留内容沿用原失败提示</text>
+    <text x="407.5" y="1304" text-anchor="middle" font-size="10.5" fill="#888888">F_SUBMIT_FAILED</text>
+  </g>
+
+  <g class="flow-node" data-node="F_SUCCESS" data-node-type="end" role="button" tabindex="0">
+    <rect x="65" y="1380" width="190" height="56" rx="8" fill="#ffffff" stroke="#555555" stroke-width="1.8" />
+    <text x="160" y="1404" text-anchor="middle" font-size="12.5" font-weight="700" fill="#333333">发布成功 / 转发成功</text>
+    <text x="160" y="1422" text-anchor="middle" font-size="10.5" fill="#888888">F_SUCCESS · p-source-success</text>
+  </g>
+
+<rect id="sel-ring" fill="rgba(217,119,6,0.08)" stroke="#d97706" stroke-width="2.5" stroke-dasharray="6 4" rx="8" visibility="hidden" pointer-events="none"/>
+</svg></div></div>
+    <div class="inspector-drawer" id="inspector-drawer">
+      <div class="insp-head">
+        <span class="insp-badge" id="insp-node-id"></span>
+        <span id="anno-node-title"></span>
+        <button type="button" onclick="openMemoForCurrent()">+ 记备注</button>
+        <button type="button" onclick="toggleFs(true)">收起 ✕</button>
+      </div>
+      <div class="insp-body">
+        <div class="stage" id="flow-stage">
+          <div class="frame-phone" id="frame-phone">
+<div class="page" id="p-source-base" data-page="p-source-base" data-page-id="p-source-base"><div class="wt-navbar">
+  <span>动态社区 · 推荐广场</span>
+  <button type="button" class="wt-btn wt-btn-primary wt-btn-sm" data-comp-id="source.entry.publish_btn" data-comp-name="发动态入口按钮" data-comp-role="control" onclick="setVar('publish_scene','original');goNode('F_EDITOR')">+ 发动态</button>
+</div>
+
+<div class="wt-stack" style="padding:12px;">
+  <div class="wt-card">
+    <div class="wt-card-hd wt-between">
+      <div class="wt-row">
+        <span class="wt-avatar">林</span>
+        <div class="wt-col" style="gap:1px;">
+          <span>林晓 · 户外摄影</span>
+          <span class="wt-muted">12 分钟前 · 热门话题 #周末徒步路线</span>
+        </div>
+      </div>
+      <span class="wt-tag">关注</span>
+    </div>
+    <div class="wt-card-bd wt-stack">
+      <p>今天整理的秋季近郊徒步装备清单，轻量化背包控制在 6kg 以内体验舒适很多，欢迎大家补充实用建议。</p>
+      <div class="wt-row" style="gap:6px;">
+        <div class="wt-skeleton" style="width:96px;height:68px;border:1px solid var(--wt-border-light);"></div>
+        <div class="wt-skeleton" style="width:96px;height:68px;border:1px solid var(--wt-border-light);"></div>
+        <div class="wt-skeleton" style="width:96px;height:68px;border:1px solid var(--wt-border-light);"></div>
+      </div>
+    </div>
+    <div class="wt-card-ft wt-between">
+      <span class="wt-muted">赞 128 · 评论 34</span>
+      <button type="button" class="wt-btn wt-btn-sm" data-comp-id="source.repost.btn" data-comp-name="动态卡片转发按钮" data-comp-role="control" onclick="setVar('publish_scene','repost');goNode('F_EDITOR')">转发动态</button>
+    </div>
+  </div>
+
+  <div class="wt-card">
+    <div class="wt-card-hd wt-between">
+      <div class="wt-row">
+        <span class="wt-avatar">周</span>
+        <div class="wt-col" style="gap:1px;">
+          <span>周航 · 独立开发</span>
+          <span class="wt-muted">35 分钟前 · #效率工具分享</span>
+        </div>
+      </div>
+      <span class="wt-tag">已关注</span>
+    </div>
+    <div class="wt-card-bd">
+      <p>把日常碎片笔记统一收敛到本地 Markdown 目录后，检索和版本回溯顺畅了不少。</p>
+    </div>
+    <div class="wt-card-ft wt-between">
+      <span class="wt-muted">赞 64 · 评论 19</span>
+      <span class="wt-muted">进入发布器前行为无变更</span>
+    </div>
+  </div>
+</div></div>
+<div class="page" id="p-source-success" data-page="p-source-success" data-page-id="p-source-success"><div class="wt-navbar">
+  <span>动态社区 · 推荐广场</span>
+  <button type="button" class="wt-btn wt-btn-primary wt-btn-sm" data-comp-id="source.new_post.btn" data-comp-name="再次发动态按钮" data-comp-role="control" onclick="goNode('F_EDITOR')">+ 再发一条</button>
+</div>
+
+<div class="wt-stack" style="padding:12px;">
+  <div class="wt-toast" data-comp-id="common.toast" data-comp-name="全局提示 Toast" data-comp-role="feedback" data-anchor="anchor-toast">
+    <span data-when-var="publish_scene" data-when-val="original">发布成功</span>
+    <span data-when-var="publish_scene" data-when-val="repost" class="hidden">转发成功</span>
+  </div>
+
+  <div class="wt-card">
+    <div class="wt-card-hd wt-between">
+      <div class="wt-row">
+        <span class="wt-avatar">我</span>
+        <div class="wt-col" style="gap:1px;">
+          <span>当前登录用户（刚刚发布）</span>
+          <span class="wt-muted">刚刚 · 公开可见</span>
+        </div>
+      </div>
+      <span class="wt-badge">最新动态</span>
+    </div>
+    <div class="wt-card-bd wt-stack">
+      <p data-when-var="publish_scene" data-when-val="original">#周末徒步路线 分享今天实测的山脊环线轨迹，全程 11 公里爬升温和，水源补给点清晰。</p>
+      <div data-when-var="publish_scene" data-when-val="repost" class="wt-stack hidden">
+        <p>附议这份轻量化清单，保温水壶和头灯确实必不可少！</p>
+        <div class="wt-alert">
+          <span class="wt-muted">@林晓：今天整理的秋季近郊徒步装备清单，轻量化背包控制在 6kg 以内体验舒适很多……</span>
+        </div>
+      </div>
+    </div>
+    <div class="wt-card-ft wt-between">
+      <span class="wt-muted">原发布接口确认成功并已刷新时间线</span>
+      <span class="wt-muted">当日验证失败计数：0</span>
+    </div>
+  </div>
+</div></div>
+<div class="page" id="p-editor-base" data-page="p-editor-base" data-page-id="p-editor-base"><div class="wt-navbar">
+  <button type="button" class="wt-btn wt-btn-ghost wt-btn-sm" data-comp-id="editor.cancel.btn" data-comp-name="取消按钮" data-comp-role="control" onclick="goNode('F_ENTRY')">取消</button>
+  <span data-when-var="publish_scene" data-when-val="original">发布原创动态</span>
+  <span data-when-var="publish_scene" data-when-val="repost" class="hidden">转发社区动态</span>
+  <button type="button" class="wt-btn wt-btn-primary wt-btn-sm" data-comp-id="editor.publish.btn" data-comp-name="发布按钮" data-comp-role="control" data-anchor="anchor-pub-btn" onclick="goBranch('login_state')">发布</button>
+</div>
+
+<div class="wt-stack" style="padding:12px;">
+  <div class="wt-card">
+    <div class="wt-card-bd wt-stack">
+      <textarea class="wt-textarea" style="min-height:108px;" placeholder="分享你的新鲜事或观点..." data-comp-id="editor.content.input" data-comp-name="正文编辑区" data-comp-role="control">#周末徒步路线 分享今天实测的山脊环线轨迹，全程 11 公里爬升温和，水源补给点清晰。</textarea>
+
+      <div data-when-var="publish_scene" data-when-val="original" class="wt-stack">
+        <div class="wt-row" style="gap:8px;">
+          <div class="wt-card" style="width:72px;height:72px;display:flex;align-items:center;justify-content:center;background:var(--wt-bg);">
+            <span class="wt-muted">配图 1</span>
+          </div>
+          <div class="wt-card" style="width:72px;height:72px;display:flex;align-items:center;justify-content:center;background:var(--wt-bg);">
+            <span class="wt-muted">配图 2</span>
+          </div>
+        </div>
+        <div class="wt-row">
+          <span class="wt-chip"># 周末徒步路线</span>
+          <span class="wt-chip">[定位] 香山森林公园</span>
+        </div>
+      </div>
+
+      <div data-when-var="publish_scene" data-when-val="repost" class="wt-alert hidden">
+        <strong>原动态引用（@林晓）：</strong>
+        <p class="wt-muted" style="margin-top:4px;">今天整理的秋季近郊徒步装备清单，轻量化背包控制在 6kg 以内体验舒适很多……</p>
+      </div>
+    </div>
+    <div class="wt-card-ft wt-between">
+      <span class="wt-muted">已输入 42 / 2000 字</span>
+      <button type="button" class="wt-btn wt-btn-sm" data-comp-id="editor.empty_state.btn" data-comp-name="切换空内容校验预览按钮" data-comp-role="control" onclick="goState('editor','empty')">预览空内容提示</button>
+    </div>
+  </div>
+</div></div>
+<div class="page" id="p-editor-empty" data-page="p-editor-empty" data-page-id="p-editor-empty"><div class="wt-navbar">
+  <button type="button" class="wt-btn wt-btn-ghost wt-btn-sm" data-comp-id="editor.cancel.btn" data-comp-name="取消按钮" data-comp-role="control" onclick="goNode('F_ENTRY')">取消</button>
+  <span>发布动态（同页校验态）</span>
+  <button type="button" class="wt-btn wt-btn-sm" disabled data-comp-id="editor.publish.btn" data-comp-name="发布按钮" data-comp-role="control">发布</button>
+</div>
+
+<div class="wt-stack" style="padding:12px;">
+  <div class="wt-toast" data-comp-id="common.toast" data-comp-name="全局提示 Toast" data-comp-role="feedback" data-anchor="anchor-toast">
+    请输入动态正文或添加图片后再发布（不触发风控请求）
+  </div>
+
+  <div class="wt-card">
+    <div class="wt-card-bd wt-stack">
+      <textarea class="wt-textarea" style="min-height:108px;" placeholder="分享你的新鲜事或观点（当前为空）..." data-comp-id="editor.content.input" data-comp-name="正文编辑区" data-comp-role="control"></textarea>
+      <span class="wt-help">前端同页拦截：未输入有效内容时不请求云端风控接口，也不弹出人机验证。</span>
+    </div>
+    <div class="wt-card-ft wt-between">
+      <span class="wt-muted">已输入 0 / 2000 字</span>
+      <button type="button" class="wt-btn wt-btn-primary wt-btn-sm" data-comp-id="editor.fill_back.btn" data-comp-name="恢复填写内容按钮" data-comp-role="control" onclick="goState('editor','filled')">恢复已填写内容</button>
+    </div>
+  </div>
+</div></div>
+<div class="page" id="p-login-base" data-page="p-login-base" data-page-id="p-login-base"><div style="position:relative;min-height:560px;">
+  <div class="wt-navbar">
+    <span>发布原创动态</span>
+    <span class="wt-tag">底层草稿已保留</span>
+  </div>
+  <div class="wt-stack" style="padding:12px;opacity:0.45;">
+    <div class="wt-card">
+      <div class="wt-card-bd">
+        <p>#周末徒步路线 分享今天实测的山脊环线轨迹，全程 11 公里爬升温和，水源补给点清晰。</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="wt-mask">
+    <div class="wt-modal" data-comp-id="login.sheet" data-comp-name="登录浮层" data-comp-role="modal" data-anchor="anchor-login-sheet">
+      <div class="wt-modal-hd">
+        <span>登录后继续发布</span>
+        <button type="button" class="wt-btn wt-btn-ghost wt-btn-sm" data-comp-id="login.cancel.btn" data-comp-name="关闭登录浮层按钮" data-comp-role="control" onclick="setVar('login_result','cancel');goNode('F_CANCEL_LOGIN')">✕</button>
+      </div>
+      <div class="wt-modal-bd wt-stack">
+        <p class="wt-muted">当前处于未登录状态，完成登录后将自动携带当前账号衔接发布风控判断，已编辑正文不会丢失。</p>
+        <div class="wt-field">
+          <label class="wt-label">手机号码</label>
+          <input type="tel" class="wt-input" value="138 **** 6620" placeholder="请输入手机号" data-comp-id="login.phone.input" data-comp-name="手机号输入框" data-comp-role="control" />
+        </div>
+        <div class="wt-field">
+          <label class="wt-label">短信验证码</label>
+          <input type="text" class="wt-input" value="839204" placeholder="请输入 6 位验证码" data-comp-id="login.code.input" data-comp-name="短信验证码输入框" data-comp-role="control" />
+        </div>
+      </div>
+      <div class="wt-modal-ft wt-between">
+        <button type="button" class="wt-btn wt-btn-sm" data-comp-id="login.pending.btn" data-comp-name="模拟待完成停留按钮" data-comp-role="control" onclick="setVar('login_result','pending');goNode('F_LOGIN_PENDING')">输错停留</button>
+        <button type="button" class="wt-btn wt-btn-primary wt-btn-sm" data-comp-id="login.submit.btn" data-comp-name="登录并继续发布按钮" data-comp-role="control" onclick="setVar('login_result','ok');goNode('F_RECHECK')">登录并继续发布</button>
+      </div>
+    </div>
+  </div>
+</div></div>
+<div class="page" id="p-login-pending" data-page="p-login-pending" data-page-id="p-login-pending"><div style="position:relative;min-height:560px;">
+  <div class="wt-navbar">
+    <span>发布原创动态</span>
+    <span class="wt-tag">底层草稿已保留</span>
+  </div>
+  <div class="wt-stack" style="padding:12px;opacity:0.45;">
+    <div class="wt-card">
+      <div class="wt-card-bd">
+        <p>#周末徒步路线 分享今天实测的山脊环线轨迹，全程 11 公里爬升温和，水源补给点清晰。</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="wt-mask">
+    <div class="wt-modal" data-comp-id="login.sheet" data-comp-name="登录浮层" data-comp-role="modal" data-anchor="anchor-login-sheet">
+      <div class="wt-modal-hd">
+        <span>登录后继续发布（待完成）</span>
+        <button type="button" class="wt-btn wt-btn-ghost wt-btn-sm" data-comp-id="login.cancel.btn" data-comp-name="关闭登录浮层按钮" data-comp-role="control" onclick="setVar('login_result','cancel');goNode('F_CANCEL_LOGIN')">✕</button>
+      </div>
+      <div class="wt-modal-bd wt-stack">
+        <div class="wt-alert">
+          短信验证码有误或尚未完成确认，请核对后重试（不计入人机验证失败次数）。
+        </div>
+        <div class="wt-field">
+          <label class="wt-label">重新输入短信验证码</label>
+          <input type="text" class="wt-input" value="839204" data-comp-id="login.code.input" data-comp-name="短信验证码输入框" data-comp-role="control" />
+        </div>
+      </div>
+      <div class="wt-modal-ft">
+        <button type="button" class="wt-btn wt-btn-primary wt-btn-sm" data-comp-id="login.continue.btn" data-comp-name="重新输入并完成登录按钮" data-comp-role="control" onclick="setVar('login_result','ok');goNode('F_RECHECK')">完成登录并继续</button>
+      </div>
+    </div>
+  </div>
+</div></div>
+<div class="page" id="p-editor-verify" data-page="p-editor-verify" data-page-id="p-editor-verify"><div style="position:relative;min-height:580px;">
+  <div class="wt-navbar">
+    <span>发布动态</span>
+    <span class="wt-tag">等待人机验证</span>
+  </div>
+  <div class="wt-stack" style="padding:12px;opacity:0.42;">
+    <div class="wt-card">
+      <div class="wt-card-bd">
+        <p>#周末徒步路线 分享今天实测的山脊环线轨迹，全程 11 公里爬升温和，水源补给点清晰。</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="wt-mask">
+    <div class="wt-modal" style="max-width:340px;" data-comp-id="captcha.modal" data-comp-name="安全验证浮层" data-comp-role="modal">
+      <div class="wt-modal-hd">
+        <span>安全验证</span>
+        <button type="button" class="wt-btn wt-btn-ghost wt-btn-sm" data-comp-id="captcha.cancel.btn" data-comp-name="安全验证取消按钮" data-comp-role="control" onclick="setVar('verify_result','abort');setVar('abort_reason','cancel');goNode('F_CANCEL_PUBLISH')">✕</button>
+      </div>
+
+      <div class="wt-modal-bd wt-stack">
+        <div class="wt-between">
+          <span class="wt-muted">请完成下方安全验证以继续发布</span>
+          <button type="button" class="wt-btn wt-btn-sm" data-comp-id="captcha.refresh.btn" data-comp-name="换一张按钮" data-comp-role="control">换一张</button>
+        </div>
+
+        <div class="wt-card" style="padding:10px;background:var(--wt-bg);" data-comp-id="captcha.body" data-comp-name="验证题型主区域" data-comp-role="container" data-anchor="anchor-captcha-body">
+          <!-- 题型 1：字符验证码 -->
+          <div data-when-var="captcha_type" data-when-val="chars" class="wt-stack">
+            <div style="height:64px;border:1px dashed var(--wt-border);border-radius:6px;background:var(--wt-white);display:flex;align-items:center;justify-content:center;letter-spacing:10px;font-size:22px;font-weight:700;">
+              K 7 M 9
+            </div>
+            <input type="text" class="wt-input" value="K7M9" placeholder="请输入上方 4 位字符（不区分大小写）" data-comp-id="captcha.chars.input" data-comp-name="字符验证码输入框" data-comp-role="control" />
+          </div>
+
+          <!-- 题型 2：滑块拼图 -->
+          <div data-when-var="captcha_type" data-when-val="slider" class="wt-stack hidden">
+            <div style="height:96px;border:1px solid var(--wt-border);border-radius:6px;background:var(--wt-white);position:relative;display:flex;align-items:center;justify-content:center;">
+              <span class="wt-muted">拼图背景区 · 拖动下方滑块对齐右侧缺口</span>
+              <span style="position:absolute;right:38px;top:28px;width:36px;height:36px;border:2px dashed var(--wt-accent);background:var(--wt-fill);border-radius:4px;"></span>
+            </div>
+            <div style="height:36px;border:1px solid var(--wt-border);border-radius:6px;background:var(--wt-white);display:flex;align-items:center;padding:2px;">
+              <button type="button" class="wt-btn wt-btn-primary wt-btn-sm" data-comp-id="captcha.slider.thumb" data-comp-name="滑块拖动按钮" data-comp-role="control" onclick="setVar('verify_result','pass');goNode('F_SUBMIT')">→ 拖动滑块</button>
+              <span class="wt-muted" style="margin-left:10px;">向右拖动滑块完成拼图</span>
+            </div>
+          </div>
+
+          <!-- 题型 3：九宫格图片 -->
+          <div data-when-var="captcha_type" data-when-val="grid" class="wt-stack hidden">
+            <div class="wt-between">
+              <span style="font-size:12px;font-weight:600;">请点击所有包含「路灯」的图片</span>
+              <span class="wt-badge">已选 2 项</span>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;">
+              <button type="button" class="wt-btn" style="height:52px;background:var(--wt-fill);" data-comp-id="captcha.grid.cell1" data-comp-name="九宫格候选图按钮" data-comp-role="control">[图1 ✓]</button>
+              <div class="wt-card" style="height:52px;display:flex;align-items:center;justify-content:center;"><span class="wt-muted">[图2]</span></div>
+              <div class="wt-card" style="height:52px;display:flex;align-items:center;justify-content:center;background:var(--wt-fill);"><strong>[图3 ✓]</strong></div>
+              <div class="wt-card" style="height:52px;display:flex;align-items:center;justify-content:center;"><span class="wt-muted">[图4]</span></div>
+              <div class="wt-card" style="height:52px;display:flex;align-items:center;justify-content:center;"><span class="wt-muted">[图5]</span></div>
+              <div class="wt-card" style="height:52px;display:flex;align-items:center;justify-content:center;"><span class="wt-muted">[图6]</span></div>
+              <div class="wt-card" style="height:52px;display:flex;align-items:center;justify-content:center;"><span class="wt-muted">[图7]</span></div>
+              <div class="wt-card" style="height:52px;display:flex;align-items:center;justify-content:center;"><span class="wt-muted">[图8]</span></div>
+              <div class="wt-card" style="height:52px;display:flex;align-items:center;justify-content:center;"><span class="wt-muted">[图9]</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="wt-modal-ft wt-between">
+        <button type="button" class="wt-btn wt-btn-sm" data-comp-id="captcha.fail_sim.btn" data-comp-name="模拟校验失败按钮" data-comp-role="control" onclick="setVar('verify_result','fail');goBranch('fail_limit')">模拟失败</button>
+        <button type="button" class="wt-btn wt-btn-primary wt-btn-sm" data-comp-id="captcha.submit.btn" data-comp-name="提交验证按钮" data-comp-role="control" onclick="setVar('verify_result','pass');goNode('F_SUBMIT')">确认提交验证</button>
+      </div>
+    </div>
+  </div>
+</div></div>
+<div class="page" id="p-editor-verify-failed" data-page="p-editor-verify-failed" data-page-id="p-editor-verify-failed"><div style="position:relative;min-height:560px;">
+  <div class="wt-navbar">
+    <span>发布动态</span>
+    <span class="wt-tag">底层草稿已保留</span>
+  </div>
+  <div class="wt-stack" style="padding:12px;opacity:0.42;">
+    <div class="wt-card">
+      <div class="wt-card-bd">
+        <p>#周末徒步路线 分享今天实测的山脊环线轨迹，全程 11 公里爬升温和，水源补给点清晰。</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="wt-mask">
+    <div class="wt-modal" style="max-width:340px;" data-comp-id="captcha.modal" data-comp-name="安全验证浮层" data-comp-role="modal">
+      <div class="wt-modal-hd">
+        <span>安全验证</span>
+        <button type="button" class="wt-btn wt-btn-ghost wt-btn-sm" data-comp-id="captcha.cancel.btn" data-comp-name="安全验证取消按钮" data-comp-role="control" onclick="setVar('verify_result','abort');setVar('abort_reason','cancel');goNode('F_CANCEL_PUBLISH')">✕</button>
+      </div>
+
+      <div class="wt-modal-bd wt-stack">
+        <div class="wt-alert">
+          <strong>验证失败：</strong>当日累计失败未达上限 N，原题目已锁定（隐藏换一张，无冷却读秒），请点击下方「重新验证」重新请求判断。
+        </div>
+
+        <div class="wt-card" style="padding:12px;background:var(--wt-fill);opacity:0.68;" data-comp-id="captcha.body" data-comp-name="已锁定原题区域" data-comp-role="container">
+          <div data-when-var="captcha_type" data-when-val="chars" class="wt-between">
+            <span>原字符题：K 7 M 9</span>
+            <span class="wt-badge">原题已锁定</span>
+          </div>
+          <div data-when-var="captcha_type" data-when-val="slider" class="wt-between hidden">
+            <span>原滑块拼图题</span>
+            <span class="wt-badge">原题已锁定</span>
+          </div>
+          <div data-when-var="captcha_type" data-when-val="grid" class="wt-between hidden">
+            <span>原九宫格点选题</span>
+            <span class="wt-badge">原题已锁定</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="wt-modal-ft">
+        <button type="button" class="wt-btn wt-btn-primary wt-btn-block" data-comp-id="captcha.retry.btn" data-comp-name="重新验证按钮" data-comp-role="control" data-anchor="anchor-retry-btn" onclick="goNode('F_RECHECK')">重新验证</button>
+      </div>
+    </div>
+  </div>
+</div></div>
+<div class="page" id="p-editor-blocked" data-page="p-editor-blocked" data-page-id="p-editor-blocked"><div class="wt-navbar">
+  <button type="button" class="wt-btn wt-btn-ghost wt-btn-sm" data-comp-id="editor.cancel.btn" data-comp-name="返回动态流按钮" data-comp-role="control" onclick="goNode('F_ENTRY')">取消</button>
+  <span>发布动态（已拦截保留草稿）</span>
+  <button type="button" class="wt-btn wt-btn-sm" data-comp-id="editor.publish.btn" data-comp-name="发布按钮" data-comp-role="control" onclick="setVar('risk_result','deny');goNode('F_RECHECK')">发布</button>
+</div>
+
+<div class="wt-stack" style="padding:12px;">
+  <div class="wt-toast" data-comp-id="common.toast" data-comp-name="全局提示 Toast" data-comp-role="feedback" data-anchor="anchor-toast">
+    发布失败，请稍后再试
+  </div>
+
+  <div class="wt-alert">
+    <strong>风控黑名单拦截说明：</strong>验证浮层已关闭，已编辑的正文与附件 100% 保留。累计拉黑自然日不足 M 天时，将于次日 00:00 自动移出黑名单（不自动重发）。
+  </div>
+
+  <div class="wt-card">
+    <div class="wt-card-bd wt-stack">
+      <textarea class="wt-textarea" style="min-height:100px;" data-comp-id="editor.content.input" data-comp-name="保留的正文编辑区" data-comp-role="control">#周末徒步路线 分享今天实测的山脊环线轨迹，全程 11 公里爬升温和，水源补给点清晰。</textarea>
+      <div class="wt-row">
+        <span class="wt-chip"># 周末徒步路线</span>
+        <span class="wt-chip">[定位] 香山森林公园</span>
+      </div>
+    </div>
+  </div>
+</div></div>
+<div class="page" id="p-editor-cancelled" data-page="p-editor-cancelled" data-page-id="p-editor-cancelled"><div class="wt-navbar">
+  <button type="button" class="wt-btn wt-btn-ghost wt-btn-sm" data-comp-id="editor.cancel.btn" data-comp-name="返回动态流按钮" data-comp-role="control" onclick="goNode('F_ENTRY')">取消</button>
+  <span>发布动态（已取消提交）</span>
+  <button type="button" class="wt-btn wt-btn-primary wt-btn-sm" data-comp-id="editor.publish.btn" data-comp-name="再次点击发布按钮" data-comp-role="control" onclick="goBranch('login_state')">发布</button>
+</div>
+
+<div class="wt-stack" style="padding:12px;">
+  <div class="wt-alert">
+    <strong>静默保留草稿：</strong>用户主动关闭登录浮层或安全验证浮层后，回到当前发布器并完整保留全部已编辑内容，不弹出 Toast，不增加当日验证失败计数。
+  </div>
+
+  <div class="wt-card">
+    <div class="wt-card-bd wt-stack">
+      <textarea class="wt-textarea" style="min-height:108px;" data-comp-id="editor.content.input" data-comp-name="保留的正文编辑区" data-comp-role="control">#周末徒步路线 分享今天实测的山脊环线轨迹，全程 11 公里爬升温和，水源补给点清晰。</textarea>
+      <div class="wt-row">
+        <span class="wt-chip"># 周末徒步路线</span>
+        <span class="wt-chip">[定位] 香山森林公园</span>
+      </div>
+    </div>
+    <div class="wt-card-ft wt-between">
+      <span class="wt-muted">草稿完整保留，可继续修改或再次点击右上角「发布」</span>
+    </div>
+  </div>
+</div></div>
+<div class="page" id="p-editor-network" data-page="p-editor-network" data-page-id="p-editor-network"><div class="wt-navbar">
+  <button type="button" class="wt-btn wt-btn-ghost wt-btn-sm" data-comp-id="editor.cancel.btn" data-comp-name="返回动态流按钮" data-comp-role="control" onclick="goNode('F_ENTRY')">取消</button>
+  <span>发布动态（网络超时）</span>
+  <button type="button" class="wt-btn wt-btn-primary wt-btn-sm" data-comp-id="editor.publish.btn" data-comp-name="重试发布按钮" data-comp-role="control" onclick="goNode('F_RECHECK')">重试发布</button>
+</div>
+
+<div class="wt-stack" style="padding:12px;">
+  <div class="wt-toast" data-comp-id="common.toast" data-comp-name="全局提示 Toast" data-comp-role="feedback" data-anchor="anchor-toast">
+    网络超时，请稍后重试
+  </div>
+
+  <div class="wt-alert">
+    <strong>网络超时兜底：</strong>风控请求或人机校验网络超时后自动关闭浮层，完整保留草稿内容，本次异常不计入当日失败次数。
+  </div>
+
+  <div class="wt-card">
+    <div class="wt-card-bd wt-stack">
+      <textarea class="wt-textarea" style="min-height:100px;" data-comp-id="editor.content.input" data-comp-name="保留的正文编辑区" data-comp-role="control">#周末徒步路线 分享今天实测的山脊环线轨迹，全程 11 公里爬升温和，水源补给点清晰。</textarea>
+      <div class="wt-row">
+        <span class="wt-chip"># 周末徒步路线</span>
+        <span class="wt-chip">[定位] 香山森林公园</span>
+      </div>
+    </div>
+  </div>
+</div></div>
+<div class="page" id="p-editor-expired" data-page="p-editor-expired" data-page-id="p-editor-expired"><div style="position:relative;min-height:560px;">
+  <div class="wt-navbar">
+    <span>发布动态</span>
+    <span class="wt-tag">底层草稿已保留</span>
+  </div>
+  <div class="wt-stack" style="padding:12px;opacity:0.42;">
+    <div class="wt-card">
+      <div class="wt-card-bd">
+        <p>#周末徒步路线 分享今天实测的山脊环线轨迹，全程 11 公里爬升温和，水源补给点清晰。</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="wt-mask">
+    <div class="wt-modal" style="max-width:340px;" data-comp-id="captcha.modal" data-comp-name="安全验证浮层" data-comp-role="modal">
+      <div class="wt-modal-hd">
+        <span>安全验证</span>
+        <button type="button" class="wt-btn wt-btn-ghost wt-btn-sm" data-comp-id="captcha.cancel.btn" data-comp-name="安全验证取消按钮" data-comp-role="control" onclick="setVar('verify_result','abort');setVar('abort_reason','cancel');goNode('F_CANCEL_PUBLISH')">✕</button>
+      </div>
+
+      <div class="wt-modal-bd wt-stack">
+        <div class="wt-alert">
+          <strong>验证已过期：</strong>当前题目停留超时失效（不计入当日失败次数），原题目已锁定并隐藏「换一张」，请点击「重新验证」获取最新校验。
+        </div>
+
+        <div class="wt-card" style="padding:12px;background:var(--wt-fill);opacity:0.68;" data-comp-id="captcha.body" data-comp-name="已过期原题区域" data-comp-role="container">
+          <div data-when-var="captcha_type" data-when-val="chars" class="wt-between">
+            <span>原字符题已超时失效</span>
+            <span class="wt-badge">已过期</span>
+          </div>
+          <div data-when-var="captcha_type" data-when-val="slider" class="wt-between hidden">
+            <span>原滑块拼图题已超时失效</span>
+            <span class="wt-badge">已过期</span>
+          </div>
+          <div data-when-var="captcha_type" data-when-val="grid" class="wt-between hidden">
+            <span>原九宫格题已超时失效</span>
+            <span class="wt-badge">已过期</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="wt-modal-ft">
+        <button type="button" class="wt-btn wt-btn-primary wt-btn-block" data-comp-id="captcha.retry.btn" data-comp-name="重新验证按钮" data-comp-role="control" data-anchor="anchor-retry-btn" onclick="goNode('F_RECHECK')">重新验证</button>
+      </div>
+    </div>
+  </div>
+</div></div>
+<div class="page" id="p-editor-submitting" data-page="p-editor-submitting" data-page-id="p-editor-submitting"><div class="wt-navbar">
+  <button type="button" class="wt-btn wt-btn-ghost wt-btn-sm" disabled data-comp-id="editor.cancel.btn" data-comp-name="取消按钮（提交中禁用）" data-comp-role="control">取消</button>
+  <span>正在提交发布...</span>
+  <button type="button" class="wt-btn wt-btn-primary wt-btn-sm" disabled data-comp-id="editor.publish.btn" data-comp-name="发布中按钮" data-comp-role="control">发布中...</button>
+</div>
+
+<div class="wt-stack" style="padding:12px;">
+  <div class="wt-alert">
+    <strong>风控已放行 / 验证已通过：</strong>正在自动续传原有发布接口请求，按钮置为防重禁用态，无需用户再次点击发布。
+  </div>
+
+  <div class="wt-card">
+    <div class="wt-card-bd wt-stack">
+      <textarea class="wt-textarea" style="min-height:100px;" readonly data-comp-id="editor.content.input" data-comp-name="正文编辑区" data-comp-role="control">#周末徒步路线 分享今天实测的山脊环线轨迹，全程 11 公里爬升温和，水源补给点清晰。</textarea>
+    </div>
+    <div class="wt-card-ft wt-between">
+      <span class="wt-muted">等待原有发布服务返回确认结果</span>
+      <button type="button" class="wt-btn wt-btn-primary wt-btn-sm" data-comp-id="editor.sim_finish.btn" data-comp-name="模拟收到发布接口响应按钮" data-comp-role="control" onclick="goBranch('publish_ok')">推进发布结果 →</button>
+    </div>
+  </div>
+</div></div>
+<div class="page" id="p-editor-publish-failed" data-page="p-editor-publish-failed" data-page-id="p-editor-publish-failed"><div class="wt-navbar">
+  <button type="button" class="wt-btn wt-btn-ghost wt-btn-sm" data-comp-id="editor.cancel.btn" data-comp-name="返回动态流按钮" data-comp-role="control" onclick="goNode('F_ENTRY')">取消</button>
+  <span>发布动态（原流程未成功）</span>
+  <button type="button" class="wt-btn wt-btn-primary wt-btn-sm" data-comp-id="editor.publish.btn" data-comp-name="修改后重新发布按钮" data-comp-role="control" onclick="goNode('F_RECHECK')">重新发布</button>
+</div>
+
+<div class="wt-stack" style="padding:12px;">
+  <div class="wt-toast" data-comp-id="common.toast" data-comp-name="全局提示 Toast" data-comp-role="feedback" data-anchor="anchor-toast">
+    原动态暂不支持转发或命中内容规范限制，请修改后重试
+  </div>
+
+  <div class="wt-card">
+    <div class="wt-card-bd wt-stack">
+      <textarea class="wt-textarea" style="min-height:100px;" data-comp-id="editor.content.input" data-comp-name="保留的正文编辑区" data-comp-role="control">#周末徒步路线 分享今天实测的山脊环线轨迹，全程 11 公里爬升温和，水源补给点清晰。</textarea>
+      <span class="wt-help">原有业务接口返回失败时，草稿内容完整保留，且不累加人机验证失败次数。</span>
+    </div>
+  </div>
+</div></div>
+          </div>
+          <div class="frame-wide hidden" id="frame-wide">
+<div class="page" id="p-pc-source-base" data-page="p-pc-source-base" data-page-id="p-pc-source-base"><div class="wt-layout-pc-timeline"><div class="wt-navbar">
+  <span>动态社区 · 推荐广场</span>
+  <button type="button" class="wt-btn wt-btn-primary wt-btn-sm" data-comp-id="source.entry.publish_btn" data-comp-name="发动态入口按钮" data-comp-role="control" onclick="setVar('publish_scene','original');goNode('F_EDITOR')">+ 发动态</button>
+</div>
+
+<div class="wt-stack" style="padding:12px;">
+  <div class="wt-card">
+    <div class="wt-card-hd wt-between">
+      <div class="wt-row">
+        <span class="wt-avatar">林</span>
+        <div class="wt-col" style="gap:1px;">
+          <span>林晓 · 户外摄影</span>
+          <span class="wt-muted">12 分钟前 · 热门话题 #周末徒步路线</span>
+        </div>
+      </div>
+      <span class="wt-tag">关注</span>
+    </div>
+    <div class="wt-card-bd wt-stack">
+      <p>今天整理的秋季近郊徒步装备清单，轻量化背包控制在 6kg 以内体验舒适很多，欢迎大家补充实用建议。</p>
+      <div class="wt-row" style="gap:6px;">
+        <div class="wt-skeleton" style="width:96px;height:68px;border:1px solid var(--wt-border-light);"></div>
+        <div class="wt-skeleton" style="width:96px;height:68px;border:1px solid var(--wt-border-light);"></div>
+        <div class="wt-skeleton" style="width:96px;height:68px;border:1px solid var(--wt-border-light);"></div>
+      </div>
+    </div>
+    <div class="wt-card-ft wt-between">
+      <span class="wt-muted">赞 128 · 评论 34</span>
+      <button type="button" class="wt-btn wt-btn-sm" data-comp-id="source.repost.btn" data-comp-name="动态卡片转发按钮" data-comp-role="control" onclick="setVar('publish_scene','repost');goNode('F_EDITOR')">转发动态</button>
+    </div>
+  </div>
+
+  <div class="wt-card">
+    <div class="wt-card-hd wt-between">
+      <div class="wt-row">
+        <span class="wt-avatar">周</span>
+        <div class="wt-col" style="gap:1px;">
+          <span>周航 · 独立开发</span>
+          <span class="wt-muted">35 分钟前 · #效率工具分享</span>
+        </div>
+      </div>
+      <span class="wt-tag">已关注</span>
+    </div>
+    <div class="wt-card-bd">
+      <p>把日常碎片笔记统一收敛到本地 Markdown 目录后，检索和版本回溯顺畅了不少。</p>
+    </div>
+    <div class="wt-card-ft wt-between">
+      <span class="wt-muted">赞 64 · 评论 19</span>
+      <span class="wt-muted">进入发布器前行为无变更</span>
+    </div>
+  </div>
+</div></div></div>
+<div class="page" id="p-pc-source-success" data-page="p-pc-source-success" data-page-id="p-pc-source-success"><div class="wt-layout-pc-timeline"><div class="wt-navbar">
+  <span>动态社区 · 推荐广场</span>
+  <button type="button" class="wt-btn wt-btn-primary wt-btn-sm" data-comp-id="source.new_post.btn" data-comp-name="再次发动态按钮" data-comp-role="control" onclick="goNode('F_EDITOR')">+ 再发一条</button>
+</div>
+
+<div class="wt-stack" style="padding:12px;">
+  <div class="wt-toast" data-comp-id="common.toast" data-comp-name="全局提示 Toast" data-comp-role="feedback" data-anchor="anchor-toast">
+    <span data-when-var="publish_scene" data-when-val="original">发布成功</span>
+    <span data-when-var="publish_scene" data-when-val="repost" class="hidden">转发成功</span>
+  </div>
+
+  <div class="wt-card">
+    <div class="wt-card-hd wt-between">
+      <div class="wt-row">
+        <span class="wt-avatar">我</span>
+        <div class="wt-col" style="gap:1px;">
+          <span>当前登录用户（刚刚发布）</span>
+          <span class="wt-muted">刚刚 · 公开可见</span>
+        </div>
+      </div>
+      <span class="wt-badge">最新动态</span>
+    </div>
+    <div class="wt-card-bd wt-stack">
+      <p data-when-var="publish_scene" data-when-val="original">#周末徒步路线 分享今天实测的山脊环线轨迹，全程 11 公里爬升温和，水源补给点清晰。</p>
+      <div data-when-var="publish_scene" data-when-val="repost" class="wt-stack hidden">
+        <p>附议这份轻量化清单，保温水壶和头灯确实必不可少！</p>
+        <div class="wt-alert">
+          <span class="wt-muted">@林晓：今天整理的秋季近郊徒步装备清单，轻量化背包控制在 6kg 以内体验舒适很多……</span>
+        </div>
+      </div>
+    </div>
+    <div class="wt-card-ft wt-between">
+      <span class="wt-muted">原发布接口确认成功并已刷新时间线</span>
+      <span class="wt-muted">当日验证失败计数：0</span>
+    </div>
+  </div>
+</div></div></div>
+<div class="page" id="p-pc-editor-base" data-page="p-pc-editor-base" data-page-id="p-pc-editor-base"><div class="wt-layout-pc-editor-modal"><div class="wt-navbar">
+  <button type="button" class="wt-btn wt-btn-ghost wt-btn-sm" data-comp-id="editor.cancel.btn" data-comp-name="取消按钮" data-comp-role="control" onclick="goNode('F_ENTRY')">取消</button>
+  <span data-when-var="publish_scene" data-when-val="original">发布原创动态</span>
+  <span data-when-var="publish_scene" data-when-val="repost" class="hidden">转发社区动态</span>
+  <button type="button" class="wt-btn wt-btn-primary wt-btn-sm" data-comp-id="editor.publish.btn" data-comp-name="发布按钮" data-comp-role="control" data-anchor="anchor-pub-btn" onclick="goBranch('login_state')">发布（Ctrl/Cmd+Enter）</button>
+</div>
+
+<div class="wt-stack" style="padding:12px;">
+  <div class="wt-card">
+    <div class="wt-card-bd wt-stack">
+      <textarea class="wt-textarea" style="min-height:108px;" placeholder="分享你的新鲜事或观点..." data-comp-id="editor.content.input" data-comp-name="正文编辑区" data-comp-role="control">#周末徒步路线 分享今天实测的山脊环线轨迹，全程 11 公里爬升温和，水源补给点清晰。</textarea>
+
+      <div data-when-var="publish_scene" data-when-val="original" class="wt-stack">
+        <div class="wt-row" style="gap:8px;">
+          <div class="wt-card" style="width:72px;height:72px;display:flex;align-items:center;justify-content:center;background:var(--wt-bg);">
+            <span class="wt-muted">配图 1</span>
+          </div>
+          <div class="wt-card" style="width:72px;height:72px;display:flex;align-items:center;justify-content:center;background:var(--wt-bg);">
+            <span class="wt-muted">配图 2</span>
+          </div>
+        </div>
+        <div class="wt-row">
+          <span class="wt-chip"># 周末徒步路线</span>
+          <span class="wt-chip">[定位] 香山森林公园</span>
+        </div>
+      </div>
+
+      <div data-when-var="publish_scene" data-when-val="repost" class="wt-alert hidden">
+        <strong>原动态引用（@林晓）：</strong>
+        <p class="wt-muted" style="margin-top:4px;">今天整理的秋季近郊徒步装备清单，轻量化背包控制在 6kg 以内体验舒适很多……</p>
+      </div>
+    </div>
+    <div class="wt-card-ft wt-between">
+      <span class="wt-muted">已输入 42 / 2000 字</span>
+      <button type="button" class="wt-btn wt-btn-sm" data-comp-id="editor.empty_state.btn" data-comp-name="切换空内容校验预览按钮" data-comp-role="control" onclick="goState('editor','empty')">预览空内容提示</button>
+    </div>
+  </div>
+</div></div></div>
+<div class="page" id="p-pc-editor-empty" data-page="p-pc-editor-empty" data-page-id="p-pc-editor-empty"><div class="wt-layout-pc-editor-modal"><div class="wt-navbar">
+  <button type="button" class="wt-btn wt-btn-ghost wt-btn-sm" data-comp-id="editor.cancel.btn" data-comp-name="取消按钮" data-comp-role="control" onclick="goNode('F_ENTRY')">取消</button>
+  <span>发布动态（同页校验态）</span>
+  <button type="button" class="wt-btn wt-btn-sm" disabled data-comp-id="editor.publish.btn" data-comp-name="发布按钮" data-comp-role="control">发布</button>
+</div>
+
+<div class="wt-stack" style="padding:12px;">
+  <div class="wt-toast" data-comp-id="common.toast" data-comp-name="全局提示 Toast" data-comp-role="feedback" data-anchor="anchor-toast">
+    请输入动态正文或添加图片后再发布（不触发风控请求）
+  </div>
+
+  <div class="wt-card">
+    <div class="wt-card-bd wt-stack">
+      <textarea class="wt-textarea" style="min-height:108px;" placeholder="分享你的新鲜事或观点（当前为空）..." data-comp-id="editor.content.input" data-comp-name="正文编辑区" data-comp-role="control"></textarea>
+      <span class="wt-help">前端同页拦截：未输入有效内容时不请求云端风控接口，也不弹出人机验证。</span>
+    </div>
+    <div class="wt-card-ft wt-between">
+      <span class="wt-muted">已输入 0 / 2000 字</span>
+      <button type="button" class="wt-btn wt-btn-primary wt-btn-sm" data-comp-id="editor.fill_back.btn" data-comp-name="恢复填写内容按钮" data-comp-role="control" onclick="goState('editor','filled')">恢复已填写内容</button>
+    </div>
+  </div>
+</div></div></div>
+<div class="page" id="p-pc-login-base" data-page="p-pc-login-base" data-page-id="p-pc-login-base"><div class="wt-layout-pc-modal"><div style="position:relative;min-height:560px;">
+  <div class="wt-navbar">
+    <span>发布原创动态</span>
+    <span class="wt-tag">底层草稿已保留</span>
+  </div>
+  <div class="wt-stack" style="padding:12px;opacity:0.45;">
+    <div class="wt-card">
+      <div class="wt-card-bd">
+        <p>#周末徒步路线 分享今天实测的山脊环线轨迹，全程 11 公里爬升温和，水源补给点清晰。</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="wt-mask">
+    <div class="wt-modal" data-comp-id="login.sheet" data-comp-name="登录浮层" data-comp-role="modal" data-anchor="anchor-login-sheet">
+      <div class="wt-modal-hd">
+        <span>登录后继续发布</span>
+        <button type="button" class="wt-btn wt-btn-ghost wt-btn-sm" data-comp-id="login.cancel.btn" data-comp-name="关闭登录浮层按钮" data-comp-role="control" onclick="setVar('login_result','cancel');goNode('F_CANCEL_LOGIN')">✕</button>
+      </div>
+      <div class="wt-modal-bd wt-stack">
+        <p class="wt-muted">当前处于未登录状态，完成登录后将自动携带当前账号衔接发布风控判断，已编辑正文不会丢失。</p>
+        <div class="wt-field">
+          <label class="wt-label">手机号码</label>
+          <input type="tel" class="wt-input" value="138 **** 6620" placeholder="请输入手机号" data-comp-id="login.phone.input" data-comp-name="手机号输入框" data-comp-role="control" />
+        </div>
+        <div class="wt-field">
+          <label class="wt-label">短信验证码</label>
+          <input type="text" class="wt-input" value="839204" placeholder="请输入 6 位验证码" data-comp-id="login.code.input" data-comp-name="短信验证码输入框" data-comp-role="control" />
+        </div>
+      </div>
+      <div class="wt-modal-ft wt-between">
+        <button type="button" class="wt-btn wt-btn-sm" data-comp-id="login.pending.btn" data-comp-name="模拟待完成停留按钮" data-comp-role="control" onclick="setVar('login_result','pending');goNode('F_LOGIN_PENDING')">输错停留</button>
+        <button type="button" class="wt-btn wt-btn-primary wt-btn-sm" data-comp-id="login.submit.btn" data-comp-name="登录并继续发布按钮" data-comp-role="control" onclick="setVar('login_result','ok');goNode('F_RECHECK')">登录并继续发布</button>
+      </div>
+    </div>
+  </div>
+</div></div></div>
+<div class="page" id="p-pc-login-pending" data-page="p-pc-login-pending" data-page-id="p-pc-login-pending"><div class="wt-layout-pc-modal"><div style="position:relative;min-height:560px;">
+  <div class="wt-navbar">
+    <span>发布原创动态</span>
+    <span class="wt-tag">底层草稿已保留</span>
+  </div>
+  <div class="wt-stack" style="padding:12px;opacity:0.45;">
+    <div class="wt-card">
+      <div class="wt-card-bd">
+        <p>#周末徒步路线 分享今天实测的山脊环线轨迹，全程 11 公里爬升温和，水源补给点清晰。</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="wt-mask">
+    <div class="wt-modal" data-comp-id="login.sheet" data-comp-name="登录浮层" data-comp-role="modal" data-anchor="anchor-login-sheet">
+      <div class="wt-modal-hd">
+        <span>登录后继续发布（待完成）</span>
+        <button type="button" class="wt-btn wt-btn-ghost wt-btn-sm" data-comp-id="login.cancel.btn" data-comp-name="关闭登录浮层按钮" data-comp-role="control" onclick="setVar('login_result','cancel');goNode('F_CANCEL_LOGIN')">✕</button>
+      </div>
+      <div class="wt-modal-bd wt-stack">
+        <div class="wt-alert">
+          短信验证码有误或尚未完成确认，请核对后重试（不计入人机验证失败次数）。
+        </div>
+        <div class="wt-field">
+          <label class="wt-label">重新输入短信验证码</label>
+          <input type="text" class="wt-input" value="839204" data-comp-id="login.code.input" data-comp-name="短信验证码输入框" data-comp-role="control" />
+        </div>
+      </div>
+      <div class="wt-modal-ft">
+        <button type="button" class="wt-btn wt-btn-primary wt-btn-sm" data-comp-id="login.continue.btn" data-comp-name="重新输入并完成登录按钮" data-comp-role="control" onclick="setVar('login_result','ok');goNode('F_RECHECK')">完成登录并继续</button>
+      </div>
+    </div>
+  </div>
+</div></div></div>
+<div class="page" id="p-pc-editor-verify" data-page="p-pc-editor-verify" data-page-id="p-pc-editor-verify"><div class="wt-layout-pc-modal-360"><div style="position:relative;min-height:580px;">
+  <div class="wt-navbar">
+    <span>发布动态</span>
+    <span class="wt-tag">等待人机验证</span>
+  </div>
+  <div class="wt-stack" style="padding:12px;opacity:0.42;">
+    <div class="wt-card">
+      <div class="wt-card-bd">
+        <p>#周末徒步路线 分享今天实测的山脊环线轨迹，全程 11 公里爬升温和，水源补给点清晰。</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="wt-mask">
+    <div class="wt-modal" style="max-width:340px;" data-comp-id="captcha.modal" data-comp-name="安全验证浮层" data-comp-role="modal">
+      <div class="wt-modal-hd">
+        <span>安全验证</span>
+        <button type="button" class="wt-btn wt-btn-ghost wt-btn-sm" data-comp-id="captcha.cancel.btn" data-comp-name="安全验证取消按钮" data-comp-role="control" onclick="setVar('verify_result','abort');setVar('abort_reason','cancel');goNode('F_CANCEL_PUBLISH')">✕</button>
+      </div>
+
+      <div class="wt-modal-bd wt-stack">
+        <div class="wt-between">
+          <span class="wt-muted">请完成下方安全验证以继续发布</span>
+          <button type="button" class="wt-btn wt-btn-sm" data-comp-id="captcha.refresh.btn" data-comp-name="换一张按钮" data-comp-role="control">换一张</button>
+        </div>
+
+        <div class="wt-card" style="padding:10px;background:var(--wt-bg);" data-comp-id="captcha.body" data-comp-name="验证题型主区域" data-comp-role="container" data-anchor="anchor-captcha-body">
+          <!-- 题型 1：字符验证码 -->
+          <div data-when-var="captcha_type" data-when-val="chars" class="wt-stack">
+            <div style="height:64px;border:1px dashed var(--wt-border);border-radius:6px;background:var(--wt-white);display:flex;align-items:center;justify-content:center;letter-spacing:10px;font-size:22px;font-weight:700;">
+              K 7 M 9
+            </div>
+            <input type="text" class="wt-input" value="K7M9" placeholder="请输入上方 4 位字符（不区分大小写）" data-comp-id="captcha.chars.input" data-comp-name="字符验证码输入框" data-comp-role="control" />
+          </div>
+
+          <!-- 题型 2：滑块拼图 -->
+          <div data-when-var="captcha_type" data-when-val="slider" class="wt-stack hidden">
+            <div style="height:96px;border:1px solid var(--wt-border);border-radius:6px;background:var(--wt-white);position:relative;display:flex;align-items:center;justify-content:center;">
+              <span class="wt-muted">拼图背景区 · 拖动下方滑块对齐右侧缺口</span>
+              <span style="position:absolute;right:38px;top:28px;width:36px;height:36px;border:2px dashed var(--wt-accent);background:var(--wt-fill);border-radius:4px;"></span>
+            </div>
+            <div style="height:36px;border:1px solid var(--wt-border);border-radius:6px;background:var(--wt-white);display:flex;align-items:center;padding:2px;">
+              <button type="button" class="wt-btn wt-btn-primary wt-btn-sm" data-comp-id="captcha.slider.thumb" data-comp-name="滑块拖动按钮" data-comp-role="control" onclick="setVar('verify_result','pass');goNode('F_SUBMIT')">→ 拖动滑块</button>
+              <span class="wt-muted" style="margin-left:10px;">向右拖动滑块完成拼图</span>
+            </div>
+          </div>
+
+          <!-- 题型 3：九宫格图片 -->
+          <div data-when-var="captcha_type" data-when-val="grid" class="wt-stack hidden">
+            <div class="wt-between">
+              <span style="font-size:12px;font-weight:600;">请点击所有包含「路灯」的图片</span>
+              <span class="wt-badge">已选 2 项</span>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;">
+              <button type="button" class="wt-btn" style="height:52px;background:var(--wt-fill);" data-comp-id="captcha.grid.cell1" data-comp-name="九宫格候选图按钮" data-comp-role="control">[图1 ✓]</button>
+              <div class="wt-card" style="height:52px;display:flex;align-items:center;justify-content:center;"><span class="wt-muted">[图2]</span></div>
+              <div class="wt-card" style="height:52px;display:flex;align-items:center;justify-content:center;background:var(--wt-fill);"><strong>[图3 ✓]</strong></div>
+              <div class="wt-card" style="height:52px;display:flex;align-items:center;justify-content:center;"><span class="wt-muted">[图4]</span></div>
+              <div class="wt-card" style="height:52px;display:flex;align-items:center;justify-content:center;"><span class="wt-muted">[图5]</span></div>
+              <div class="wt-card" style="height:52px;display:flex;align-items:center;justify-content:center;"><span class="wt-muted">[图6]</span></div>
+              <div class="wt-card" style="height:52px;display:flex;align-items:center;justify-content:center;"><span class="wt-muted">[图7]</span></div>
+              <div class="wt-card" style="height:52px;display:flex;align-items:center;justify-content:center;"><span class="wt-muted">[图8]</span></div>
+              <div class="wt-card" style="height:52px;display:flex;align-items:center;justify-content:center;"><span class="wt-muted">[图9]</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="wt-modal-ft wt-between">
+        <button type="button" class="wt-btn wt-btn-sm" data-comp-id="captcha.fail_sim.btn" data-comp-name="模拟校验失败按钮" data-comp-role="control" onclick="setVar('verify_result','fail');goBranch('fail_limit')">模拟失败</button>
+        <button type="button" class="wt-btn wt-btn-primary wt-btn-sm" data-comp-id="captcha.submit.btn" data-comp-name="提交验证按钮" data-comp-role="control" onclick="setVar('verify_result','pass');goNode('F_SUBMIT')">确认提交验证</button>
+      </div>
+    </div>
+  </div>
+</div></div></div>
+<div class="page" id="p-pc-editor-verify-failed" data-page="p-pc-editor-verify-failed" data-page-id="p-pc-editor-verify-failed"><div class="wt-layout-pc-modal-360"><div style="position:relative;min-height:560px;">
+  <div class="wt-navbar">
+    <span>发布动态</span>
+    <span class="wt-tag">底层草稿已保留</span>
+  </div>
+  <div class="wt-stack" style="padding:12px;opacity:0.42;">
+    <div class="wt-card">
+      <div class="wt-card-bd">
+        <p>#周末徒步路线 分享今天实测的山脊环线轨迹，全程 11 公里爬升温和，水源补给点清晰。</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="wt-mask">
+    <div class="wt-modal" style="max-width:340px;" data-comp-id="captcha.modal" data-comp-name="安全验证浮层" data-comp-role="modal">
+      <div class="wt-modal-hd">
+        <span>安全验证</span>
+        <button type="button" class="wt-btn wt-btn-ghost wt-btn-sm" data-comp-id="captcha.cancel.btn" data-comp-name="安全验证取消按钮" data-comp-role="control" onclick="setVar('verify_result','abort');setVar('abort_reason','cancel');goNode('F_CANCEL_PUBLISH')">✕</button>
+      </div>
+
+      <div class="wt-modal-bd wt-stack">
+        <div class="wt-alert">
+          <strong>验证失败：</strong>当日累计失败未达上限 N，原题目已锁定（隐藏换一张，无冷却读秒），请点击下方「重新验证」重新请求判断。
+        </div>
+
+        <div class="wt-card" style="padding:12px;background:var(--wt-fill);opacity:0.68;" data-comp-id="captcha.body" data-comp-name="已锁定原题区域" data-comp-role="container">
+          <div data-when-var="captcha_type" data-when-val="chars" class="wt-between">
+            <span>原字符题：K 7 M 9</span>
+            <span class="wt-badge">原题已锁定</span>
+          </div>
+          <div data-when-var="captcha_type" data-when-val="slider" class="wt-between hidden">
+            <span>原滑块拼图题</span>
+            <span class="wt-badge">原题已锁定</span>
+          </div>
+          <div data-when-var="captcha_type" data-when-val="grid" class="wt-between hidden">
+            <span>原九宫格点选题</span>
+            <span class="wt-badge">原题已锁定</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="wt-modal-ft">
+        <button type="button" class="wt-btn wt-btn-primary wt-btn-block" data-comp-id="captcha.retry.btn" data-comp-name="重新验证按钮" data-comp-role="control" data-anchor="anchor-retry-btn" onclick="goNode('F_RECHECK')">重新验证</button>
+      </div>
+    </div>
+  </div>
+</div></div></div>
+<div class="page" id="p-pc-editor-blocked" data-page="p-pc-editor-blocked" data-page-id="p-pc-editor-blocked"><div class="wt-layout-pc-editor-modal"><div class="wt-navbar">
+  <button type="button" class="wt-btn wt-btn-ghost wt-btn-sm" data-comp-id="editor.cancel.btn" data-comp-name="返回动态流按钮" data-comp-role="control" onclick="goNode('F_ENTRY')">取消</button>
+  <span>发布动态（已拦截保留草稿）</span>
+  <button type="button" class="wt-btn wt-btn-sm" data-comp-id="editor.publish.btn" data-comp-name="发布按钮" data-comp-role="control" onclick="setVar('risk_result','deny');goNode('F_RECHECK')">发布</button>
+</div>
+
+<div class="wt-stack" style="padding:12px;">
+  <div class="wt-toast" data-comp-id="common.toast" data-comp-name="全局提示 Toast" data-comp-role="feedback" data-anchor="anchor-toast">
+    发布失败，请稍后再试
+  </div>
+
+  <div class="wt-alert">
+    <strong>风控黑名单拦截说明：</strong>验证浮层已关闭，已编辑的正文与附件 100% 保留。累计拉黑自然日不足 M 天时，将于次日 00:00 自动移出黑名单（不自动重发）。
+  </div>
+
+  <div class="wt-card">
+    <div class="wt-card-bd wt-stack">
+      <textarea class="wt-textarea" style="min-height:100px;" data-comp-id="editor.content.input" data-comp-name="保留的正文编辑区" data-comp-role="control">#周末徒步路线 分享今天实测的山脊环线轨迹，全程 11 公里爬升温和，水源补给点清晰。</textarea>
+      <div class="wt-row">
+        <span class="wt-chip"># 周末徒步路线</span>
+        <span class="wt-chip">[定位] 香山森林公园</span>
+      </div>
+    </div>
+  </div>
+</div></div></div>
+<div class="page" id="p-pc-editor-cancelled" data-page="p-pc-editor-cancelled" data-page-id="p-pc-editor-cancelled"><div class="wt-layout-pc-editor-modal"><div class="wt-navbar">
+  <button type="button" class="wt-btn wt-btn-ghost wt-btn-sm" data-comp-id="editor.cancel.btn" data-comp-name="返回动态流按钮" data-comp-role="control" onclick="goNode('F_ENTRY')">取消</button>
+  <span>发布动态（已取消提交）</span>
+  <button type="button" class="wt-btn wt-btn-primary wt-btn-sm" data-comp-id="editor.publish.btn" data-comp-name="再次点击发布按钮" data-comp-role="control" onclick="goBranch('login_state')">发布</button>
+</div>
+
+<div class="wt-stack" style="padding:12px;">
+  <div class="wt-alert">
+    <strong>静默保留草稿：</strong>用户主动关闭登录浮层或安全验证浮层后，回到当前发布器并完整保留全部已编辑内容，不弹出 Toast，不增加当日验证失败计数。
+  </div>
+
+  <div class="wt-card">
+    <div class="wt-card-bd wt-stack">
+      <textarea class="wt-textarea" style="min-height:108px;" data-comp-id="editor.content.input" data-comp-name="保留的正文编辑区" data-comp-role="control">#周末徒步路线 分享今天实测的山脊环线轨迹，全程 11 公里爬升温和，水源补给点清晰。</textarea>
+      <div class="wt-row">
+        <span class="wt-chip"># 周末徒步路线</span>
+        <span class="wt-chip">[定位] 香山森林公园</span>
+      </div>
+    </div>
+    <div class="wt-card-ft wt-between">
+      <span class="wt-muted">草稿完整保留，可继续修改或再次点击右上角「发布」</span>
+    </div>
+  </div>
+</div></div></div>
+<div class="page" id="p-pc-editor-network" data-page="p-pc-editor-network" data-page-id="p-pc-editor-network"><div class="wt-layout-pc-editor-modal"><div class="wt-navbar">
+  <button type="button" class="wt-btn wt-btn-ghost wt-btn-sm" data-comp-id="editor.cancel.btn" data-comp-name="返回动态流按钮" data-comp-role="control" onclick="goNode('F_ENTRY')">取消</button>
+  <span>发布动态（网络超时）</span>
+  <button type="button" class="wt-btn wt-btn-primary wt-btn-sm" data-comp-id="editor.publish.btn" data-comp-name="重试发布按钮" data-comp-role="control" onclick="goNode('F_RECHECK')">重试发布</button>
+</div>
+
+<div class="wt-stack" style="padding:12px;">
+  <div class="wt-toast" data-comp-id="common.toast" data-comp-name="全局提示 Toast" data-comp-role="feedback" data-anchor="anchor-toast">
+    网络超时，请稍后重试
+  </div>
+
+  <div class="wt-alert">
+    <strong>网络超时兜底：</strong>风控请求或人机校验网络超时后自动关闭浮层，完整保留草稿内容，本次异常不计入当日失败次数。
+  </div>
+
+  <div class="wt-card">
+    <div class="wt-card-bd wt-stack">
+      <textarea class="wt-textarea" style="min-height:100px;" data-comp-id="editor.content.input" data-comp-name="保留的正文编辑区" data-comp-role="control">#周末徒步路线 分享今天实测的山脊环线轨迹，全程 11 公里爬升温和，水源补给点清晰。</textarea>
+      <div class="wt-row">
+        <span class="wt-chip"># 周末徒步路线</span>
+        <span class="wt-chip">[定位] 香山森林公园</span>
+      </div>
+    </div>
+  </div>
+</div></div></div>
+<div class="page" id="p-pc-editor-expired" data-page="p-pc-editor-expired" data-page-id="p-pc-editor-expired"><div class="wt-layout-pc-modal-360"><div style="position:relative;min-height:560px;">
+  <div class="wt-navbar">
+    <span>发布动态</span>
+    <span class="wt-tag">底层草稿已保留</span>
+  </div>
+  <div class="wt-stack" style="padding:12px;opacity:0.42;">
+    <div class="wt-card">
+      <div class="wt-card-bd">
+        <p>#周末徒步路线 分享今天实测的山脊环线轨迹，全程 11 公里爬升温和，水源补给点清晰。</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="wt-mask">
+    <div class="wt-modal" style="max-width:340px;" data-comp-id="captcha.modal" data-comp-name="安全验证浮层" data-comp-role="modal">
+      <div class="wt-modal-hd">
+        <span>安全验证</span>
+        <button type="button" class="wt-btn wt-btn-ghost wt-btn-sm" data-comp-id="captcha.cancel.btn" data-comp-name="安全验证取消按钮" data-comp-role="control" onclick="setVar('verify_result','abort');setVar('abort_reason','cancel');goNode('F_CANCEL_PUBLISH')">✕</button>
+      </div>
+
+      <div class="wt-modal-bd wt-stack">
+        <div class="wt-alert">
+          <strong>验证已过期：</strong>当前题目停留超时失效（不计入当日失败次数），原题目已锁定并隐藏「换一张」，请点击「重新验证」获取最新校验。
+        </div>
+
+        <div class="wt-card" style="padding:12px;background:var(--wt-fill);opacity:0.68;" data-comp-id="captcha.body" data-comp-name="已过期原题区域" data-comp-role="container">
+          <div data-when-var="captcha_type" data-when-val="chars" class="wt-between">
+            <span>原字符题已超时失效</span>
+            <span class="wt-badge">已过期</span>
+          </div>
+          <div data-when-var="captcha_type" data-when-val="slider" class="wt-between hidden">
+            <span>原滑块拼图题已超时失效</span>
+            <span class="wt-badge">已过期</span>
+          </div>
+          <div data-when-var="captcha_type" data-when-val="grid" class="wt-between hidden">
+            <span>原九宫格题已超时失效</span>
+            <span class="wt-badge">已过期</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="wt-modal-ft">
+        <button type="button" class="wt-btn wt-btn-primary wt-btn-block" data-comp-id="captcha.retry.btn" data-comp-name="重新验证按钮" data-comp-role="control" data-anchor="anchor-retry-btn" onclick="goNode('F_RECHECK')">重新验证</button>
+      </div>
+    </div>
+  </div>
+</div></div></div>
+<div class="page" id="p-pc-editor-submitting" data-page="p-pc-editor-submitting" data-page-id="p-pc-editor-submitting"><div class="wt-layout-pc-editor-modal"><div class="wt-navbar">
+  <button type="button" class="wt-btn wt-btn-ghost wt-btn-sm" disabled data-comp-id="editor.cancel.btn" data-comp-name="取消按钮（提交中禁用）" data-comp-role="control">取消</button>
+  <span>正在提交发布...</span>
+  <button type="button" class="wt-btn wt-btn-primary wt-btn-sm" disabled data-comp-id="editor.publish.btn" data-comp-name="发布中按钮" data-comp-role="control">发布中...</button>
+</div>
+
+<div class="wt-stack" style="padding:12px;">
+  <div class="wt-alert">
+    <strong>风控已放行 / 验证已通过：</strong>正在自动续传原有发布接口请求，按钮置为防重禁用态，无需用户再次点击发布。
+  </div>
+
+  <div class="wt-card">
+    <div class="wt-card-bd wt-stack">
+      <textarea class="wt-textarea" style="min-height:100px;" readonly data-comp-id="editor.content.input" data-comp-name="正文编辑区" data-comp-role="control">#周末徒步路线 分享今天实测的山脊环线轨迹，全程 11 公里爬升温和，水源补给点清晰。</textarea>
+    </div>
+    <div class="wt-card-ft wt-between">
+      <span class="wt-muted">等待原有发布服务返回确认结果</span>
+      <button type="button" class="wt-btn wt-btn-primary wt-btn-sm" data-comp-id="editor.sim_finish.btn" data-comp-name="模拟收到发布接口响应按钮" data-comp-role="control" onclick="goBranch('publish_ok')">推进发布结果 →</button>
+    </div>
+  </div>
+</div></div></div>
+<div class="page" id="p-pc-editor-publish-failed" data-page="p-pc-editor-publish-failed" data-page-id="p-pc-editor-publish-failed"><div class="wt-layout-pc-editor-modal"><div class="wt-navbar">
+  <button type="button" class="wt-btn wt-btn-ghost wt-btn-sm" data-comp-id="editor.cancel.btn" data-comp-name="返回动态流按钮" data-comp-role="control" onclick="goNode('F_ENTRY')">取消</button>
+  <span>发布动态（原流程未成功）</span>
+  <button type="button" class="wt-btn wt-btn-primary wt-btn-sm" data-comp-id="editor.publish.btn" data-comp-name="修改后重新发布按钮" data-comp-role="control" onclick="goNode('F_RECHECK')">重新发布</button>
+</div>
+
+<div class="wt-stack" style="padding:12px;">
+  <div class="wt-toast" data-comp-id="common.toast" data-comp-name="全局提示 Toast" data-comp-role="feedback" data-anchor="anchor-toast">
+    原动态暂不支持转发或命中内容规范限制，请修改后重试
+  </div>
+
+  <div class="wt-card">
+    <div class="wt-card-bd wt-stack">
+      <textarea class="wt-textarea" style="min-height:100px;" data-comp-id="editor.content.input" data-comp-name="保留的正文编辑区" data-comp-role="control">#周末徒步路线 分享今天实测的山脊环线轨迹，全程 11 公里爬升温和，水源补给点清晰。</textarea>
+      <span class="wt-help">原有业务接口返回失败时，草稿内容完整保留，且不累加人机验证失败次数。</span>
+    </div>
+  </div>
+</div></div></div>
+          </div>
+        </div>
+        <aside class="anno-panel">
+          <div class="anno-card hidden" id="vars-card">
+            <div class="anno-card-title">条件与局部控制</div>
+            <div id="vars-body"></div>
+          </div>
+          <div class="anno-card hidden" id="state-card">
+            <div class="anno-card-title">页面状态切换</div>
+            <div id="state-body"></div>
+          </div>
+          <div class="anno-card">
+            <div class="anno-card-title">当前节点规则</div>
+            <div id="anno-body"></div>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </aside>
+
+  <section class="spec-panel hidden" id="spec-panel-root">
+    <div class="spec-ws" id="spec-ws">
+      <svg class="tether-svg" id="tether-svg"></svg>
+      <div class="anchor-box hidden" id="anchor-box"></div>
+      <div class="spec-sticky" id="spec-stage-slot"></div>
+      <div class="spec-cards" id="spec-cards"></div>
+    </div>
+  </section>
+
+  <aside class="memo-drawer hidden" id="memo-drawer">
+    <div class="memo-hd">
+      <b>评审备注</b>
+      <button type="button" onclick="openMemoForCurrent()">+ 新增</button>
+    </div>
+    <div class="memo-form hidden" id="memo-form">
+      <div class="memo-ctx" id="memo-ctx"></div>
+      <div id="memo-input" class="memo-editor" contenteditable="true" data-placeholder="记录评审结论或待确认项，可直接点选原型插入 @组件（Cmd/Ctrl+Enter 保存）"></div>
+      <div class="memo-form-hint hidden" id="memo-form-hint"></div>
+      <div style="display:flex;justify-content:flex-end;gap:6px">
+        <button type="button" onclick="closeMemoForm()">取消</button>
+        <button type="button" class="primary" onclick="saveMemoItem()">保存</button>
+      </div>
+    </div>
+    <div class="memo-list" id="memo-list"></div>
+    <div class="memo-export">
+      <button type="button" id="copy-md-btn" onclick="copyMemosMd()">复制 MD</button>
+      <button type="button" class="primary" onclick="downloadMemosMd()">导出 .md</button>
+      <button type="button" onclick="downloadMemosJsonl()">导出 .jsonl</button>
+    </div>
+  </aside>
+</div>
+
+<div id="pick-highlight-overlay"></div>
+<div id="pick-label-badge"></div>
+
+<div class="guard-mask hidden" id="export-guard-modal">
+  <div class="guard-modal">
+    <h3>存在落点已失效的备注</h3>
+    <p id="export-guard-msg"></p>
+    <div class="guard-actions">
+      <button type="button" onclick="closeExportGuard()">取消（去处理）</button>
+      <button type="button" id="export-all-with-invalid-btn" onclick="confirmExportAllWithInvalid()">仍导出全部（含失效标记）</button>
+      <button type="button" class="primary" id="export-valid-only-btn" onclick="confirmExportValidOnly()">仅导出有效备注</button>
+    </div>
+  </div>
+</div>
+
+<script>
+var META = {"project": "demo-captcha-publish", "title": "动态社区内容发布器人机验证交互走查", "doc_version": "v2.0", "platform_default": "app", "entry_node": "F_ENTRY", "prd_source": "prd.md"};
+var ENTRY_NODE = "F_ENTRY";
+var NODES = {"F_ENTRY": {"page": "p-source-base", "title": "社区动态流发布入口", "change": "unchanged", "anno": [["入口行为无变更", "点击动态社区底部「+ 发动态」、话题参与按钮或动态卡片「转发」进入发布器前保持线上现状，不前置触发人机验证。"], ["覆盖范围", "统一收敛至原创动态发布器与转发动态发布器内部有效提交时判断。"]]}, "F_EDITOR": {"page": "p-editor-base", "state": "editor/filled", "title": "拉起原创或转发发布器", "change": "unchanged", "anno": [["同页校验", "点击发布（Web 宽屏含 Ctrl/Cmd+Enter）时先执行原有内容非空校验（右侧可切换空内容局部态），不满足时不触发风控请求。"], ["内容全链路保留", "任意拦截、取消或异常均完整保留正文、图文附件、话题、定位及原转发动态卡片。"]]}, "F_PUBLISH_CLICK": {"page": "p-editor-base", "title": "点击发布按钮", "change": "modified", "anno": [["下游分支：登录状态", "通过原有内容校验后检查当前是否已登录：已登录直接请求云端风控判断；未登录拉起社区登录浮层。"], ["走查操作", "可切换右侧「当前登录状态」分支变量，点击原型右上「发布」按钮即可按所选分支推进。"]]}, "D_LOGGED_SUBMIT": {"page": "p-editor-base", "title": "判断：当前已登录？", "isDecision": true, "branchVar": "login_state", "change": "modified", "anno": [["判断节点", "校验当前会话是否已有有效登录账号（uid）。"], ["分支去向", "「已登录」直接进入发布前风控判断；「未登录」拉起社区登录浮层完成登录衔接。"]]}, "F_LOGIN": {"page": "p-login-base", "title": "完成社区账号登录", "change": "modified", "anno": [["下游分支：登录结果", "仅由点击发布触发的登录在成功后按当前登录账号（uid）衔接请求云端风控判断；非发布动作（如浏览互动或消息查看）触发的登录不发起发布判断。"], ["取消与停留", "取消或按 ESC 关闭登录浮层时回到发布器保留已编辑内容，不弹 Toast。"]]}, "D_LOGIN_OK": {"page": "p-login-base", "title": "判断：登录结果？", "isDecision": true, "branchVar": "login_result", "change": "modified", "anno": [["判断节点", "根据登录浮层交互结果决定后续流向。"], ["分支去向", "「成功」按当前登录账号（uid）请求风控；「取消」回到发布器保留内容不发布；「尚未完成」停留原登录浮层。"]]}, "F_LOGIN_PENDING": {"page": "p-login-pending", "title": "停留原登录浮层", "change": "unchanged", "anno": [["未完成登录", "短信验证码错误或待确认时停留在原登录浮层，底层发布器内容保持不变，不计入人机验证失败次数。"]]}, "F_CANCEL_LOGIN": {"page": "p-editor-cancelled", "title": "保留内容，本次不发布", "change": "unchanged", "anno": [["主动关闭登录", "关闭登录浮层后回到当前发布器，完整保留已编辑内容，本次提交终止，无 Toast。"]]}, "F_RECHECK": {"page": "p-editor-base", "title": "请求发布前风控判断", "change": "new", "anno": [["判断优先级", "1. 白名单直接放行 → 2. 黑名单直接拒绝 → 3. 正常低风险用户直接放行 → 4. 命中风控灰名单下发人机验证。"], ["跨端共用状态", "同一登录账号（uid）在 App 375px 与 Web 宽屏、原创与转发、三种题型下共用当日失败计数与黑白名单状态。"]]}, "D_SUBMIT": {"page": "p-editor-base", "title": "判断：风控结果？", "isDecision": true, "branchVar": "risk_result", "change": "new", "anno": [["判断节点", "云端风控接口返回本次提交的处置策略。"], ["分支去向", "「直接放行」执行原有发布；「需要验证」下发人机校验浮层；「直接拒绝」保留内容并提示发布失败。"]]}, "F_BLOCK_PUBLISH": {"page": "p-editor-blocked", "title": "保留内容，提示发布失败", "change": "new", "anno": [["黑名单直接拒绝", "当前在黑名单内时停留发布器保留全部已编辑内容，Toast「发布失败，请稍后再试」，不重复累加失败次数或拉黑天数。"]]}, "F_VERIFY_PUBLISH": {"page": "p-editor-verify", "title": "展示随机题型人机校验浮层", "change": "new", "anno": [["随机下发三题型", "云端从字符验证码、滑块拼图、九宫格图片中随机下发 1 种（可在右侧局部组件变量切换预览），C 端不提供题型切换。"], ["结果分支与级联", "验证通过清零当日失败计数并继续发布；明确失败按是否达上限 N 分流；取消、换题、超时、过期均不计失败。"]]}, "D_VERIFY_PUBLISH": {"page": "p-editor-verify", "title": "判断：校验结果？", "isDecision": true, "branchVar": "verify_result", "change": "new", "anno": [["判断节点", "用户提交人机校验或发生边界中断后的云端校验结论。"], ["分支去向", "「通过」继续执行原有发布；「明确失败」进入失败上限 N 判断；「边界情况」进入中断原因分流。"]]}, "D_RETRY_ALLOWED": {"page": "p-editor-verify-failed", "title": "判断：当日失败达上限 N？", "isDecision": true, "branchVar": "fail_limit", "change": "new", "anno": [["判断节点", "校验明确失败时，判断当日累计失败次数是否已达上限 N。"], ["分支去向", "「未达 N」保留浮层显示验证失败与重新验证；「第 N 次」立即入黑并关闭浮层提示失败。"]]}, "D_PUBLISH_ABORT": {"page": "p-editor-verify", "title": "判断：验证中断原因？", "isDecision": true, "branchVar": "abort_reason", "change": "new", "anno": [["判断节点", "区分人机验证非正常完成的具体边界原因（均不计当日失败次数）。"], ["分支去向", "「主动取消」静默关闭保留内容；「网络超时」Toast 提示重试；「验证过期」保留浮层提示过期并可重新验证。"]]}, "F_VERIFY_FAILED_PUBLISH": {"page": "p-editor-verify-failed", "title": "保留浮层：验证失败与重新验证", "change": "new", "anno": [["未达上限 N 留浮层", "当日明确失败次数未达 N 时不关闭验证浮层、不弹 Toast、无冷却等待，原题锁定并显示「验证失败」与「重新验证」。"]]}, "F_RETRY": {"page": "p-editor-verify-failed", "title": "点击“重新验证”重新请求判断", "change": "new", "anno": [["主动触发重判", "未达 N 明确失败或题目过期后，用户点击「重新验证」按钮时重新请求云端完整判断（回流 F_RECHECK）；若仍需验证则刷新为新随机下发的题目。"]]}, "F_WAIT_BLACK": {"page": "p-editor-blocked", "title": "第 N 次入黑：关闭浮层提示失败", "change": "new", "anno": [["第 N 次失败入黑", "当日第 N 次明确失败立即加入黑名单，关闭验证浮层，停留发布器保留内容，Toast「发布失败，请稍后再试」。"], ["累计拉黑自然日 M", "同一自然日最多记 1 天；累计不足 M 时北京时间次日 00:00 自动解黑（不自动重发），达到第 M 个拉黑自然日起不再每日自动移出。"]]}, "F_CANCEL_PUBLISH": {"page": "p-editor-cancelled", "title": "取消验证：保留内容不发布", "change": "new", "anno": [["取消安全验证", "点击取消、右上角关闭或 Web 按 ESC 关闭验证浮层，停留发布器保留内容，无 Toast，不增加失败计数。"]]}, "F_PUBLISH_NETWORK": {"page": "p-editor-network", "title": "保留内容，提示网络超时重试", "change": "new", "anno": [["网络超时兜底", "请求云端判断超时或校验网络异常时关闭验证浮层、停留发布器保留内容，Toast「网络超时，请稍后重试」，不计失败。"]]}, "F_EXPIRE_PUBLISH": {"page": "p-editor-expired", "title": "保留浮层：验证已过期与重新验证", "change": "new", "anno": [["复用失败重试模板", "题目过期时不关闭验证浮层、无 Toast、不计当日失败次数；原题锁定并隐藏换一张，展示「验证已过期」与「重新验证」，点击同样回流 F_RECHECK。"]]}, "F_SUBMIT": {"page": "p-editor-submitting", "title": "执行原有发布流程", "change": "unchanged", "anno": [["放行后继续原发布", "风控放行或人机验证通过后自动续传原发布请求；结果返回前提交按钮显示「发布中...」，防重复提交。"]]}, "D_PUBLISH_OK": {"page": "p-editor-submitting", "title": "判断：原有流程确认成功？", "isDecision": true, "branchVar": "publish_ok", "change": "unchanged", "anno": [["判断节点", "原有发布接口返回结果是否确认成功。"], ["分支去向", "「确认成功」弹成功提示并刷新社区动态流；「发布未成功」停留发布器保留内容并沿用原有失败提示。"]]}, "F_SUBMIT_FAILED": {"page": "p-editor-publish-failed", "title": "保留内容，沿用原有失败提示", "change": "unchanged", "anno": [["原流程发布失败", "原有发布接口失败或命中内容限制时，停留发布器保留内容并沿用线上提示，不增加验证失败计数。"]]}, "F_SUCCESS": {"page": "p-source-success", "title": "发布成功或转发成功", "change": "unchanged", "anno": [["真实确认成功", "仅原有发布流程确认成功后才弹「发布成功 / 转发成功」并返回社区动态流刷新展示。"]]}};
+var PAGE_FRAME = {"p-source-base": "phone", "p-pc-source-base": "wide", "p-source-success": "phone", "p-pc-source-success": "wide", "p-editor-base": "phone", "p-pc-editor-base": "wide", "p-editor-empty": "phone", "p-pc-editor-empty": "wide", "p-login-base": "phone", "p-pc-login-base": "wide", "p-login-pending": "phone", "p-pc-login-pending": "wide", "p-editor-verify": "phone", "p-pc-editor-verify": "wide", "p-editor-verify-failed": "phone", "p-pc-editor-verify-failed": "wide", "p-editor-blocked": "phone", "p-pc-editor-blocked": "wide", "p-editor-cancelled": "phone", "p-pc-editor-cancelled": "wide", "p-editor-network": "phone", "p-pc-editor-network": "wide", "p-editor-expired": "phone", "p-pc-editor-expired": "wide", "p-editor-submitting": "phone", "p-pc-editor-submitting": "wide", "p-editor-publish-failed": "phone", "p-pc-editor-publish-failed": "wide"};
+var VARIANT_MAP = {"p-source-base": {"base": "p-source-base", "variants": {"phone": "p-source-base", "wide": "p-pc-source-base", "pc": "p-pc-source-base"}}, "p-pc-source-base": {"base": "p-source-base", "variants": {"phone": "p-source-base", "wide": "p-pc-source-base", "pc": "p-pc-source-base"}}, "p-source-success": {"base": "p-source-success", "variants": {"phone": "p-source-success", "wide": "p-pc-source-success", "pc": "p-pc-source-success"}}, "p-pc-source-success": {"base": "p-source-success", "variants": {"phone": "p-source-success", "wide": "p-pc-source-success", "pc": "p-pc-source-success"}}, "p-editor-base": {"base": "p-editor-base", "variants": {"phone": "p-editor-base", "wide": "p-pc-editor-base", "pc": "p-pc-editor-base"}}, "p-pc-editor-base": {"base": "p-editor-base", "variants": {"phone": "p-editor-base", "wide": "p-pc-editor-base", "pc": "p-pc-editor-base"}}, "p-editor-empty": {"base": "p-editor-empty", "variants": {"phone": "p-editor-empty", "wide": "p-pc-editor-empty", "pc": "p-pc-editor-empty"}}, "p-pc-editor-empty": {"base": "p-editor-empty", "variants": {"phone": "p-editor-empty", "wide": "p-pc-editor-empty", "pc": "p-pc-editor-empty"}}, "p-login-base": {"base": "p-login-base", "variants": {"phone": "p-login-base", "wide": "p-pc-login-base", "pc": "p-pc-login-base"}}, "p-pc-login-base": {"base": "p-login-base", "variants": {"phone": "p-login-base", "wide": "p-pc-login-base", "pc": "p-pc-login-base"}}, "p-login-pending": {"base": "p-login-pending", "variants": {"phone": "p-login-pending", "wide": "p-pc-login-pending", "pc": "p-pc-login-pending"}}, "p-pc-login-pending": {"base": "p-login-pending", "variants": {"phone": "p-login-pending", "wide": "p-pc-login-pending", "pc": "p-pc-login-pending"}}, "p-editor-verify": {"base": "p-editor-verify", "variants": {"phone": "p-editor-verify", "wide": "p-pc-editor-verify", "pc": "p-pc-editor-verify"}}, "p-pc-editor-verify": {"base": "p-editor-verify", "variants": {"phone": "p-editor-verify", "wide": "p-pc-editor-verify", "pc": "p-pc-editor-verify"}}, "p-editor-verify-failed": {"base": "p-editor-verify-failed", "variants": {"phone": "p-editor-verify-failed", "wide": "p-pc-editor-verify-failed", "pc": "p-pc-editor-verify-failed"}}, "p-pc-editor-verify-failed": {"base": "p-editor-verify-failed", "variants": {"phone": "p-editor-verify-failed", "wide": "p-pc-editor-verify-failed", "pc": "p-pc-editor-verify-failed"}}, "p-editor-blocked": {"base": "p-editor-blocked", "variants": {"phone": "p-editor-blocked", "wide": "p-pc-editor-blocked", "pc": "p-pc-editor-blocked"}}, "p-pc-editor-blocked": {"base": "p-editor-blocked", "variants": {"phone": "p-editor-blocked", "wide": "p-pc-editor-blocked", "pc": "p-pc-editor-blocked"}}, "p-editor-cancelled": {"base": "p-editor-cancelled", "variants": {"phone": "p-editor-cancelled", "wide": "p-pc-editor-cancelled", "pc": "p-pc-editor-cancelled"}}, "p-pc-editor-cancelled": {"base": "p-editor-cancelled", "variants": {"phone": "p-editor-cancelled", "wide": "p-pc-editor-cancelled", "pc": "p-pc-editor-cancelled"}}, "p-editor-network": {"base": "p-editor-network", "variants": {"phone": "p-editor-network", "wide": "p-pc-editor-network", "pc": "p-pc-editor-network"}}, "p-pc-editor-network": {"base": "p-editor-network", "variants": {"phone": "p-editor-network", "wide": "p-pc-editor-network", "pc": "p-pc-editor-network"}}, "p-editor-expired": {"base": "p-editor-expired", "variants": {"phone": "p-editor-expired", "wide": "p-pc-editor-expired", "pc": "p-pc-editor-expired"}}, "p-pc-editor-expired": {"base": "p-editor-expired", "variants": {"phone": "p-editor-expired", "wide": "p-pc-editor-expired", "pc": "p-pc-editor-expired"}}, "p-editor-submitting": {"base": "p-editor-submitting", "variants": {"phone": "p-editor-submitting", "wide": "p-pc-editor-submitting", "pc": "p-pc-editor-submitting"}}, "p-pc-editor-submitting": {"base": "p-editor-submitting", "variants": {"phone": "p-editor-submitting", "wide": "p-pc-editor-submitting", "pc": "p-pc-editor-submitting"}}, "p-editor-publish-failed": {"base": "p-editor-publish-failed", "variants": {"phone": "p-editor-publish-failed", "wide": "p-pc-editor-publish-failed", "pc": "p-pc-editor-publish-failed"}}, "p-pc-editor-publish-failed": {"base": "p-editor-publish-failed", "variants": {"phone": "p-editor-publish-failed", "wide": "p-pc-editor-publish-failed", "pc": "p-pc-editor-publish-failed"}}};
+var STATE_GROUPS = {"editor": {"title": "发布器同页校验态", "states": [{"id": "filled", "label": "已填写内容（有效提交）", "page": "p-editor-base"}, {"id": "empty", "label": "空内容校验提示", "page": "p-editor-empty"}]}};
+var VARS = [{"id": "platform", "label": "产品端", "kind": "global", "default": "app", "options": [{"id": "app", "label": "App 375px"}, {"id": "pc", "label": "Web 宽屏"}]}, {"id": "publish_scene", "label": "发布场景", "kind": "global", "default": "original", "options": [{"id": "original", "label": "原创动态"}, {"id": "repost", "label": "转发动态"}]}, {"id": "captcha_type", "label": "下发题型", "kind": "local", "pages": ["p-editor-verify", "p-editor-verify-failed", "p-editor-expired", "p-pc-editor-verify", "p-pc-editor-verify-failed", "p-pc-editor-expired"], "default": "chars", "options": [{"id": "chars", "label": "字符验证码"}, {"id": "slider", "label": "滑块拼图"}, {"id": "grid", "label": "九宫格图片"}]}, {"id": "login_state", "label": "当前登录状态", "kind": "branch", "diamond": "D_LOGGED_SUBMIT", "nodes": ["F_EDITOR", "F_PUBLISH_CLICK", "D_LOGGED_SUBMIT"], "default": "in", "options": [{"id": "in", "label": "已登录", "target": "F_RECHECK"}, {"id": "out", "label": "未登录", "target": "F_LOGIN"}]}, {"id": "login_result", "label": "登录结果", "kind": "branch", "diamond": "D_LOGIN_OK", "nodes": ["F_LOGIN", "D_LOGIN_OK"], "default": "ok", "options": [{"id": "ok", "label": "成功", "target": "F_RECHECK"}, {"id": "cancel", "label": "取消", "target": "F_CANCEL_LOGIN"}, {"id": "pending", "label": "尚未完成", "target": "F_LOGIN_PENDING"}]}, {"id": "risk_result", "label": "云端风控结果", "kind": "branch", "diamond": "D_SUBMIT", "nodes": ["F_RECHECK", "D_SUBMIT"], "default": "verify", "options": [{"id": "verify", "label": "需要验证（灰名单）", "target": "F_VERIFY_PUBLISH"}, {"id": "allow", "label": "直接放行（白名单/正常）", "target": "F_SUBMIT"}, {"id": "deny", "label": "直接拒绝（黑名单）", "target": "F_BLOCK_PUBLISH"}]}, {"id": "verify_result", "label": "人机校验结果", "kind": "branch", "diamond": "D_VERIFY_PUBLISH", "nodes": ["F_VERIFY_PUBLISH", "D_VERIFY_PUBLISH"], "default": "pass", "options": [{"id": "pass", "label": "通过", "target": "F_SUBMIT"}, {"id": "fail", "label": "明确失败", "target": "D_RETRY_ALLOWED"}, {"id": "abort", "label": "边界情况", "target": "D_PUBLISH_ABORT"}]}, {"id": "fail_limit", "label": "当日失败是否达上限 N", "kind": "branch", "diamond": "D_RETRY_ALLOWED", "nodes": ["F_VERIFY_PUBLISH", "D_VERIFY_PUBLISH", "D_RETRY_ALLOWED"], "when": {"verify_result": "fail"}, "default": "under_n", "options": [{"id": "under_n", "label": "未达 N（保留浮层重试）", "target": "F_VERIFY_FAILED_PUBLISH"}, {"id": "reach_n", "label": "第 N 次（立即入黑）", "target": "F_WAIT_BLACK"}]}, {"id": "abort_reason", "label": "验证中断原因", "kind": "branch", "diamond": "D_PUBLISH_ABORT", "nodes": ["F_VERIFY_PUBLISH", "D_VERIFY_PUBLISH", "D_PUBLISH_ABORT"], "when": {"verify_result": "abort"}, "default": "cancel", "options": [{"id": "cancel", "label": "主动取消", "target": "F_CANCEL_PUBLISH"}, {"id": "timeout", "label": "网络超时", "target": "F_PUBLISH_NETWORK"}, {"id": "expired", "label": "验证过期", "target": "F_EXPIRE_PUBLISH"}]}, {"id": "publish_ok", "label": "原有发布流程结果", "kind": "branch", "diamond": "D_PUBLISH_OK", "nodes": ["F_SUBMIT", "D_PUBLISH_OK"], "default": "yes", "options": [{"id": "yes", "label": "确认成功", "target": "F_SUCCESS"}, {"id": "no", "label": "发布未成功", "target": "F_SUBMIT_FAILED"}]}];
+var SPEC_CARDS = [{"id": "01", "title": "提交时机与覆盖范围（进发布器前无变更）", "page": "p-editor-base", "anchor": "editor.publish.btn", "body": "覆盖原创动态发布器与转发动态发布器；仅在点击「发布」（Web 宽屏含 Ctrl/Cmd+Enter）通过内容校验且完成登录后请求云端风控判断，全链路保留已编辑内容。"}, {"id": "02", "title": "未登录提交登录衔接", "page": "p-login-base", "anchor": "login.sheet", "body": "未登录先编辑后点发布弹出社区登录浮层；登录成功后按当前登录账号（uid）请求风控判断并续接提交；取消或 ESC 关闭登录回到发布器保留内容，无 Toast。"}, {"id": "03", "title": "安全验证浮层与三种随机题型", "page": "p-editor-verify", "anchor": "captcha.body", "body": "云端返回需验证时弹出「安全验证」浮层，随机下发字符验证码、滑块拼图、九宫格图片之一；换题、取消、关闭均不计验证失败。"}, {"id": "04", "title": "未达 N 失败 / 题目过期：保留浮层点「重新验证」", "page": "p-editor-verify-failed", "anchor": "captcha.retry.btn", "body": "当日明确失败未达 N 或题目过期时均保留验证浮层，原题锁定不可作答，隐藏换一张，对应显示「验证失败」或「验证已过期」与「重新验证」（无 Toast、无冷却等待；过期不计次）；点「重新验证」重新请求完整判断。"}, {"id": "05", "title": "第 N 次失败入黑与累计 M 个自然日解黑", "page": "p-editor-blocked", "anchor": "common.toast", "body": "当日第 N 次明确失败立即加入黑名单，关闭浮层保留内容，Toast「发布失败，请稍后再试」。累计拉黑自然日不足 M 次日 00:00 自动解黑；第 M 个拉黑自然日起不再每日自动移出。"}, {"id": "06", "title": "网络超时与跨端状态同步", "page": "p-editor-network", "anchor": "common.toast", "body": "请求风控判断或校验提交网络超时统一关闭浮层、保留内容并 Toast「网络超时，请稍后重试」，不计失败；同一账号在 App 375px 与 Web 宽屏共享当日失败计数与黑白名单状态。"}];
+var INITIAL_MEMOS = [];
+var currentNode = null;
+var currentState = null;
+var currentPage = null;
+var varValues = {};
+var wbView = "flow";
+var activeSpecId = null;
+
+(VARS || []).forEach(function (v) {
+  if (v && v.id && v.options && v.options.length) {
+    varValues[v.id] = v.default || v.options[0].id;
+  }
+});
+
+function computeDocVersionHash() {
+  var parts = [];
+  parts.push(Object.keys(NODES || {}).sort().map(function (k) {
+    var n = NODES[k] || {};
+    return k + ":" + (n.page || "") + ":" + (n.branchVar || "");
+  }).join(","));
+  parts.push((VARS || []).map(function (v) {
+    return v.id + ":" + (v.options || []).map(function (o) {
+      return o.id + ">" + (o.target || "");
+    }).join("/");
+  }).join(","));
+  parts.push((SPEC_CARDS || []).map(function (c) {
+    return c.id + ":" + (c.page || "") + ":" + (c.anchor || "");
+  }).join(","));
+  document.querySelectorAll(".page").forEach(function (pg) {
+    var comps = Array.prototype.slice.call(pg.querySelectorAll("[data-comp-id]"))
+      .map(function (el) { return el.getAttribute("data-comp-id"); });
+    parts.push((pg.id || "") + "=" + comps.join(","));
+  });
+  var raw = parts.join("|");
+  var h = 2166136261;
+  for (var i = 0; i < raw.length; i++) {
+    h ^= raw.charCodeAt(i);
+    h = (h * 16777619) >>> 0;
+  }
+  return ("00000000" + h.toString(16)).slice(-8);
+}
+
+var DOC_VERSION_HASH = computeDocVersionHash();
+var PROJECT_SLUG = (typeof META === "object" && META && META.project) ? String(META.project) : "default";
+var MEMO_STORAGE_KEY = "wt_memos_" + PROJECT_SLUG;
+
+function escapeHtml(str) {
+  return String(str || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function resolveVariantPage(pageId, platVal) {
+  if (!pageId || typeof VARIANT_MAP !== "object" || !VARIANT_MAP || !VARIANT_MAP[pageId]) {
+    return pageId;
+  }
+  var plat = platVal !== undefined ? platVal : varValues.platform;
+  if (!plat) return pageId;
+  var vmap = VARIANT_MAP[pageId].variants || {};
+  if (vmap[plat] && PAGE_FRAME[vmap[plat]]) return vmap[plat];
+  var pStr = String(plat).toLowerCase();
+  var targetFrame = "";
+  if (/^(pc|web|web[-_]?admin|desktop|wide|admin|pad)$/.test(pStr)) {
+    targetFrame = "wide";
+  } else if (/^(app|h5|mobile|phone|mp|mini[-_]?program|ios|android)$/.test(pStr)) {
+    targetFrame = "phone";
+  }
+  if (targetFrame && vmap[targetFrame] && PAGE_FRAME[vmap[targetFrame]]) {
+    return vmap[targetFrame];
+  }
+  return pageId;
+}
+
+function initDeltaHighlights() {
+  Object.keys(NODES || {}).forEach(function (nodeId) {
+    var n = NODES[nodeId];
+    var chg = n && n.change;
+    if (chg !== "new" && chg !== "modified") return;
+    var g = document.querySelector('.flow-svg g[data-node="' + nodeId + '"]');
+    if (!g) return;
+    g.classList.add("wt-delta-node");
+    g.setAttribute("data-change", chg);
+    if (!g.querySelector(".wt-delta-dot")) {
+      var dotX = null;
+      var dotY = null;
+      var rectEl = g.querySelector("rect");
+      var polyEl = g.querySelector("polygon");
+      if (rectEl) {
+        var rx = parseFloat(rectEl.getAttribute("x"));
+        var ry = parseFloat(rectEl.getAttribute("y"));
+        var rw = parseFloat(rectEl.getAttribute("width"));
+        if (!isNaN(rx) && !isNaN(ry) && !isNaN(rw)) {
+          dotX = rx + rw - 2;
+          dotY = ry + 2;
+        }
+      } else if (polyEl) {
+        var nums = (polyEl.getAttribute("points") || "").match(/-?\d+(?:\.\d+)?/g);
+        if (nums && nums.length >= 4) {
+          dotX = (parseFloat(nums[0]) + parseFloat(nums[2])) / 2;
+          dotY = (parseFloat(nums[1]) + parseFloat(nums[3])) / 2;
+        }
+      }
+      if (dotX === null || dotY === null) {
+        try {
+          var bb = g.getBBox();
+          dotX = bb.x + bb.width - 3;
+          dotY = bb.y + 3;
+        } catch (e) {}
+      }
+      if (dotX !== null && dotY !== null) {
+        var dot = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+        dot.setAttribute("class", "wt-delta-dot");
+        dot.setAttribute("cx", String(dotX));
+        dot.setAttribute("cy", String(dotY));
+        dot.setAttribute("r", "4.5");
+        dot.setAttribute("fill", "#d97706");
+        dot.setAttribute("stroke", "#ffffff");
+        dot.setAttribute("stroke-width", "1.5");
+        g.appendChild(dot);
+      }
+    }
+  });
+
+  (SPEC_CARDS || []).forEach(function (card) {
+    if (!card || !card.anchor) return;
+    var pageIds = [];
+    if (card.page) {
+      pageIds.push(card.page);
+      if (typeof VARIANT_MAP === "object" && VARIANT_MAP && VARIANT_MAP[card.page]) {
+        var vmap = VARIANT_MAP[card.page].variants || {};
+        Object.keys(vmap).forEach(function (k) {
+          if (vmap[k] && pageIds.indexOf(vmap[k]) < 0) pageIds.push(vmap[k]);
+        });
+      }
+    }
+    var roots = pageIds.length
+      ? pageIds.map(function (pid) { return document.getElementById(pid); }).filter(Boolean)
+      : Array.prototype.slice.call(document.querySelectorAll(".page"));
+    roots.forEach(function (root) {
+      root.querySelectorAll("[data-comp-id], [data-anchor]").forEach(function (el) {
+        if (el.getAttribute("data-comp-id") === card.anchor ||
+            el.getAttribute("data-anchor") === card.anchor) {
+          el.classList.add("wt-delta-target");
+        }
+      });
+    });
+  });
+}
+
+window.toggleDeltaHighlight = function (force) {
+  var on = force !== undefined ? !!force : !document.body.classList.contains("show-delta");
+  document.body.classList.toggle("show-delta", on);
+  var btn = document.getElementById("delta-toggle-btn");
+  if (btn) btn.classList.toggle("active", on);
+};
+
+function checkVarWhen(v) {
+  if (!v.when) return true;
+  for (var k in v.when) {
+    var expected = v.when[k];
+    var actual = varValues[k];
+    if (Array.isArray(expected)) {
+      if (expected.indexOf(actual) < 0) return false;
+    } else if (actual !== expected) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function isVarApplicable(v) {
+  if (!v || !checkVarWhen(v)) return false;
+  if (v.kind === "global") return true;
+  if (currentNode && NODES[currentNode] && NODES[currentNode].isDecision) {
+    if (v.diamond === currentNode || v.id === NODES[currentNode].branchVar) return true;
+  }
+  var hasNodes = Array.isArray(v.nodes) && v.nodes.length > 0;
+  var hasPages = Array.isArray(v.pages) && v.pages.length > 0;
+  if (!hasNodes && !hasPages) return true;
+  var nMatch = hasNodes ? v.nodes.indexOf(currentNode) >= 0 : false;
+  var pMatch = hasPages ? v.pages.indexOf(currentPage) >= 0 : false;
+  return nMatch || pMatch;
+}
+
+function syncDeclarativePageVars() {
+  document.querySelectorAll("[data-when-var]").forEach(function (el) {
+    var varId = el.getAttribute("data-when-var");
+    var expected = el.getAttribute("data-when-val");
+    if (!varId || expected === null) return;
+    var vals = expected.split(",").map(function (s) { return s.trim(); });
+    el.classList.toggle("hidden", vals.indexOf(String(varValues[varId])) < 0);
+  });
+}
+
+function renderGlobalVars() {
+  var bar = document.getElementById("global-vars-bar");
+  if (!bar) return;
+  var globals = (VARS || []).filter(function (v) {
+    return v.kind === "global" && checkVarWhen(v);
+  });
+  bar.innerHTML = globals.map(function (v) {
+    var btns = (v.options || []).map(function (o) {
+      var active = varValues[v.id] === o.id ? " active" : "";
+      return '<button type="button" class="seg-btn' + active + '" onclick="setVar(\'' +
+        escapeHtml(v.id) + '\',\'' + escapeHtml(o.id) + '\')">' +
+        escapeHtml(o.label) + '</button>';
+    }).join("");
+    return '<div class="wb-gvar"><span>' + escapeHtml(v.label) + '</span>' +
+      '<div class="seg-group">' + btns + '</div></div>';
+  }).join("");
+}
+
+function renderScopedVars() {
+  var card = document.getElementById("vars-card");
+  var body = document.getElementById("vars-body");
+  if (!card || !body) return;
+
+  var scoped = (VARS || []).filter(function (v) {
+    return v.kind !== "global" && isVarApplicable(v);
+  });
+
+  var activeBranches = [];
+  (VARS || []).forEach(function (v) {
+    if (v.kind === "branch" && v.diamond && checkVarWhen(v)) {
+      var cur = (v.options || []).find(function (o) { return o.id === varValues[v.id]; });
+      if (cur && cur.target) {
+        activeBranches.push({ diamond: v.diamond, target: cur.target, optId: cur.id });
+      }
+    }
+  });
+  highlightBranchEdges(activeBranches);
+
+  if (!scoped.length) {
+    body.innerHTML = "";
+    card.classList.add("hidden");
+    return;
+  }
+
+  body.innerHTML = scoped.map(function (v) {
+    var tag = v.kind === "branch" ? "分支条件" : "局部组件";
+    var curOpt = (v.options || []).find(function (o) { return o.id === varValues[v.id]; });
+    var optsHtml = (v.options || []).map(function (o) {
+      var curCls = varValues[v.id] === o.id ? " cur" : "";
+      return '<button type="button" class="var-opt' + curCls + '" onclick="setVar(\'' +
+        escapeHtml(v.id) + '\',\'' + escapeHtml(o.id) + '\')">' +
+        escapeHtml(o.label) + '</button>';
+    }).join("");
+    var goHtml = (v.kind === "branch" && curOpt && curOpt.target && NODES[curOpt.target])
+      ? '<button type="button" class="branch-go-btn" onclick="goBranch(\'' +
+        escapeHtml(v.id) + '\')">跳转至：' +
+        escapeHtml(NODES[curOpt.target].title || curOpt.target) + ' →</button>'
+      : "";
+    return '<div class="var-block"><div class="var-head"><b>' + escapeHtml(v.label) +
+      '</b><span class="var-kind-tag">' + tag + '</span></div>' +
+      '<div class="var-opts">' + optsHtml + '</div>' + goHtml + '</div>';
+  }).join("");
+  card.classList.remove("hidden");
+}
+
+function buildSvgEdgeMap() {
+  var polys = document.querySelectorAll("#flow-svg polyline[data-from]");
+  var outMap = {};
+  polys.forEach(function (pl) {
+    var f = pl.getAttribute("data-from");
+    var t = pl.getAttribute("data-to");
+    if (f && t) {
+      (outMap[f] = outMap[f] || []).push({
+        to: t,
+        branch: pl.getAttribute("data-branch") || "",
+        pl: pl
+      });
+    }
+  });
+  return { polys: polys, outMap: outMap };
+}
+
+function canReachNode(outMap, startId, goalId) {
+  if (!startId || !goalId) return false;
+  if (startId === goalId) return true;
+  var seen = {};
+  var q = [startId];
+  seen[startId] = true;
+  while (q.length) {
+    var cur = q.shift();
+    if (cur !== startId && NODES[cur] && !NODES[cur].isDecision) continue;
+    var outs = outMap[cur] || [];
+    for (var i = 0; i < outs.length; i++) {
+      var nxt = outs[i].to;
+      if (nxt === goalId) return true;
+      if (!seen[nxt]) {
+        seen[nxt] = true;
+        q.push(nxt);
+      }
+    }
+  }
+  return false;
+}
+
+function pickDiamondOutgoingEdge(outMap, diamondChoice, dId) {
+  var info = diamondChoice[dId];
+  var outs = outMap[dId] || [];
+  if (!info || !outs.length) return null;
+  var rawTarget = info.target;
+  var optId = info.optId;
+  return outs.find(function (e) { return optId && e.branch === optId; }) ||
+    outs.find(function (e) { return e.to === rawTarget; }) ||
+    outs.find(function (e) { return diamondChoice[e.to] && canReachNode(outMap, e.to, rawTarget); }) ||
+    outs.find(function (e) { return canReachNode(outMap, e.to, rawTarget); }) ||
+    null;
+}
+
+function highlightBranchEdges(activeBranches) {
+  var g = buildSvgEdgeMap();
+  g.polys.forEach(function (pl) {
+    pl.classList.remove("branch-active");
+    pl.classList.remove("branch-dim");
+  });
+  if (!activeBranches || !activeBranches.length) return;
+  var diamondChoice = {};
+  activeBranches.forEach(function (item) {
+    if (item.diamond) diamondChoice[item.diamond] = item;
+  });
+  var visited = {};
+  function walkDiamond(dId) {
+    if (!dId || visited[dId] || !diamondChoice[dId]) return;
+    visited[dId] = true;
+    var outs = g.outMap[dId] || [];
+    var chosen = pickDiamondOutgoingEdge(g.outMap, diamondChoice, dId);
+    if (!chosen) return;
+    chosen.pl.classList.remove("branch-dim");
+    chosen.pl.classList.add("branch-active");
+    outs.forEach(function (e) {
+      if (e !== chosen && !e.pl.classList.contains("branch-active")) {
+        e.pl.classList.add("branch-dim");
+      }
+    });
+    if (diamondChoice[chosen.to]) walkDiamond(chosen.to);
+  }
+  (g.outMap[currentNode] || []).forEach(function (e) {
+    if (diamondChoice[e.to]) {
+      e.pl.classList.add("branch-active");
+      walkDiamond(e.to);
+    }
+  });
+  Object.keys(diamondChoice).forEach(function (dId) { walkDiamond(dId); });
+}
+
+var isRestoringHash = false;
+function syncUrlHash() {
+  if (isRestoringHash) return;
+  var params = new URLSearchParams();
+  if (currentNode) params.set("node", currentNode);
+  (VARS || []).forEach(function (v) {
+    if (v && v.id && varValues[v.id] !== undefined) {
+      params.set(v.id, varValues[v.id]);
+    }
+  });
+  if (wbView && wbView !== "flow") params.set("view", wbView);
+  var newHash = "#" + params.toString();
+  if (location.hash !== newHash) {
+    try { history.replaceState(null, "", newHash); } catch (e) { location.hash = newHash; }
+  }
+}
+
+function parseUrlHash() {
+  var raw = (location.hash || "").replace(/^#/, "");
+  var out = { node: null, view: null };
+  if (!raw) return out;
+  var params = new URLSearchParams(raw);
+  (VARS || []).forEach(function (v) {
+    if (!v || !v.id || !params.has(v.id)) return;
+    var val = params.get(v.id);
+    if ((v.options || []).some(function (o) { return o.id === val; })) {
+      varValues[v.id] = val;
+    }
+  });
+  var n = params.get("node");
+  if (n && NODES[n]) out.node = n;
+  var vw = params.get("view");
+  if (vw === "flow" || vw === "spec") out.view = vw;
+  return out;
+}
+
+window.getVar = function (varId) { return varValues[varId]; };
+window.setVar = function (varId, optId) {
+  var v = (VARS || []).find(function (x) { return x.id === varId; });
+  if (!v) return;
+  var opt = (v.options || []).find(function (o) { return o.id === optId; });
+  if (!opt) return;
+  varValues[varId] = optId;
+  if (opt.page && PAGE_FRAME[opt.page]) {
+    showPage(resolveVariantPage(opt.page, varValues.platform));
+  } else if (v.kind === "global" && currentPage) {
+    var variantPg = resolveVariantPage(currentPage, optId);
+    if (variantPg && PAGE_FRAME[variantPg] && variantPg !== currentPage) {
+      showPage(variantPg);
+    }
+  }
+  syncDeclarativePageVars();
+  renderGlobalVars();
+  renderScopedVars();
+  syncUrlHash();
+  scheduleOverlaySync();
+  if (typeof window.onWalkVarChange === "function") {
+    window.onWalkVarChange(varId, optId, Object.assign({}, varValues));
+  }
+};
+
+window.goBranch = function (varId) {
+  var v = (VARS || []).find(function (x) { return x.id === varId; });
+  if (!v) return;
+  var opt = (v.options || []).find(function (o) { return o.id === varValues[varId]; });
+  if (!opt || !opt.target) return;
+  if (NODES[opt.target]) setViewByNode(opt.target);
+};
+
+function renderStates() {
+  var card = document.getElementById("state-card");
+  var body = document.getElementById("state-body");
+  if (!card || !body) return;
+  var st = currentState ? String(currentState).split("/") : null;
+  var grp = st && STATE_GROUPS[st[0]];
+  if (!grp || !grp.states || grp.states.length < 2) {
+    body.innerHTML = "";
+    card.classList.add("hidden");
+    return;
+  }
+  body.innerHTML = '<div class="st-group">' + grp.states.map(function (s) {
+    if (s.id === st[1]) {
+      return '<button type="button" class="st-btn cur" disabled>' + escapeHtml(s.label) + '</button>';
+    }
+    return '<button type="button" class="st-btn" onclick="goState(\'' +
+      escapeHtml(st[0]) + '\',\'' + escapeHtml(s.id) + '\')">' +
+      escapeHtml(s.label) + '</button>';
+  }).join("") + '</div>';
+  card.classList.remove("hidden");
+}
+
+function showPage(pageId) {
+  if (!pageId) return;
+  currentPage = pageId;
+  var frame = PAGE_FRAME[pageId] || "phone";
+  var phoneEl = document.getElementById("frame-phone");
+  var wideEl = document.getElementById("frame-wide");
+  if (phoneEl) phoneEl.classList.toggle("hidden", frame !== "phone");
+  if (wideEl) wideEl.classList.toggle("hidden", frame !== "wide");
+  var drawer = document.getElementById("inspector-drawer");
+  if (drawer) drawer.classList.toggle("wide-mode", frame === "wide");
+  var specWs = document.getElementById("spec-ws");
+  if (specWs) specWs.classList.toggle("wide-spec", frame === "wide");
+  document.querySelectorAll(".page").forEach(function (p) {
+    p.classList.toggle("active", p.id === pageId);
+  });
+  syncDeclarativePageVars();
+  var memoForm = document.getElementById("memo-form");
+  if (memoForm && !memoForm.classList.contains("hidden") && typeof updateMemoFormCtx === "function") {
+    updateMemoFormCtx();
+  }
+  scheduleOverlaySync();
+}
+
+window.goState = function (groupId, stateId) {
+  var grp = STATE_GROUPS[groupId];
+  if (!grp) return;
+  var state = (grp.states || []).find(function (s) { return s.id === stateId; });
+  if (!state) return;
+  currentState = groupId + "/" + stateId;
+  showPage(resolveVariantPage(state.page, varValues.platform));
+  renderStates();
+  renderScopedVars();
+};
+
+function setViewByNode(nodeId) {
+  var n = NODES[nodeId];
+  if (!n) return;
+  var panel = document.querySelector(".flow-panel");
+  if (panel && panel.classList.contains("fs")) toggleFs(false);
+  if (n.isDecision && n.branchVar) {
+    var bv = (VARS || []).find(function (x) { return x.id === n.branchVar; });
+    if (bv && bv.when) {
+      for (var wk in bv.when) {
+        var wexp = bv.when[wk];
+        if (Array.isArray(wexp)) {
+          if (wexp.indexOf(varValues[wk]) < 0 && wexp.length) varValues[wk] = wexp[0];
+        } else if (varValues[wk] !== wexp) {
+          varValues[wk] = wexp;
+        }
+      }
+    }
+  }
+  currentNode = nodeId;
+  currentState = n.state || null;
+  showPage(resolveVariantPage(n.page, varValues.platform));
+
+  var ring = document.getElementById("sel-ring");
+  var target = document.querySelector('.flow-svg g[data-node="' + nodeId + '"]');
+  if (ring && target) {
+    var bb = target.getBBox();
+    ring.setAttribute("x", bb.x - 7);
+    ring.setAttribute("y", bb.y - 7);
+    ring.setAttribute("width", bb.width + 14);
+    ring.setAttribute("height", bb.height + 14);
+    ring.setAttribute("stroke", "#d97706");
+    ring.setAttribute("fill", "rgba(217,119,6,0.08)");
+    ring.setAttribute("visibility", "visible");
+  }
+
+  var badge = document.getElementById("insp-node-id");
+  if (badge) badge.textContent = nodeId;
+  var titleEl = document.getElementById("anno-node-title");
+  if (titleEl) titleEl.textContent = n.title || nodeId;
+  var refEl = document.getElementById("flow-node-ref");
+  if (refEl) refEl.textContent = nodeId + (n.title ? " · " + n.title : "");
+  var annoEl = document.getElementById("anno-body");
+  if (annoEl) {
+    annoEl.innerHTML = (n.anno || []).map(function (p) {
+      return '<div class="anno-item"><b>' + escapeHtml(p[0]) + '</b>' + escapeHtml(p[1]) + '</div>';
+    }).join("") || '<div class="wt-muted">暂无节点规则说明</div>';
+  }
+
+  renderStates();
+  renderGlobalVars();
+  renderScopedVars();
+  syncUrlHash();
+  if (target) panNodeToSafeLeft(target);
+  if (typeof updateMemoFormCtx === "function" && !document.getElementById("memo-form").classList.contains("hidden")) {
+    updateMemoFormCtx();
+  }
+  if (typeof window.onWalkNodeChange === "function") {
+    window.onWalkNodeChange(nodeId, currentPage, Object.assign({}, varValues));
+  }
+}
+window.goNode = setViewByNode;
+
+// =========================================================================
+// SVG Canvas Pan & Zoom (Drag, Wheel, Pinch, zoomAt, fitBootZoom, SafeCenter)
+// =========================================================================
+var zoomPct = 100;
+var panX = 0;
+var panY = 0;
+var flowSvgEl = document.getElementById("flow-svg");
+var flowInnerEl = document.getElementById("flow-canvas-inner");
+var movedFlag = false;
+
+function applyPan(smooth) {
+  if (!flowInnerEl) return;
+  flowInnerEl.classList.toggle("smooth", !!smooth);
+  flowInnerEl.style.transform = "translate(" + panX + "px," + panY + "px)";
+}
+
+function applyZoomPct(pct) {
+  zoomPct = Math.min(300, Math.max(30, Math.round(pct)));
+  var svg = document.querySelector("#flow-svg svg");
+  if (svg) svg.style.width = zoomPct + "%";
+  var zv = document.getElementById("zv");
+  if (zv) zv.textContent = zoomPct + "%";
+}
+
+function zoomAt(value, clientX, clientY) {
+  if (!flowSvgEl) return;
+  var oldZoom = zoomPct;
+  var newZoom = Math.min(300, Math.max(30, value));
+  if (newZoom === oldZoom) return;
+  var rect = flowSvgEl.getBoundingClientRect();
+  var cx = clientX !== undefined ? clientX : (rect.left + rect.width / 2);
+  var cy = clientY !== undefined ? clientY : (rect.top + rect.height / 2);
+  var relX = cx - rect.left;
+  var relY = cy - rect.top;
+  var ratio = newZoom / oldZoom;
+  panX = relX - (relX - panX) * ratio;
+  panY = relY - (relY - panY) * ratio;
+  applyZoomPct(newZoom);
+  applyPan(false);
+}
+
+function setZoom(dir) {
+  if (dir === 0) {
+    fitBootZoom();
+    return;
+  }
+  var step = dir > 0 ? 25 : -25;
+  var rect = flowSvgEl ? flowSvgEl.getBoundingClientRect() : null;
+  var cx = rect ? rect.left + rect.width / 2 : undefined;
+  var cy = rect ? rect.top + rect.height / 2 : undefined;
+  zoomAt(zoomPct + step, cx, cy);
+}
+
+function fitBootZoom() {
+  if (!flowSvgEl) return;
+  var cw = flowSvgEl.clientWidth || 1200;
+  var panel = document.querySelector(".flow-panel");
+  var drawer = document.getElementById("inspector-drawer");
+  var dw = (panel && !panel.classList.contains("fs") && drawer) ? (drawer.offsetWidth + 32) : 0;
+  var availW = Math.max(280, cw - dw - 24);
+  var targetPct = Math.max(40, Math.min(100, Math.round((availW / cw) * 100)));
+  applyZoomPct(targetPct);
+  panX = 12;
+  panY = 12;
+  applyPan(false);
+}
+
+function panNodeToSafeLeft(target) {
+  if (!target || !flowSvgEl) return;
+  var panel = document.querySelector(".flow-panel");
+  var drawer = document.getElementById("inspector-drawer");
+  var flowRect = flowSvgEl.getBoundingClientRect();
+  if (!flowRect.width || !flowRect.height) return;
+  var dw = (panel && !panel.classList.contains("fs") && drawer) ? (drawer.offsetWidth + 16) : 0;
+  var safeW = Math.max(160, flowRect.width - dw);
+  var pad = 28;
+  var safeLeft = flowRect.left + pad;
+  var safeRight = flowRect.left + safeW - pad;
+  var safeTop = flowRect.top + pad;
+  var safeBottom = flowRect.bottom - pad;
+  var tr = target.getBoundingClientRect();
+  if (!tr.width && !tr.height) return;
+
+  var dx = 0;
+  var dy = 0;
+  if (tr.left < safeLeft || tr.right > safeRight) {
+    dx = (flowRect.left + safeW / 2) - (tr.left + tr.width / 2);
+  }
+  if (tr.top < safeTop || tr.bottom > safeBottom) {
+    dy = (flowRect.top + flowRect.height / 2) - (tr.top + tr.height / 2);
+  }
+  if (Math.abs(dx) > 1 || Math.abs(dy) > 1) {
+    panX += dx;
+    panY += dy;
+    applyPan(true);
+    setTimeout(function () { if (flowInnerEl) flowInnerEl.classList.remove("smooth"); }, 280);
+  }
+}
+
+function toggleFs(force) {
+  var p = document.querySelector(".flow-panel");
+  if (!p) return;
+  var on = force !== undefined ? force : !p.classList.contains("fs");
+  p.classList.toggle("fs", on);
+  var btn = document.getElementById("fs-btn");
+  if (btn) btn.textContent = on ? "显示详情" : "全屏画布";
+}
+
+if (flowSvgEl) {
+  var dragState = { active: false, startX: 0, startY: 0, startPanX: 0, startPanY: 0 };
+  flowSvgEl.addEventListener("pointerdown", function (e) {
+    if (e.button !== 0 && e.pointerType === "mouse") return;
+    dragState.active = true;
+    movedFlag = false;
+    dragState.startX = e.clientX;
+    dragState.startY = e.clientY;
+    dragState.startPanX = panX;
+    dragState.startPanY = panY;
+    if (flowInnerEl) flowInnerEl.classList.remove("smooth");
+  });
+  window.addEventListener("pointermove", function (e) {
+    if (!dragState.active) return;
+    var dx = e.clientX - dragState.startX;
+    var dy = e.clientY - dragState.startY;
+    if (!movedFlag && Math.hypot(dx, dy) > 4) movedFlag = true;
+    if (movedFlag) {
+      panX = dragState.startPanX + dx;
+      panY = dragState.startPanY + dy;
+      applyPan(false);
+    }
+  });
+  function endFlowDrag() {
+    if (!dragState.active) return;
+    dragState.active = false;
+    if (movedFlag) setTimeout(function () { movedFlag = false; }, 0);
+  }
+  window.addEventListener("pointerup", endFlowDrag);
+  window.addEventListener("pointercancel", endFlowDrag);
+
+  flowSvgEl.addEventListener("click", function (e) {
+    if (movedFlag) {
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+    var nodeEl = e.target.closest("g[data-node]");
+    if (nodeEl) {
+      setViewByNode(nodeEl.getAttribute("data-node"));
+    } else {
+      toggleFs(true);
+    }
+  });
+
+  flowSvgEl.addEventListener("keydown", function (e) {
+    if (e.key !== "Enter" && e.key !== " ") return;
+    var nodeEl = e.target.closest("g[data-node]");
+    if (nodeEl) {
+      e.preventDefault();
+      setViewByNode(nodeEl.getAttribute("data-node"));
+    }
+  });
+
+  flowSvgEl.addEventListener("wheel", function (e) {
+    e.preventDefault();
+    if (e.ctrlKey || e.metaKey) {
+      var factor = Math.exp(-e.deltaY * 0.008);
+      zoomAt(zoomPct * factor, e.clientX, e.clientY);
+    } else {
+      panX -= e.deltaX;
+      panY -= e.deltaY;
+      applyPan(false);
+    }
+  }, { passive: false });
+
+  var gestureStartZoom = 100;
+  flowSvgEl.addEventListener("gesturestart", function (e) {
+    e.preventDefault();
+    gestureStartZoom = zoomPct;
+  }, { passive: false });
+  flowSvgEl.addEventListener("gesturechange", function (e) {
+    e.preventDefault();
+    zoomAt(gestureStartZoom * e.scale, e.clientX, e.clientY);
+  }, { passive: false });
+  flowSvgEl.addEventListener("gestureend", function (e) {
+    e.preventDefault();
+  }, { passive: false });
+}
+
+document.addEventListener("keydown", function (e) {
+  if (e.key !== "Escape") return;
+  var guardModal = document.getElementById("export-guard-modal");
+  if (guardModal && !guardModal.classList.contains("hidden")) {
+    closeExportGuard();
+    return;
+  }
+  var memoForm = document.getElementById("memo-form");
+  if (memoForm && !memoForm.classList.contains("hidden")) {
+    closeMemoForm();
+    return;
+  }
+  if (wbView === "flow") {
+    var panel = document.querySelector(".flow-panel");
+    if (panel && !panel.classList.contains("fs")) toggleFs(true);
+  }
+});
+
+// =========================================================================
+// Spec Cards Mode (Single-page Cubic Bezier Tether & Scroll Sync)
+// =========================================================================
+function initSpecMode() {
+  var sw = document.getElementById("view-switch");
+  var box = document.getElementById("spec-cards");
+  if (!sw || !box || !SPEC_CARDS || !SPEC_CARDS.length) return;
+  sw.classList.remove("hidden");
+  box.innerHTML = SPEC_CARDS.map(function (c) {
+    return '<div class="spec-card" data-cid="' + escapeHtml(c.id) +
+      '" data-page="' + escapeHtml(c.page || "") +
+      '" data-anchor="' + escapeHtml(c.anchor || "") + '">' +
+      '<div class="spec-card-hd"><span class="spec-idx">' + escapeHtml(c.id) +
+      '</span><b>' + escapeHtml(c.title) + '</b></div>' +
+      '<div class="spec-card-bd">' + escapeHtml(c.body) + '</div></div>';
+  }).join("");
+  box.querySelectorAll(".spec-card").forEach(function (el) {
+    el.addEventListener("mouseenter", function () { activateSpecCard(el.getAttribute("data-cid")); });
+    el.addEventListener("click", function () { activateSpecCard(el.getAttribute("data-cid")); });
+  });
+}
+
+window.switchWbView = function (view) {
+  wbView = view;
+  document.getElementById("flow-panel-root").classList.toggle("hidden", view !== "flow");
+  document.getElementById("spec-panel-root").classList.toggle("hidden", view !== "spec");
+  var stageEl = document.getElementById("flow-stage");
+  var specSlot = document.getElementById("spec-stage-slot");
+  var inspBody = document.querySelector(".insp-body");
+  document.querySelectorAll("#view-switch .seg-btn").forEach(function (b) {
+    b.classList.toggle("active", b.getAttribute("data-wbview") === view);
+  });
+  if (view === "spec" && SPEC_CARDS && SPEC_CARDS.length) {
+    specSlot.appendChild(stageEl);
+    activateSpecCard(activeSpecId || SPEC_CARDS[0].id);
+  } else {
+    inspBody.insertBefore(stageEl, inspBody.firstChild);
+    var svg = document.getElementById("tether-svg");
+    var abox = document.getElementById("anchor-box");
+    if (svg) svg.innerHTML = "";
+    if (abox) abox.classList.add("hidden");
+    if (currentNode && NODES[currentNode]) {
+      setViewByNode(currentNode);
+    }
+  }
+  syncUrlHash();
+  scheduleOverlaySync();
+};
+
+function activateSpecCard(cid) {
+  activeSpecId = cid;
+  var card = (SPEC_CARDS || []).find(function (c) { return c.id === cid; });
+  if (!card) return;
+  var targetPage = resolveVariantPage(card.page, varValues.platform);
+  showPage(targetPage);
+  var specWs = document.getElementById("spec-ws");
+  if (specWs) specWs.classList.toggle("wide-spec", (PAGE_FRAME[targetPage] || "phone") === "wide");
+  document.querySelectorAll(".spec-card").forEach(function (el) {
+    el.classList.toggle("active", el.getAttribute("data-cid") === cid);
+  });
+  requestAnimationFrame(updateSpecTether);
+}
+
+function findSpecAnchorElement(anchor) {
+  if (!anchor) return null;
+  var activePage = document.querySelector(".page.active");
+  if (!activePage) return null;
+  var candidates = activePage.querySelectorAll("[data-comp-id], [data-anchor]");
+  for (var i = 0; i < candidates.length; i++) {
+    if (candidates[i].getAttribute("data-comp-id") === anchor ||
+        candidates[i].getAttribute("data-anchor") === anchor) {
+      return candidates[i];
+    }
+  }
+  return null;
+}
+
+function updateSpecTether() {
+  var svg = document.getElementById("tether-svg");
+  var abox = document.getElementById("anchor-box");
+  var ws = document.getElementById("spec-ws");
+  if (!svg || !abox || !ws || wbView !== "spec" || !activeSpecId) return;
+  var cardEl = document.querySelector('.spec-card[data-cid="' + activeSpecId + '"]');
+  var anchor = cardEl && cardEl.getAttribute("data-anchor");
+  var targetEl = findSpecAnchorElement(anchor);
+  if (!cardEl || !targetEl) {
+    svg.innerHTML = "";
+    abox.classList.add("hidden");
+    return;
+  }
+  var wr = ws.getBoundingClientRect();
+  var tr = targetEl.getBoundingClientRect();
+  var cr = cardEl.getBoundingClientRect();
+  if ((tr.width === 0 && tr.height === 0) || (cr.width === 0 && cr.height === 0)) {
+    svg.innerHTML = "";
+    abox.classList.add("hidden");
+    return;
+  }
+  abox.style.left = (tr.left - wr.left - 4) + "px";
+  abox.style.top = (tr.top - wr.top - 4) + "px";
+  abox.style.width = (tr.width + 8) + "px";
+  abox.style.height = (tr.height + 8) + "px";
+  abox.classList.remove("hidden");
+
+  var stageEl = document.getElementById("flow-stage");
+  var sr = stageEl ? stageEl.getBoundingClientRect() : tr;
+  var isStacked = cr.left < (sr.right - 16);
+  var x1, y1, x2, y2, dPath;
+  if (isStacked) {
+    x1 = tr.left - wr.left + tr.width / 2;
+    y1 = tr.bottom - wr.top + 4;
+    x2 = cr.left - wr.left + Math.min(48, cr.width / 2);
+    y2 = cr.top - wr.top;
+    var dy = Math.max(32, Math.abs(y2 - y1) * 0.5);
+    var cy1 = y1 + dy;
+    var cy2 = y2 - dy;
+    dPath = "M " + x1 + " " + y1 + " C " + x1 + " " + cy1 + ", " + x2 + " " + cy2 + ", " + x2 + " " + y2;
+  } else {
+    x1 = tr.right - wr.left + 4;
+    y1 = tr.top - wr.top + tr.height / 2;
+    x2 = cr.left - wr.left;
+    y2 = cr.top - wr.top + Math.min(24, cr.height / 2);
+    var dx = Math.max(32, Math.abs(x2 - x1) * 0.5);
+    var cx1 = x1 + dx;
+    var cx2 = x2 - dx;
+    dPath = "M " + x1 + " " + y1 + " C " + cx1 + " " + y1 + ", " + cx2 + " " + y2 + ", " + x2 + " " + y2;
+  }
+  svg.innerHTML =
+    '<path d="' + dPath + '" fill="none" stroke="#d97706" stroke-width="1.8" stroke-dasharray="5 4"></path>' +
+    '<circle cx="' + x1 + '" cy="' + y1 + '" r="3" fill="#d97706"></circle>' +
+    '<circle cx="' + x2 + '" cy="' + y2 + '" r="3" fill="#d97706"></circle>';
+}
+
+// =========================================================================
+// Minimalist Pick-and-Memo (Strict Semantic Picking + Cross-Page @ Chips)
+// =========================================================================
+var isMemoPickingActive = false;
+var lastPickedEl = null;
+var overlayRafId = 0;
+
+function scheduleOverlaySync() {
+  if (overlayRafId) return;
+  overlayRafId = requestAnimationFrame(function () {
+    overlayRafId = 0;
+    if (wbView === "spec") updateSpecTether();
+    if (isMemoPickingActive) updatePickOverlay();
+  });
+}
+
+function getStageContainers() {
+  return [document.getElementById("frame-phone"), document.getElementById("frame-wide")].filter(Boolean);
+}
+
+function setMemoPickingActive(active) {
+  isMemoPickingActive = !!active;
+  getStageContainers().forEach(function (el) {
+    el.classList.toggle("pick-mode-on", isMemoPickingActive);
+  });
+  if (!isMemoPickingActive) hidePickOverlay();
+}
+
+function hidePickOverlay() {
+  var ov = document.getElementById("pick-highlight-overlay");
+  var bg = document.getElementById("pick-label-badge");
+  if (ov) ov.style.display = "none";
+  if (bg) bg.style.display = "none";
+}
+
+function positionPickOverlay(targetEl, labelText) {
+  var ov = document.getElementById("pick-highlight-overlay");
+  var bg = document.getElementById("pick-label-badge");
+  if (!ov || !bg || !targetEl || !targetEl.isConnected) {
+    hidePickOverlay();
+    return;
+  }
+  var rect = targetEl.getBoundingClientRect();
+  if (rect.width === 0 && rect.height === 0) {
+    hidePickOverlay();
+    return;
+  }
+  ov.style.display = "block";
+  ov.style.left = rect.left + "px";
+  ov.style.top = rect.top + "px";
+  ov.style.width = rect.width + "px";
+  ov.style.height = rect.height + "px";
+
+  bg.style.display = "block";
+  bg.textContent = labelText;
+  var topPos = rect.top - 26;
+  if (topPos < 54) topPos = rect.bottom + 4;
+  var leftPos = Math.max(8, Math.min(window.innerWidth - 280, rect.left));
+  bg.style.left = leftPos + "px";
+  bg.style.top = topPos + "px";
+}
+
+function getCompDisplayName(el) {
+  if (!el) return "";
+  var cname = el.getAttribute("data-comp-name");
+  if (cname) return cname;
+  var cid = el.getAttribute("data-comp-id");
+  if (cid) return cid;
+  var anc = el.getAttribute("data-anchor");
+  if (anc) return anc;
+  return "";
+}
+
+function updatePickOverlay() {
+  if (!isMemoPickingActive || !lastPickedEl || !lastPickedEl.isConnected) {
+    hidePickOverlay();
+    return;
+  }
+  var pageEl = lastPickedEl.closest(".page.active");
+  if (!pageEl) {
+    hidePickOverlay();
+    return;
+  }
+  var name = getCompDisplayName(lastPickedEl);
+  positionPickOverlay(lastPickedEl, "已 @：" + name);
+}
+
+function buildFallbackSelector(el, pageEl) {
+  if (!el || !pageEl || el === pageEl) return "";
+  if (el.id) return "#" + CSS.escape(el.id);
+  var cid = el.getAttribute("data-comp-id");
+  if (cid) return '[data-comp-id="' + cid + '"]';
+  var anc = el.getAttribute("data-anchor");
+  if (anc) return '[data-anchor="' + anc + '"]';
+  var parts = [];
+  var cur = el;
+  while (cur && cur !== pageEl && cur.nodeType === 1) {
+    var tag = cur.tagName.toLowerCase();
+    var c = cur.getAttribute("data-comp-id");
+    if (c) {
+      parts.unshift('[data-comp-id="' + c + '"]');
+      break;
+    }
+    var parent = cur.parentElement;
+    if (parent) {
+      var sameTag = Array.prototype.filter.call(parent.children, function (ch) {
+        return ch.tagName === cur.tagName;
+      });
+      if (sameTag.length > 1) {
+        tag += ":nth-of-type(" + (sameTag.indexOf(cur) + 1) + ")";
+      }
+    }
+    parts.unshift(tag);
+    cur = parent;
+  }
+  return parts.join(" > ");
+}
+
+function showMemoFormHint(msg) {
+  var hintEl = document.getElementById("memo-form-hint");
+  if (!hintEl) return;
+  hintEl.textContent = msg;
+  hintEl.classList.remove("hidden");
+}
+
+function hideMemoFormHint() {
+  var hintEl = document.getElementById("memo-form-hint");
+  if (hintEl) {
+    hintEl.textContent = "";
+    hintEl.classList.add("hidden");
+  }
+}
+
+function insertMentionChipInEditor(targetObj) {
+  var inp = document.getElementById("memo-input");
+  if (!inp || !targetObj) return;
+  var chip = document.createElement("span");
+  chip.className = "memo-at-chip";
+  chip.setAttribute("contenteditable", "false");
+  chip.setAttribute("data-comp-id", targetObj.comp_id || "");
+  chip.setAttribute("data-comp-name", targetObj.comp_name || "");
+  chip.setAttribute("data-fallback", targetObj.fallback_selector || "");
+  if (targetObj.page) chip.setAttribute("data-page", targetObj.page);
+  chip.textContent = "@[" + (targetObj.comp_name || targetObj.comp_id || "组件") + "]";
+  var spaceNode = document.createTextNode(" ");
+
+  var sel = window.getSelection();
+  var range = null;
+  if (sel && sel.rangeCount > 0) {
+    var candidate = sel.getRangeAt(0);
+    if (inp.contains(candidate.commonAncestorContainer)) {
+      range = candidate;
+    }
+  }
+  inp.focus();
+  if (range) {
+    range.deleteContents();
+    range.insertNode(spaceNode);
+    range.insertNode(chip);
+    range.setStartAfter(spaceNode);
+    range.collapse(true);
+    sel.removeAllRanges();
+    sel.addRange(range);
+  } else {
+    inp.appendChild(chip);
+    inp.appendChild(spaceNode);
+    if (sel) {
+      var endRange = document.createRange();
+      endRange.setStartAfter(spaceNode);
+      endRange.collapse(true);
+      sel.removeAllRanges();
+      sel.addRange(endRange);
+    }
+  }
+}
+
+function updateMemoFormCtx() {
+  var ctxEl = document.getElementById("memo-ctx");
+  if (ctxEl) {
+    ctxEl.textContent = "当前上下文：" + (currentNode || "-") + " · " + (currentPage || "-");
+  }
+}
+
+function findSemanticComp(rawTarget, pageEl) {
+  if (!rawTarget || !pageEl || !rawTarget.closest) return null;
+  var compEl = rawTarget.closest("[data-comp-id], [data-anchor]");
+  if (compEl && !pageEl.contains(compEl)) compEl = null;
+  return compEl;
+}
+
+function handlePickSelect(rawTarget) {
+  if (!isMemoPickingActive) return;
+  var pageEl = (rawTarget && rawTarget.closest && rawTarget.closest(".page.active")) || document.querySelector(".page.active");
+  if (!pageEl) return;
+  var compEl = findSemanticComp(rawTarget, pageEl);
+  if (!compEl) return;
+
+  var compId = compEl.getAttribute("data-comp-id") || compEl.getAttribute("data-anchor") || "";
+  var compName = getCompDisplayName(compEl);
+  var fallbackSel = buildFallbackSelector(compEl, pageEl);
+  var pageId = pageEl.id || currentPage || "";
+
+  insertMentionChipInEditor({
+    page: pageId,
+    comp_id: compId,
+    comp_name: compName,
+    fallback_selector: fallbackSel
+  });
+  lastPickedEl = compEl;
+  updateMemoFormCtx();
+  positionPickOverlay(compEl, "已插入 @" + compName);
+}
+
+function handlePickHover(rawTarget) {
+  if (!isMemoPickingActive) return;
+  var pageEl = rawTarget && rawTarget.closest ? rawTarget.closest(".page.active") : null;
+  if (!pageEl) {
+    updatePickOverlay();
+    return;
+  }
+  var compEl = findSemanticComp(rawTarget, pageEl);
+  if (!compEl) {
+    updatePickOverlay();
+    return;
+  }
+  var name = getCompDisplayName(compEl);
+  positionPickOverlay(compEl, "点击添加 @" + name);
+}
+
+getStageContainers().forEach(function (container) {
+  container.addEventListener("pointerdown", function (e) {
+    if (!isMemoPickingActive) return;
+    e.preventDefault();
+    e.stopPropagation();
+    e.stopImmediatePropagation();
+    if (e.button === 0 || e.pointerType !== "mouse") {
+      handlePickSelect(e.target);
+    }
+  }, { capture: true });
+
+  container.addEventListener("click", function (e) {
+    if (!isMemoPickingActive) return;
+    e.preventDefault();
+    e.stopPropagation();
+    e.stopImmediatePropagation();
+  }, { capture: true });
+
+  container.addEventListener("pointermove", function (e) {
+    if (!isMemoPickingActive) return;
+    handlePickHover(e.target);
+  }, { capture: true });
+
+  container.addEventListener("pointerleave", function () {
+    if (!isMemoPickingActive) return;
+    updatePickOverlay();
+  });
+
+  container.addEventListener("scroll", function () {
+    scheduleOverlaySync();
+  }, { capture: true, passive: true });
+});
+
+var specPanelRootEl = document.getElementById("spec-panel-root");
+if (specPanelRootEl) {
+  specPanelRootEl.addEventListener("scroll", function () {
+    scheduleOverlaySync();
+  }, { passive: true });
+}
+window.addEventListener("resize", function () {
+  scheduleOverlaySync();
+});
+
+// =========================================================================
+// Contenteditable Extraction, Memo Normalization, Revalidation & Export
+// =========================================================================
+function extractEditorContent(editorEl) {
+  var targets = [];
+  var seen = {};
+  var fullChunks = [];
+  var commentChunks = [];
+  var BLOCK_TAGS = { DIV: 1, P: 1, LI: 1, PRE: 1, BLOCKQUOTE: 1, H1: 1, H2: 1, H3: 1, H4: 1, H5: 1, H6: 1 };
+
+  function ensureNewline(arr) {
+    if (!arr.length) return;
+    var last = arr[arr.length - 1];
+    if (last && last.slice(-1) !== "\n") arr.push("\n");
+  }
+
+  function walk(node) {
+    if (!node) return;
+    if (node.nodeType === 3) {
+      var val = node.nodeValue || "";
+      fullChunks.push(val);
+      commentChunks.push(val);
+      return;
+    }
+    if (node.nodeType !== 1) return;
+    var el = node;
+    if (el.classList && el.classList.contains("memo-at-chip")) {
+      var cid = el.getAttribute("data-comp-id") || "";
+      var cname = el.getAttribute("data-comp-name") || cid || "组件";
+      var fb = el.getAttribute("data-fallback") || "";
+      var pg = el.getAttribute("data-page") || currentPage || "";
+      var key = (cid || fb) + "@" + pg;
+      if ((cid || fb) && !seen[key]) {
+        seen[key] = true;
+        targets.push({
+          page: pg,
+          comp_id: cid,
+          comp_name: cname,
+          fallback_selector: fb
+        });
+      }
+      fullChunks.push("@[" + cname + "]");
+      return;
+    }
+    var tag = el.tagName ? el.tagName.toUpperCase() : "";
+    if (tag === "BR") {
+      var parent = el.parentElement;
+      var pTag = parent && parent !== editorEl && parent.tagName ? parent.tagName.toUpperCase() : "";
+      if (BLOCK_TAGS[pTag] && el.nextSibling === null && el.previousSibling !== null) {
+        return;
+      }
+      fullChunks.push("\n");
+      commentChunks.push("\n");
+      return;
+    }
+    var isBlock = !!BLOCK_TAGS[tag];
+    if (isBlock) {
+      ensureNewline(fullChunks);
+      ensureNewline(commentChunks);
+    }
+    var children = el.childNodes;
+    for (var i = 0; i < children.length; i++) {
+      walk(children[i]);
+    }
+    if (isBlock) {
+      ensureNewline(fullChunks);
+      ensureNewline(commentChunks);
+    }
+  }
+
+  if (editorEl) {
+    var topNodes = editorEl.childNodes;
+    for (var i = 0; i < topNodes.length; i++) {
+      walk(topNodes[i]);
+    }
+  }
+
+  var text = fullChunks.join("").replace(/\u00a0/g, " ").replace(/\n{3,}/g, "\n\n").trim();
+  var commentOnly = commentChunks.join("").replace(/\u00a0/g, " ").trim();
+  return {
+    targets: targets,
+    text: text,
+    commentOnly: commentOnly,
+    hasValidComment: commentOnly.length > 0
+  };
+}
+
+function normalizeTarget(t, defaultPage) {
+  if (!t || typeof t !== "object") return null;
+  var cid = t.comp_id || t.compId || "";
+  var cname = t.comp_name || t.compName || cid || "";
+  var fb = t.fallback_selector || t.fallbackSelector || "";
+  var pg = t.page || defaultPage || "";
+  if (!cid && !fb) return null;
+  return {
+    page: pg,
+    comp_id: cid,
+    comp_name: cname,
+    fallback_selector: fb
+  };
+}
+
+function getMemoTargets(memo) {
+  if (!memo || typeof memo !== "object") return [];
+  var defPage = memo.page || "";
+  if (Array.isArray(memo.targets) && memo.targets.length > 0) {
+    return memo.targets.map(function (t) { return normalizeTarget(t, defPage); }).filter(Boolean);
+  }
+  var legacy = normalizeTarget({
+    page: defPage,
+    comp_id: memo.comp_id || memo.compId || "",
+    comp_name: memo.comp_name || memo.compName || "",
+    fallback_selector: memo.fallback_selector || memo.fallbackSelector || ""
+  }, defPage);
+  return legacy ? [legacy] : [];
+}
+
+function normalizeMemo(m) {
+  if (!m || typeof m !== "object") return null;
+  var page = m.page || "";
+  var targets = getMemoTargets(m);
+  if (!page && targets[0] && targets[0].page) page = targets[0].page;
+  var gran = targets.length > 0 ? "component" : "page";
+  var compIdStr = targets.map(function (t) { return t.comp_id; }).filter(Boolean).join(", ");
+  var compNameStr = targets.length > 0
+    ? targets.map(function (t) { return "@" + (t.comp_name || t.comp_id); }).join(" ")
+    : page;
+  var fbStr = targets.map(function (t) { return t.fallback_selector; }).filter(Boolean).join(", ");
+  return {
+    id: m.id || ("m_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6)),
+    version_hash: m.version_hash || m.versionHash || DOC_VERSION_HASH,
+    view: m.view || "flow",
+    node: m.node || "",
+    page: page,
+    vars: m.vars || {},
+    granularity: gran,
+    comp_id: compIdStr,
+    comp_name: compNameStr,
+    targets: targets,
+    fallback_selector: fbStr,
+    text: m.body || m.text || "",
+    time: m.time || ""
+  };
+}
+
+var memos = [];
+try {
+  var savedRaw = localStorage.getItem(MEMO_STORAGE_KEY);
+  if (savedRaw) {
+    var parsedSaved = JSON.parse(savedRaw);
+    if (Array.isArray(parsedSaved)) {
+      memos = parsedSaved.map(normalizeMemo).filter(Boolean);
+    }
+  }
+} catch (e) {
+  memos = [];
+}
+
+if (!memos.length && Array.isArray(INITIAL_MEMOS) && INITIAL_MEMOS.length) {
+  memos = INITIAL_MEMOS.map(normalizeMemo).filter(Boolean);
+}
+
+function persistMemos() {
+  try { localStorage.setItem(MEMO_STORAGE_KEY, JSON.stringify(memos)); } catch (e) {}
+}
+
+function validateSingleTarget(pageEl, compId, fallbackSelector) {
+  if (!pageEl || !pageEl.classList || !pageEl.classList.contains("page")) return false;
+  if (compId) {
+    var allComps = pageEl.querySelectorAll("[data-comp-id], [data-anchor]");
+    for (var i = 0; i < allComps.length; i++) {
+      if (allComps[i].getAttribute("data-comp-id") === compId ||
+          allComps[i].getAttribute("data-anchor") === compId) {
+        return true;
+      }
+    }
+  }
+  if (fallbackSelector) {
+    try {
+      if (pageEl.querySelectorAll(fallbackSelector).length > 0) return true;
+    } catch (e) {}
+  }
+  return false;
+}
+
+function validateMemoAnchor(memo) {
+  if (!memo) return false;
+  var targets = getMemoTargets(memo);
+  if (targets.length > 0) {
+    return targets.every(function (t) {
+      var tp = (t && t.page) || memo.page || "";
+      if (!tp) return false;
+      var tPageEl = document.getElementById(tp);
+      return validateSingleTarget(tPageEl, t.comp_id, t.fallback_selector);
+    });
+  }
+  if (!memo.page) return false;
+  var pageEl = document.getElementById(memo.page);
+  return !!(pageEl && pageEl.classList.contains("page"));
+}
+
+function renderMemos() {
+  var toggleBtn = document.getElementById("memo-toggle-btn");
+  if (toggleBtn) toggleBtn.textContent = "评审备注 (" + memos.length + ")";
+  var listEl = document.getElementById("memo-list");
+  if (!listEl) return;
+  if (!memos.length) {
+    listEl.innerHTML = '<div class="memo-empty">暂无评审备注。<br>点击「+ 新增」后，可直接点选原型组件添加 @ 胶囊。</div>';
+    return;
+  }
+  listEl.innerHTML = memos.map(function (m, i) {
+    var isValid = validateMemoAnchor(m);
+    var targets = getMemoTargets(m);
+    var compNameLabel = targets.length
+      ? targets.map(function (t) { return "@[" + (t.comp_name || t.comp_id) + "]"; }).join(" ")
+      : (m.page || m.node || "-");
+    var titleLabel = "[" + (m.node || m.page || "-") + "] " + compNameLabel;
+    var badgeHtml = isValid ? "" : '<span class="memo-invalid-badge">落点已失效</span>';
+    var tagsHtml = "";
+    if (targets.length > 0) {
+      tagsHtml = '<div class="memo-item-tags">' + targets.map(function (t) {
+        var pgSuffix = (t.page && t.page !== m.page) ? (" (" + t.page + ")") : "";
+        return '<span class="memo-item-tag">@' + escapeHtml((t.comp_name || t.comp_id) + pgSuffix) + '</span>';
+      }).join("") + '</div>';
+    }
+    var metaText = targets.length > 0
+      ? ("component · " + targets.map(function (t) { return t.comp_id || t.fallback_selector; }).join(", "))
+      : ("page · " + (m.page || "-"));
+    return '<div class="memo-item' + (isValid ? "" : " invalid") + '">' +
+      '<div class="memo-item-hd">' +
+        '<div class="memo-item-ctx" onclick="jumpToMemo(' + i + ')" title="点击定位">' + escapeHtml(titleLabel) + '</div>' +
+        badgeHtml +
+      '</div>' +
+      tagsHtml +
+      '<div class="memo-item-meta">' + escapeHtml(metaText) + '</div>' +
+      '<div class="memo-item-txt">' + escapeHtml(m.text) + '</div>' +
+      '<div class="memo-item-ft"><span>' + escapeHtml(m.time || "") + '</span>' +
+        '<button type="button" class="memo-del-btn" onclick="deleteMemoItem(' + i + ')">删除</button></div>' +
+    '</div>';
+  }).join("");
+}
+
+window.jumpToMemo = function (idx) {
+  var m = memos[idx];
+  if (!m) return;
+  if (m.vars) {
+    Object.keys(m.vars).forEach(function (k) { varValues[k] = m.vars[k]; });
+  }
+  if (m.view === "spec" && wbView !== "spec") switchWbView("spec");
+  else if (m.view === "flow" && wbView !== "flow") switchWbView("flow");
+  if (m.node && NODES[m.node]) setViewByNode(m.node);
+  var targetPg = (m.targets && m.targets[0] && m.targets[0].page) || m.page;
+  if (targetPg && PAGE_FRAME[targetPg]) showPage(targetPg);
+  renderGlobalVars();
+  renderScopedVars();
+};
+
+window.deleteMemoItem = function (idx) {
+  memos.splice(idx, 1);
+  persistMemos();
+  renderMemos();
+};
+
+window.toggleMemo = function (force) {
+  var d = document.getElementById("memo-drawer");
+  if (!d) return;
+  var on = force !== undefined ? force : d.classList.contains("hidden");
+  d.classList.toggle("hidden", !on);
+  var btn = document.getElementById("memo-toggle-btn");
+  if (btn) btn.classList.toggle("active", on);
+  if (!on) closeMemoForm();
+  requestAnimationFrame(updateSpecTether);
+  scheduleOverlaySync();
+};
+
+window.openMemoForCurrent = function () {
+  toggleMemo(true);
+  lastPickedEl = null;
+  hidePickOverlay();
+  hideMemoFormHint();
+  document.getElementById("memo-form").classList.remove("hidden");
+  setMemoPickingActive(true);
+  updateMemoFormCtx();
+  var inp = document.getElementById("memo-input");
+  if (inp) inp.focus();
+};
+
+window.closeMemoForm = function () {
+  var form = document.getElementById("memo-form");
+  if (form) form.classList.add("hidden");
+  var inp = document.getElementById("memo-input");
+  if (inp) inp.innerHTML = "";
+  hideMemoFormHint();
+  lastPickedEl = null;
+  setMemoPickingActive(false);
+};
+
+window.saveMemoItem = function () {
+  var inp = document.getElementById("memo-input");
+  var extracted = extractEditorContent(inp);
+  if (!extracted.hasValidComment) {
+    showMemoFormHint("请输入具体修改意见（仅选择 @组件 无法保存）");
+    if (inp) inp.focus();
+    return;
+  }
+  hideMemoFormHint();
+
+  var targets = extracted.targets;
+  var pageId = currentPage || (targets[0] && targets[0].page) || "";
+  var gran = targets.length > 0 ? "component" : "page";
+  var compIdStr = targets.map(function (t) { return t.comp_id; }).filter(Boolean).join(", ");
+  var compNameStr = targets.length > 0
+    ? targets.map(function (t) { return "@" + (t.comp_name || t.comp_id); }).join(" ")
+    : pageId;
+  var fallbackSel = targets.map(function (t) { return t.fallback_selector; }).filter(Boolean).join(", ");
+
+  var now = new Date();
+  var timeStr = now.toTimeString().slice(0, 5);
+
+  memos.unshift({
+    id: "m_" + Date.now(),
+    version_hash: DOC_VERSION_HASH,
+    view: wbView,
+    node: currentNode || "",
+    page: pageId,
+    vars: Object.assign({}, varValues),
+    granularity: gran,
+    comp_id: compIdStr,
+    comp_name: compNameStr,
+    targets: targets,
+    fallback_selector: fallbackSel,
+    text: extracted.text,
+    time: timeStr
+  });
+  if (inp) inp.innerHTML = "";
+  persistMemos();
+  closeMemoForm();
+  renderMemos();
+};
+
+function cleanMemoEditorIfEmpty(el) {
+  if (!el) return;
+  if (el.querySelector(".memo-at-chip")) return;
+  var plain = (el.textContent || "").replace(/[\u00a0\u200b\r\n]/g, "").trim();
+  if (!plain && el.innerHTML !== "") {
+    el.innerHTML = "";
+  }
+}
+
+var memoInputEl = document.getElementById("memo-input");
+if (memoInputEl) {
+  memoInputEl.addEventListener("keydown", function (e) {
+    if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+      e.preventDefault();
+      saveMemoItem();
+    }
+  });
+  memoInputEl.addEventListener("paste", function (e) {
+    e.preventDefault();
+    var text = "";
+    if (e.clipboardData && e.clipboardData.getData) {
+      text = e.clipboardData.getData("text/plain");
+    } else if (window.clipboardData && window.clipboardData.getData) {
+      text = window.clipboardData.getData("Text");
+    }
+    if (!text) return;
+    var sel = window.getSelection();
+    if (sel && sel.rangeCount > 0) {
+      var range = sel.getRangeAt(0);
+      if (memoInputEl.contains(range.commonAncestorContainer)) {
+        range.deleteContents();
+        var textNode = document.createTextNode(text);
+        range.insertNode(textNode);
+        range.setStartAfter(textNode);
+        range.collapse(true);
+        sel.removeAllRanges();
+        sel.addRange(range);
+        hideMemoFormHint();
+        return;
+      }
+    }
+    memoInputEl.appendChild(document.createTextNode(text));
+    hideMemoFormHint();
+  });
+  memoInputEl.addEventListener("input", function () {
+    cleanMemoEditorIfEmpty(memoInputEl);
+    if ((memoInputEl.textContent || "").trim()) hideMemoFormHint();
+  });
+  memoInputEl.addEventListener("keyup", function (e) {
+    if (e.key === "Backspace" || e.key === "Delete") {
+      cleanMemoEditorIfEmpty(memoInputEl);
+    }
+  });
+}
+
+function buildMemosMarkdown(items) {
+  var validCount = items.filter(function (m) { return validateMemoAnchor(m); }).length;
+  var invalidCount = items.length - validCount;
+  var lines = [
+    "---",
+    "project: " + PROJECT_SLUG,
+    "version_hash: " + DOC_VERSION_HASH,
+    "exported_at: " + new Date().toISOString(),
+    "total_comments: " + items.length,
+    "valid_count: " + validCount,
+    "invalid_count: " + invalidCount,
+    "---",
+    "",
+    "# 评审反馈记录（Review Feedback）",
+    ""
+  ];
+  items.forEach(function (m, idx) {
+    var valid = validateMemoAnchor(m);
+    var statusStr = valid ? "valid" : "invalid";
+    var targets = getMemoTargets(m);
+    var targetHeading = targets.length
+      ? targets.map(function (t) { return "@[" + (t.comp_name || t.comp_id) + "]"; }).join(" ")
+      : (m.page || m.node || "page");
+    var gran = targets.length > 0 ? "component" : "page";
+    var compIdStr = targets.map(function (t) { return t.comp_id; }).filter(Boolean).join(", ");
+    var compNameStr = targets.map(function (t) { return t.comp_name; }).filter(Boolean).join(", ");
+    var fbStr = targets.map(function (t) { return t.fallback_selector; }).filter(Boolean).join(", ");
+
+    lines.push("## [FB-" + String(idx + 1).padStart(3, "0") + "] " + targetHeading + "（" + statusStr + "）");
+    if (!valid) {
+      lines.push("");
+      lines.push("> [!WARNING] 落点已失效");
+      lines.push("> 该条批注的 `targets` 中存在未命中当前原型的落点（命中数为 0），请人工核对后再修改。");
+    }
+    lines.push("");
+    lines.push("- **version_hash**: `" + (m.version_hash || m.versionHash || DOC_VERSION_HASH) + "`");
+    lines.push("- **status**: `" + statusStr + "`");
+    lines.push("- **view**: `" + (m.view || "flow") + "`");
+    lines.push("- **node**: `" + (m.node || "") + "`");
+    lines.push("- **page**: `" + (m.page || "") + "`");
+    lines.push("- **vars**: `" + JSON.stringify(m.vars || {}) + "`");
+    lines.push("- **granularity**: `" + gran + "`");
+    lines.push("- **comp_id**: `" + compIdStr + "`");
+    lines.push("- **comp_name**: `" + compNameStr + "`");
+    lines.push("- **targets**: `" + JSON.stringify(targets) + "`");
+    lines.push("- **fallback_selector**: `" + fbStr + "`");
+    lines.push("");
+    lines.push("**修改意见**：");
+    lines.push(m.text || "");
+    lines.push("");
+    lines.push("---");
+    lines.push("");
+  });
+  return lines.join("\n");
+}
+
+function buildMemosJsonl(items) {
+  return items.map(function (m) {
+    var valid = validateMemoAnchor(m);
+    var targets = getMemoTargets(m);
+    var gran = targets.length > 0 ? "component" : "page";
+    var compIdStr = targets.map(function (t) { return t.comp_id; }).filter(Boolean).join(", ");
+    var compNameStr = targets.map(function (t) { return t.comp_name; }).filter(Boolean).join(", ");
+    var fbStr = targets.map(function (t) { return t.fallback_selector; }).filter(Boolean).join(", ");
+    return JSON.stringify({
+      version_hash: m.version_hash || m.versionHash || DOC_VERSION_HASH,
+      status: valid ? "valid" : "invalid",
+      view: m.view || "flow",
+      node: m.node || "",
+      page: m.page || "",
+      vars: m.vars || {},
+      granularity: gran,
+      comp_id: compIdStr,
+      comp_name: compNameStr,
+      targets: targets,
+      fallback_selector: fbStr,
+      text: m.text || "",
+      time: m.time || ""
+    });
+  }).join("\n");
+}
+
+var pendingExportAction = null;
+function runWithExportGuard(actionType) {
+  if (!memos.length) {
+    alert("当前没有可导出的评审备注。");
+    return;
+  }
+  renderMemos();
+  var invalidCount = memos.filter(function (m) { return !validateMemoAnchor(m); }).length;
+  var validCount = memos.length - invalidCount;
+  if (invalidCount > 0) {
+    pendingExportAction = actionType;
+    document.getElementById("export-guard-msg").textContent =
+      "检测到 " + invalidCount + " 条备注的原型落点已失效（可能因页面或组件结构变更），共 " + validCount + " 条有效备注。请选择处理方式：";
+    var validBtn = document.getElementById("export-valid-only-btn");
+    validBtn.disabled = validCount === 0;
+    validBtn.textContent = "仅导出有效备注 (" + validCount + " 条)";
+    document.getElementById("export-guard-modal").classList.remove("hidden");
+    return;
+  }
+  executeExport(actionType, memos);
+}
+
+window.closeExportGuard = function () {
+  pendingExportAction = null;
+  document.getElementById("export-guard-modal").classList.add("hidden");
+};
+
+window.confirmExportValidOnly = function () {
+  var actionType = pendingExportAction;
+  closeExportGuard();
+  var validItems = memos.filter(function (m) { return validateMemoAnchor(m); });
+  if (!validItems.length || !actionType) return;
+  executeExport(actionType, validItems);
+};
+
+window.confirmExportAllWithInvalid = function () {
+  var actionType = pendingExportAction;
+  closeExportGuard();
+  if (!memos.length || !actionType) return;
+  executeExport(actionType, memos);
+};
+
+function triggerDownload(content, mimeType, filename) {
+  var blob = new Blob([content], { type: mimeType });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+}
+
+function fallbackCopyText(text) {
+  var ta = document.createElement("textarea");
+  ta.value = text;
+  ta.style.position = "fixed";
+  ta.style.left = "-9999px";
+  document.body.appendChild(ta);
+  ta.select();
+  try { document.execCommand("copy"); } catch (e) {}
+  document.body.removeChild(ta);
+}
+
+function executeExport(actionType, items) {
+  if (actionType === "download_jsonl") {
+    triggerDownload(buildMemosJsonl(items), "application/x-ndjson;charset=utf-8", "review-feedback.jsonl");
+    return;
+  }
+  var md = buildMemosMarkdown(items);
+  if (actionType === "copy") {
+    var btn = document.getElementById("copy-md-btn");
+    var done = function () {
+      if (btn) {
+        var orig = btn.textContent;
+        btn.textContent = "已复制";
+        setTimeout(function () { btn.textContent = orig; }, 1500);
+      }
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(md).then(done, function () { fallbackCopyText(md); done(); });
+    } else {
+      fallbackCopyText(md);
+      done();
+    }
+  } else if (actionType === "download") {
+    triggerDownload(md, "text/markdown;charset=utf-8", "review-feedback.md");
+  }
+}
+
+window.copyMemosMd = function () { runWithExportGuard("copy"); };
+window.downloadMemosMd = function () { runWithExportGuard("download"); };
+window.downloadMemosJsonl = function () { runWithExportGuard("download_jsonl"); };
+
+function applyHashState() {
+  isRestoringHash = true;
+  try {
+    var parsed = parseUrlHash();
+    var initNode = parsed.node || ENTRY_NODE;
+    setViewByNode(initNode);
+    if (parsed.view && parsed.view !== wbView && SPEC_CARDS && SPEC_CARDS.length) {
+      switchWbView(parsed.view);
+    }
+  } finally {
+    isRestoringHash = false;
+  }
+  syncUrlHash();
+}
+
+window.addEventListener("hashchange", applyHashState);
+
+initDeltaHighlights();
+initSpecMode();
+renderMemos();
+fitBootZoom();
+applyHashState();
+
+</script>
+</body>
+</html>

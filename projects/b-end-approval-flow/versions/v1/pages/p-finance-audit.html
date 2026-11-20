@@ -3,7 +3,7 @@
     <div class="wt-breadcrumb">
       <span>审批中心</span><span>/</span><span>大额复核</span><span>/</span><strong>财务总监复核</strong>
     </div>
-    <button class="wt-btn wt-btn-sm" data-comp-id="finance.back.btn" data-comp-name="返回待办列表按钮">返回待办</button>
+    <button type="button" class="wt-btn wt-btn-sm" data-comp-id="finance.back.btn" data-comp-name="返回待办列表按钮" data-comp-role="nav" onclick="goNode('F_LIST')">返回待办</button>
   </div>
 
   <div class="wt-stack" style="padding:14px;">
@@ -12,7 +12,7 @@
     </div>
 
     <div class="wt-card">
-      <div class="wt-card-hd">
+      <div class="wt-card-hd wt-between">
         <span>采购单复核详情（PO-20261120-02）</span>
         <span class="wt-badge">直属主管已同意</span>
       </div>
@@ -28,12 +28,12 @@
         <div class="wt-divider"></div>
         <div class="wt-field">
           <label class="wt-label">财务总监复核意见 *</label>
-          <textarea class="wt-textarea" placeholder="请输入预算合规性核查结果或驳回修改要求" data-comp-id="finance.comment.input" data-comp-name="财务总监复核意见输入框">预算科目匹配，准予立项采购。</textarea>
+          <textarea class="wt-textarea" placeholder="请输入预算合规性核查结果或驳回修改要求" data-comp-id="finance.comment.input" data-comp-name="财务总监复核意见输入框" data-comp-role="control">预算科目匹配，三方比价完整，准予立项采购。</textarea>
         </div>
       </div>
       <div class="wt-card-ft wt-between">
-        <button class="wt-btn wt-btn-danger" data-comp-id="finance.reject.btn" data-comp-name="财务总监驳回按钮">驳回（保留草稿）</button>
-        <button class="wt-btn wt-btn-primary" data-comp-id="finance.approve.btn" data-comp-name="财务总监复核通过按钮">通过复核</button>
+        <button type="button" class="wt-btn wt-btn-danger" data-comp-id="finance.reject.btn" data-comp-name="财务总监驳回按钮" data-comp-role="control" onclick="setVar('audit_decision','reject');goNode('F_REJECTED')">驳回（保留草稿）</button>
+        <button type="button" class="wt-btn wt-btn-primary" data-comp-id="finance.approve.btn" data-comp-name="财务总监复核通过按钮" data-comp-role="control" onclick="setVar('audit_decision','approve');goNode('F_DONE')">通过复核</button>
       </div>
     </div>
   </div>

@@ -1,0 +1,665 @@
+{
+  "version": "spec-v2",
+  "meta": {
+    "project": "demo-captcha-publish",
+    "title": "动态社区内容发布器人机验证交互走查",
+    "doc_version": "v2.0",
+    "platform_default": "app",
+    "entry_node": "F_ENTRY",
+    "prd_source": "prd.md"
+  },
+  "vars": [
+    {
+      "id": "platform",
+      "label": "产品端",
+      "kind": "global",
+      "default": "app",
+      "options": [
+        { "id": "app", "label": "App 375px" },
+        { "id": "pc", "label": "Web 宽屏" }
+      ]
+    },
+    {
+      "id": "publish_scene",
+      "label": "发布场景",
+      "kind": "global",
+      "default": "original",
+      "options": [
+        { "id": "original", "label": "原创动态" },
+        { "id": "repost", "label": "转发动态" }
+      ]
+    },
+    {
+      "id": "captcha_type",
+      "label": "下发题型",
+      "kind": "local",
+      "pages": [
+        "p-editor-verify",
+        "p-editor-verify-failed",
+        "p-editor-expired",
+        "p-pc-editor-verify",
+        "p-pc-editor-verify-failed",
+        "p-pc-editor-expired"
+      ],
+      "default": "chars",
+      "options": [
+        { "id": "chars", "label": "字符验证码" },
+        { "id": "slider", "label": "滑块拼图" },
+        { "id": "grid", "label": "九宫格图片" }
+      ]
+    },
+    {
+      "id": "login_state",
+      "label": "当前登录状态",
+      "kind": "branch",
+      "diamond": "D_LOGGED_SUBMIT",
+      "nodes": ["F_EDITOR", "F_PUBLISH_CLICK", "D_LOGGED_SUBMIT"],
+      "default": "in",
+      "options": [
+        { "id": "in", "label": "已登录", "target": "F_RECHECK" },
+        { "id": "out", "label": "未登录", "target": "F_LOGIN" }
+      ]
+    },
+    {
+      "id": "login_result",
+      "label": "登录结果",
+      "kind": "branch",
+      "diamond": "D_LOGIN_OK",
+      "nodes": ["F_LOGIN", "D_LOGIN_OK"],
+      "default": "ok",
+      "options": [
+        { "id": "ok", "label": "成功", "target": "F_RECHECK" },
+        { "id": "cancel", "label": "取消", "target": "F_CANCEL_LOGIN" },
+        { "id": "pending", "label": "尚未完成", "target": "F_LOGIN_PENDING" }
+      ]
+    },
+    {
+      "id": "risk_result",
+      "label": "云端风控结果",
+      "kind": "branch",
+      "diamond": "D_SUBMIT",
+      "nodes": ["F_RECHECK", "D_SUBMIT"],
+      "default": "verify",
+      "options": [
+        { "id": "verify", "label": "需要验证（灰名单）", "target": "F_VERIFY_PUBLISH" },
+        { "id": "allow", "label": "直接放行（白名单/正常）", "target": "F_SUBMIT" },
+        { "id": "deny", "label": "直接拒绝（黑名单）", "target": "F_BLOCK_PUBLISH" }
+      ]
+    },
+    {
+      "id": "verify_result",
+      "label": "人机校验结果",
+      "kind": "branch",
+      "diamond": "D_VERIFY_PUBLISH",
+      "nodes": ["F_VERIFY_PUBLISH", "D_VERIFY_PUBLISH"],
+      "default": "pass",
+      "options": [
+        { "id": "pass", "label": "通过", "target": "F_SUBMIT" },
+        { "id": "fail", "label": "明确失败", "target": "D_RETRY_ALLOWED" },
+        { "id": "abort", "label": "边界情况", "target": "D_PUBLISH_ABORT" }
+      ]
+    },
+    {
+      "id": "fail_limit",
+      "label": "当日失败是否达上限 N",
+      "kind": "branch",
+      "diamond": "D_RETRY_ALLOWED",
+      "nodes": ["F_VERIFY_PUBLISH", "D_VERIFY_PUBLISH", "D_RETRY_ALLOWED"],
+      "when": { "verify_result": "fail" },
+      "default": "under_n",
+      "options": [
+        { "id": "under_n", "label": "未达 N（保留浮层重试）", "target": "F_VERIFY_FAILED_PUBLISH" },
+        { "id": "reach_n", "label": "第 N 次（立即入黑）", "target": "F_WAIT_BLACK" }
+      ]
+    },
+    {
+      "id": "abort_reason",
+      "label": "验证中断原因",
+      "kind": "branch",
+      "diamond": "D_PUBLISH_ABORT",
+      "nodes": ["F_VERIFY_PUBLISH", "D_VERIFY_PUBLISH", "D_PUBLISH_ABORT"],
+      "when": { "verify_result": "abort" },
+      "default": "cancel",
+      "options": [
+        { "id": "cancel", "label": "主动取消", "target": "F_CANCEL_PUBLISH" },
+        { "id": "timeout", "label": "网络超时", "target": "F_PUBLISH_NETWORK" },
+        { "id": "expired", "label": "验证过期", "target": "F_EXPIRE_PUBLISH" }
+      ]
+    },
+    {
+      "id": "publish_ok",
+      "label": "原有发布流程结果",
+      "kind": "branch",
+      "diamond": "D_PUBLISH_OK",
+      "nodes": ["F_SUBMIT", "D_PUBLISH_OK"],
+      "default": "yes",
+      "options": [
+        { "id": "yes", "label": "确认成功", "target": "F_SUCCESS" },
+        { "id": "no", "label": "发布未成功", "target": "F_SUBMIT_FAILED" }
+      ]
+    }
+  ],
+  "nodes": {
+    "F_ENTRY": {
+      "page": "p-source-base",
+      "title": "社区动态流发布入口",
+      "change": "unchanged",
+      "anno": [
+        ["入口行为无变更", "点击动态社区底部「+ 发动态」、话题参与按钮或动态卡片「转发」进入发布器前保持线上现状，不前置触发人机验证。"],
+        ["覆盖范围", "统一收敛至原创动态发布器与转发动态发布器内部有效提交时判断。"]
+      ]
+    },
+    "F_EDITOR": {
+      "page": "p-editor-base",
+      "state": "editor/filled",
+      "title": "拉起原创或转发发布器",
+      "change": "unchanged",
+      "anno": [
+        ["同页校验", "点击发布（Web 宽屏含 Ctrl/Cmd+Enter）时先执行原有内容非空校验（右侧可切换空内容局部态），不满足时不触发风控请求。"],
+        ["内容全链路保留", "任意拦截、取消或异常均完整保留正文、图文附件、话题、定位及原转发动态卡片。"]
+      ]
+    },
+    "F_PUBLISH_CLICK": {
+      "page": "p-editor-base",
+      "title": "点击发布按钮",
+      "change": "modified",
+      "anno": [
+        ["下游分支：登录状态", "通过原有内容校验后检查当前是否已登录：已登录直接请求云端风控判断；未登录拉起社区登录浮层。"],
+        ["走查操作", "可切换右侧「当前登录状态」分支变量，点击原型右上「发布」按钮即可按所选分支推进。"]
+      ]
+    },
+    "D_LOGGED_SUBMIT": {
+      "page": "p-editor-base",
+      "title": "判断：当前已登录？",
+      "isDecision": true,
+      "branchVar": "login_state",
+      "change": "modified",
+      "anno": [
+        ["判断节点", "校验当前会话是否已有有效登录账号（uid）。"],
+        ["分支去向", "「已登录」直接进入发布前风控判断；「未登录」拉起社区登录浮层完成登录衔接。"]
+      ]
+    },
+    "F_LOGIN": {
+      "page": "p-login-base",
+      "title": "完成社区账号登录",
+      "change": "modified",
+      "anno": [
+        ["下游分支：登录结果", "仅由点击发布触发的登录在成功后按当前登录账号（uid）衔接请求云端风控判断；非发布动作（如浏览互动或消息查看）触发的登录不发起发布判断。"],
+        ["取消与停留", "取消或按 ESC 关闭登录浮层时回到发布器保留已编辑内容，不弹 Toast。"]
+      ]
+    },
+    "D_LOGIN_OK": {
+      "page": "p-login-base",
+      "title": "判断：登录结果？",
+      "isDecision": true,
+      "branchVar": "login_result",
+      "change": "modified",
+      "anno": [
+        ["判断节点", "根据登录浮层交互结果决定后续流向。"],
+        ["分支去向", "「成功」按当前登录账号（uid）请求风控；「取消」回到发布器保留内容不发布；「尚未完成」停留原登录浮层。"]
+      ]
+    },
+    "F_LOGIN_PENDING": {
+      "page": "p-login-pending",
+      "title": "停留原登录浮层",
+      "change": "unchanged",
+      "anno": [
+        ["未完成登录", "短信验证码错误或待确认时停留在原登录浮层，底层发布器内容保持不变，不计入人机验证失败次数。"]
+      ]
+    },
+    "F_CANCEL_LOGIN": {
+      "page": "p-editor-cancelled",
+      "title": "保留内容，本次不发布",
+      "change": "unchanged",
+      "anno": [
+        ["主动关闭登录", "关闭登录浮层后回到当前发布器，完整保留已编辑内容，本次提交终止，无 Toast。"]
+      ]
+    },
+    "F_RECHECK": {
+      "page": "p-editor-base",
+      "title": "请求发布前风控判断",
+      "change": "new",
+      "anno": [
+        ["判断优先级", "1. 白名单直接放行 → 2. 黑名单直接拒绝 → 3. 正常低风险用户直接放行 → 4. 命中风控灰名单下发人机验证。"],
+        ["跨端共用状态", "同一登录账号（uid）在 App 375px 与 Web 宽屏、原创与转发、三种题型下共用当日失败计数与黑白名单状态。"]
+      ]
+    },
+    "D_SUBMIT": {
+      "page": "p-editor-base",
+      "title": "判断：风控结果？",
+      "isDecision": true,
+      "branchVar": "risk_result",
+      "change": "new",
+      "anno": [
+        ["判断节点", "云端风控接口返回本次提交的处置策略。"],
+        ["分支去向", "「直接放行」执行原有发布；「需要验证」下发人机校验浮层；「直接拒绝」保留内容并提示发布失败。"]
+      ]
+    },
+    "F_BLOCK_PUBLISH": {
+      "page": "p-editor-blocked",
+      "title": "保留内容，提示发布失败",
+      "change": "new",
+      "anno": [
+        ["黑名单直接拒绝", "当前在黑名单内时停留发布器保留全部已编辑内容，Toast「发布失败，请稍后再试」，不重复累加失败次数或拉黑天数。"]
+      ]
+    },
+    "F_VERIFY_PUBLISH": {
+      "page": "p-editor-verify",
+      "title": "展示随机题型人机校验浮层",
+      "change": "new",
+      "anno": [
+        ["随机下发三题型", "云端从字符验证码、滑块拼图、九宫格图片中随机下发 1 种（可在右侧局部组件变量切换预览），C 端不提供题型切换。"],
+        ["结果分支与级联", "验证通过清零当日失败计数并继续发布；明确失败按是否达上限 N 分流；取消、换题、超时、过期均不计失败。"]
+      ]
+    },
+    "D_VERIFY_PUBLISH": {
+      "page": "p-editor-verify",
+      "title": "判断：校验结果？",
+      "isDecision": true,
+      "branchVar": "verify_result",
+      "change": "new",
+      "anno": [
+        ["判断节点", "用户提交人机校验或发生边界中断后的云端校验结论。"],
+        ["分支去向", "「通过」继续执行原有发布；「明确失败」进入失败上限 N 判断；「边界情况」进入中断原因分流。"]
+      ]
+    },
+    "D_RETRY_ALLOWED": {
+      "page": "p-editor-verify-failed",
+      "title": "判断：当日失败达上限 N？",
+      "isDecision": true,
+      "branchVar": "fail_limit",
+      "change": "new",
+      "anno": [
+        ["判断节点", "校验明确失败时，判断当日累计失败次数是否已达上限 N。"],
+        ["分支去向", "「未达 N」保留浮层显示验证失败与重新验证；「第 N 次」立即入黑并关闭浮层提示失败。"]
+      ]
+    },
+    "D_PUBLISH_ABORT": {
+      "page": "p-editor-verify",
+      "title": "判断：验证中断原因？",
+      "isDecision": true,
+      "branchVar": "abort_reason",
+      "change": "new",
+      "anno": [
+        ["判断节点", "区分人机验证非正常完成的具体边界原因（均不计当日失败次数）。"],
+        ["分支去向", "「主动取消」静默关闭保留内容；「网络超时」Toast 提示重试；「验证过期」保留浮层提示过期并可重新验证。"]
+      ]
+    },
+    "F_VERIFY_FAILED_PUBLISH": {
+      "page": "p-editor-verify-failed",
+      "title": "保留浮层：验证失败与重新验证",
+      "change": "new",
+      "anno": [
+        ["未达上限 N 留浮层", "当日明确失败次数未达 N 时不关闭验证浮层、不弹 Toast、无冷却等待，原题锁定并显示「验证失败」与「重新验证」。"]
+      ]
+    },
+    "F_RETRY": {
+      "page": "p-editor-verify-failed",
+      "title": "点击“重新验证”重新请求判断",
+      "change": "new",
+      "anno": [
+        ["主动触发重判", "未达 N 明确失败或题目过期后，用户点击「重新验证」按钮时重新请求云端完整判断（回流 F_RECHECK）；若仍需验证则刷新为新随机下发的题目。"]
+      ]
+    },
+    "F_WAIT_BLACK": {
+      "page": "p-editor-blocked",
+      "title": "第 N 次入黑：关闭浮层提示失败",
+      "change": "new",
+      "anno": [
+        ["第 N 次失败入黑", "当日第 N 次明确失败立即加入黑名单，关闭验证浮层，停留发布器保留内容，Toast「发布失败，请稍后再试」。"],
+        ["累计拉黑自然日 M", "同一自然日最多记 1 天；累计不足 M 时北京时间次日 00:00 自动解黑（不自动重发），达到第 M 个拉黑自然日起不再每日自动移出。"]
+      ]
+    },
+    "F_CANCEL_PUBLISH": {
+      "page": "p-editor-cancelled",
+      "title": "取消验证：保留内容不发布",
+      "change": "new",
+      "anno": [
+        ["取消安全验证", "点击取消、右上角关闭或 Web 按 ESC 关闭验证浮层，停留发布器保留内容，无 Toast，不增加失败计数。"]
+      ]
+    },
+    "F_PUBLISH_NETWORK": {
+      "page": "p-editor-network",
+      "title": "保留内容，提示网络超时重试",
+      "change": "new",
+      "anno": [
+        ["网络超时兜底", "请求云端判断超时或校验网络异常时关闭验证浮层、停留发布器保留内容，Toast「网络超时，请稍后重试」，不计失败。"]
+      ]
+    },
+    "F_EXPIRE_PUBLISH": {
+      "page": "p-editor-expired",
+      "title": "保留浮层：验证已过期与重新验证",
+      "change": "new",
+      "anno": [
+        ["复用失败重试模板", "题目过期时不关闭验证浮层、无 Toast、不计当日失败次数；原题锁定并隐藏换一张，展示「验证已过期」与「重新验证」，点击同样回流 F_RECHECK。"]
+      ]
+    },
+    "F_SUBMIT": {
+      "page": "p-editor-submitting",
+      "title": "执行原有发布流程",
+      "change": "unchanged",
+      "anno": [
+        ["放行后继续原发布", "风控放行或人机验证通过后自动续传原发布请求；结果返回前提交按钮显示「发布中...」，防重复提交。"]
+      ]
+    },
+    "D_PUBLISH_OK": {
+      "page": "p-editor-submitting",
+      "title": "判断：原有流程确认成功？",
+      "isDecision": true,
+      "branchVar": "publish_ok",
+      "change": "unchanged",
+      "anno": [
+        ["判断节点", "原有发布接口返回结果是否确认成功。"],
+        ["分支去向", "「确认成功」弹成功提示并刷新社区动态流；「发布未成功」停留发布器保留内容并沿用原有失败提示。"]
+      ]
+    },
+    "F_SUBMIT_FAILED": {
+      "page": "p-editor-publish-failed",
+      "title": "保留内容，沿用原有失败提示",
+      "change": "unchanged",
+      "anno": [
+        ["原流程发布失败", "原有发布接口失败或命中内容限制时，停留发布器保留内容并沿用线上提示，不增加验证失败计数。"]
+      ]
+    },
+    "F_SUCCESS": {
+      "page": "p-source-success",
+      "title": "发布成功或转发成功",
+      "change": "unchanged",
+      "anno": [
+        ["真实确认成功", "仅原有发布流程确认成功后才弹「发布成功 / 转发成功」并返回社区动态流刷新展示。"]
+      ]
+    }
+  },
+  "pages": {
+    "p-source-base": {
+      "frame": "phone",
+      "title": "社区动态流入口页",
+      "components": [
+        { "comp_id": "source.entry.publish_btn", "comp_name": "发动态入口按钮", "role": "control" },
+        { "comp_id": "source.repost.btn", "comp_name": "动态卡片转发按钮", "role": "control" }
+      ]
+    },
+    "p-pc-source-base": {
+      "variant_of": "p-source-base",
+      "frame": "wide",
+      "title": "Web 宽屏社区入口页",
+      "overrides": {
+        "layout": "pc-timeline",
+        "copy": { "source.entry.publish_btn": "+ 发动态" }
+      }
+    },
+    "p-source-success": {
+      "frame": "phone",
+      "title": "发布成功返回动态流页",
+      "components": [
+        { "comp_id": "common.toast", "comp_name": "全局提示 Toast", "role": "feedback" },
+        { "comp_id": "source.new_post.btn", "comp_name": "再次发动态按钮", "role": "control" }
+      ]
+    },
+    "p-pc-source-success": {
+      "variant_of": "p-source-success",
+      "frame": "wide",
+      "title": "Web 宽屏发布成功态",
+      "overrides": { "layout": "pc-timeline" }
+    },
+    "p-editor-base": {
+      "frame": "phone",
+      "title": "发布器（已填写内容）",
+      "components": [
+        { "comp_id": "editor.cancel.btn", "comp_name": "取消按钮", "role": "control" },
+        { "comp_id": "editor.publish.btn", "comp_name": "发布按钮", "role": "control", "anchor": "anchor-pub-btn" },
+        { "comp_id": "editor.content.input", "comp_name": "正文编辑区", "role": "control" },
+        { "comp_id": "editor.empty_state.btn", "comp_name": "切换空内容校验预览按钮", "role": "control" }
+      ]
+    },
+    "p-pc-editor-base": {
+      "variant_of": "p-editor-base",
+      "frame": "wide",
+      "title": "Web 宽屏发布器（已填写内容）",
+      "overrides": {
+        "layout": "pc-editor-modal",
+        "copy": { "editor.publish.btn": "发布（Ctrl/Cmd+Enter）" },
+        "components_patch": {
+          "editor.publish.btn": { "shortcut": "Ctrl/Cmd+Enter" }
+        }
+      }
+    },
+    "p-editor-empty": {
+      "frame": "phone",
+      "title": "发布器（空内容校验提示）",
+      "components": [
+        { "comp_id": "editor.cancel.btn", "comp_name": "取消按钮", "role": "control" },
+        { "comp_id": "editor.publish.btn", "comp_name": "发布按钮", "role": "control" },
+        { "comp_id": "editor.content.input", "comp_name": "正文编辑区", "role": "control" },
+        { "comp_id": "editor.fill_back.btn", "comp_name": "恢复填写内容按钮", "role": "control" },
+        { "comp_id": "common.toast", "comp_name": "全局提示 Toast", "role": "feedback" }
+      ]
+    },
+    "p-pc-editor-empty": {
+      "variant_of": "p-editor-empty",
+      "frame": "wide",
+      "title": "Web 宽屏发布器（空内容校验提示）",
+      "overrides": { "layout": "pc-editor-modal" }
+    },
+    "p-login-base": {
+      "frame": "phone",
+      "title": "社区登录浮层",
+      "components": [
+        { "comp_id": "login.sheet", "comp_name": "登录浮层", "role": "modal", "anchor": "anchor-login-sheet" },
+        { "comp_id": "login.cancel.btn", "comp_name": "关闭登录浮层按钮", "role": "control" },
+        { "comp_id": "login.phone.input", "comp_name": "手机号输入框", "role": "control" },
+        { "comp_id": "login.code.input", "comp_name": "短信验证码输入框", "role": "control" },
+        { "comp_id": "login.pending.btn", "comp_name": "模拟待完成停留按钮", "role": "control" },
+        { "comp_id": "login.submit.btn", "comp_name": "登录并继续发布按钮", "role": "control" }
+      ]
+    },
+    "p-pc-login-base": {
+      "variant_of": "p-login-base",
+      "frame": "wide",
+      "title": "Web 宽屏登录浮层",
+      "overrides": { "layout": "pc-modal" }
+    },
+    "p-login-pending": {
+      "frame": "phone",
+      "title": "社区登录浮层（待完成）",
+      "components": [
+        { "comp_id": "login.sheet", "comp_name": "登录浮层", "role": "modal" },
+        { "comp_id": "login.cancel.btn", "comp_name": "关闭登录浮层按钮", "role": "control" },
+        { "comp_id": "login.code.input", "comp_name": "短信验证码输入框", "role": "control" },
+        { "comp_id": "login.continue.btn", "comp_name": "重新输入并完成登录按钮", "role": "control" }
+      ]
+    },
+    "p-pc-login-pending": {
+      "variant_of": "p-login-pending",
+      "frame": "wide",
+      "title": "Web 宽屏登录浮层（待确认）",
+      "overrides": { "layout": "pc-modal" }
+    },
+    "p-editor-verify": {
+      "frame": "phone",
+      "title": "安全验证浮层",
+      "components": [
+        { "comp_id": "captcha.modal", "comp_name": "安全验证浮层", "role": "modal" },
+        { "comp_id": "captcha.body", "comp_name": "验证题型主区域", "role": "container", "anchor": "anchor-captcha-body" },
+        { "comp_id": "captcha.chars.input", "comp_name": "字符验证码输入框", "role": "control" },
+        { "comp_id": "captcha.slider.thumb", "comp_name": "滑块拖动按钮", "role": "control" },
+        { "comp_id": "captcha.grid.cell1", "comp_name": "九宫格候选图按钮", "role": "control" },
+        { "comp_id": "captcha.refresh.btn", "comp_name": "换一张按钮", "role": "control" },
+        { "comp_id": "captcha.cancel.btn", "comp_name": "安全验证取消按钮", "role": "control" },
+        { "comp_id": "captcha.fail_sim.btn", "comp_name": "模拟校验失败按钮", "role": "control" },
+        { "comp_id": "captcha.submit.btn", "comp_name": "提交验证按钮", "role": "control" }
+      ]
+    },
+    "p-pc-editor-verify": {
+      "variant_of": "p-editor-verify",
+      "frame": "wide",
+      "title": "Web 宽屏安全验证浮层",
+      "overrides": { "layout": "pc-modal-360" }
+    },
+    "p-editor-verify-failed": {
+      "frame": "phone",
+      "title": "安全验证浮层（验证失败）",
+      "components": [
+        { "comp_id": "captcha.modal", "comp_name": "安全验证浮层", "role": "modal" },
+        { "comp_id": "captcha.body", "comp_name": "已锁定原题区域", "role": "container" },
+        { "comp_id": "captcha.cancel.btn", "comp_name": "安全验证取消按钮", "role": "control" },
+        { "comp_id": "captcha.retry.btn", "comp_name": "重新验证按钮", "role": "control", "anchor": "anchor-retry-btn" }
+      ]
+    },
+    "p-pc-editor-verify-failed": {
+      "variant_of": "p-editor-verify-failed",
+      "frame": "wide",
+      "title": "Web 宽屏安全验证浮层（验证失败）",
+      "overrides": { "layout": "pc-modal-360" }
+    },
+    "p-editor-blocked": {
+      "frame": "phone",
+      "title": "黑名单拦截提示",
+      "components": [
+        { "comp_id": "editor.cancel.btn", "comp_name": "返回动态流按钮", "role": "control" },
+        { "comp_id": "editor.publish.btn", "comp_name": "发布按钮", "role": "control" },
+        { "comp_id": "editor.content.input", "comp_name": "保留的正文编辑区", "role": "control" },
+        { "comp_id": "common.toast", "comp_name": "全局提示 Toast", "role": "feedback", "anchor": "anchor-toast" }
+      ]
+    },
+    "p-pc-editor-blocked": {
+      "variant_of": "p-editor-blocked",
+      "frame": "wide",
+      "title": "Web 宽屏黑名单拦截提示",
+      "overrides": { "layout": "pc-editor-modal" }
+    },
+    "p-editor-cancelled": {
+      "frame": "phone",
+      "title": "已取消（保留内容）",
+      "components": [
+        { "comp_id": "editor.cancel.btn", "comp_name": "返回动态流按钮", "role": "control" },
+        { "comp_id": "editor.publish.btn", "comp_name": "再次点击发布按钮", "role": "control" },
+        { "comp_id": "editor.content.input", "comp_name": "保留的正文编辑区", "role": "control" }
+      ]
+    },
+    "p-pc-editor-cancelled": {
+      "variant_of": "p-editor-cancelled",
+      "frame": "wide",
+      "title": "Web 宽屏已取消（保留内容）",
+      "overrides": { "layout": "pc-editor-modal" }
+    },
+    "p-editor-network": {
+      "frame": "phone",
+      "title": "网络超时提示",
+      "components": [
+        { "comp_id": "editor.cancel.btn", "comp_name": "返回动态流按钮", "role": "control" },
+        { "comp_id": "editor.publish.btn", "comp_name": "重试发布按钮", "role": "control" },
+        { "comp_id": "editor.content.input", "comp_name": "保留的正文编辑区", "role": "control" },
+        { "comp_id": "common.toast", "comp_name": "全局提示 Toast", "role": "feedback", "anchor": "anchor-toast" }
+      ]
+    },
+    "p-pc-editor-network": {
+      "variant_of": "p-editor-network",
+      "frame": "wide",
+      "title": "Web 宽屏网络超时提示",
+      "overrides": { "layout": "pc-editor-modal" }
+    },
+    "p-editor-expired": {
+      "frame": "phone",
+      "title": "安全验证浮层（验证已过期）",
+      "components": [
+        { "comp_id": "captcha.modal", "comp_name": "安全验证浮层", "role": "modal" },
+        { "comp_id": "captcha.body", "comp_name": "已过期原题区域", "role": "container" },
+        { "comp_id": "captcha.cancel.btn", "comp_name": "安全验证取消按钮", "role": "control" },
+        { "comp_id": "captcha.retry.btn", "comp_name": "重新验证按钮", "role": "control", "anchor": "anchor-retry-btn" }
+      ]
+    },
+    "p-pc-editor-expired": {
+      "variant_of": "p-editor-expired",
+      "frame": "wide",
+      "title": "Web 宽屏安全验证浮层（验证已过期）",
+      "overrides": { "layout": "pc-modal-360" }
+    },
+    "p-editor-submitting": {
+      "frame": "phone",
+      "title": "发布提交中",
+      "components": [
+        { "comp_id": "editor.cancel.btn", "comp_name": "取消按钮（提交中禁用）", "role": "control" },
+        { "comp_id": "editor.publish.btn", "comp_name": "发布中按钮", "role": "control" },
+        { "comp_id": "editor.content.input", "comp_name": "正文编辑区", "role": "control" },
+        { "comp_id": "editor.sim_finish.btn", "comp_name": "模拟收到发布接口响应按钮", "role": "control" }
+      ]
+    },
+    "p-pc-editor-submitting": {
+      "variant_of": "p-editor-submitting",
+      "frame": "wide",
+      "title": "Web 宽屏发布提交中",
+      "overrides": { "layout": "pc-editor-modal" }
+    },
+    "p-editor-publish-failed": {
+      "frame": "phone",
+      "title": "原发布流程失败提示",
+      "components": [
+        { "comp_id": "editor.cancel.btn", "comp_name": "返回动态流按钮", "role": "control" },
+        { "comp_id": "editor.publish.btn", "comp_name": "修改后重新发布按钮", "role": "control" },
+        { "comp_id": "editor.content.input", "comp_name": "保留的正文编辑区", "role": "control" },
+        { "comp_id": "common.toast", "comp_name": "全局提示 Toast", "role": "feedback" }
+      ]
+    },
+    "p-pc-editor-publish-failed": {
+      "variant_of": "p-editor-publish-failed",
+      "frame": "wide",
+      "title": "Web 宽屏原发布流程失败提示",
+      "overrides": { "layout": "pc-editor-modal" }
+    }
+  },
+  "state_groups": {
+    "editor": {
+      "title": "发布器同页校验态",
+      "states": [
+        { "id": "filled", "label": "已填写内容（有效提交）", "page": "p-editor-base" },
+        { "id": "empty", "label": "空内容校验提示", "page": "p-editor-empty" }
+      ]
+    }
+  },
+  "spec_cards": [
+    {
+      "id": "01",
+      "title": "提交时机与覆盖范围（进发布器前无变更）",
+      "page": "p-editor-base",
+      "anchor": "editor.publish.btn",
+      "body": "覆盖原创动态发布器与转发动态发布器；仅在点击「发布」（Web 宽屏含 Ctrl/Cmd+Enter）通过内容校验且完成登录后请求云端风控判断，全链路保留已编辑内容。"
+    },
+    {
+      "id": "02",
+      "title": "未登录提交登录衔接",
+      "page": "p-login-base",
+      "anchor": "login.sheet",
+      "body": "未登录先编辑后点发布弹出社区登录浮层；登录成功后按当前登录账号（uid）请求风控判断并续接提交；取消或 ESC 关闭登录回到发布器保留内容，无 Toast。"
+    },
+    {
+      "id": "03",
+      "title": "安全验证浮层与三种随机题型",
+      "page": "p-editor-verify",
+      "anchor": "captcha.body",
+      "body": "云端返回需验证时弹出「安全验证」浮层，随机下发字符验证码、滑块拼图、九宫格图片之一；换题、取消、关闭均不计验证失败。"
+    },
+    {
+      "id": "04",
+      "title": "未达 N 失败 / 题目过期：保留浮层点「重新验证」",
+      "page": "p-editor-verify-failed",
+      "anchor": "captcha.retry.btn",
+      "body": "当日明确失败未达 N 或题目过期时均保留验证浮层，原题锁定不可作答，隐藏换一张，对应显示「验证失败」或「验证已过期」与「重新验证」（无 Toast、无冷却等待；过期不计次）；点「重新验证」重新请求完整判断。"
+    },
+    {
+      "id": "05",
+      "title": "第 N 次失败入黑与累计 M 个自然日解黑",
+      "page": "p-editor-blocked",
+      "anchor": "common.toast",
+      "body": "当日第 N 次明确失败立即加入黑名单，关闭浮层保留内容，Toast「发布失败，请稍后再试」。累计拉黑自然日不足 M 次日 00:00 自动解黑；第 M 个拉黑自然日起不再每日自动移出。"
+    },
+    {
+      "id": "06",
+      "title": "网络超时与跨端状态同步",
+      "page": "p-editor-network",
+      "anchor": "common.toast",
+      "body": "请求风控判断或校验提交网络超时统一关闭浮层、保留内容并 Toast「网络超时，请稍后重试」，不计失败；同一账号在 App 375px 与 Web 宽屏共享当日失败计数与黑白名单状态。"
+    }
+  ],
+  "memos": []
+}

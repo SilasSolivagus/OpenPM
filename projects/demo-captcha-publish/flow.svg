@@ -1,0 +1,233 @@
+<svg id="flowsvg" data-flowspec="1" viewBox="0 0 1360 1480" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#555555" />
+    </marker>
+  </defs>
+
+  <!-- Zone 1: Entry & Login Check Edges -->
+  <polyline points="520,86 520,120" fill="none" stroke="#555555" stroke-width="1.8" data-from="F_ENTRY" data-to="F_EDITOR" marker-end="url(#arrow)" />
+  <polyline points="520,176 520,210" fill="none" stroke="#555555" stroke-width="1.8" data-from="F_EDITOR" data-to="F_PUBLISH_CLICK" marker-end="url(#arrow)" />
+  <polyline points="520,266 520,304" fill="none" stroke="#555555" stroke-width="1.8" data-from="F_PUBLISH_CLICK" data-to="D_LOGGED_SUBMIT" marker-end="url(#arrow)" />
+
+  <!-- D_LOGGED_SUBMIT Branches -->
+  <polyline points="520,388 520,530" fill="none" stroke="#555555" stroke-width="1.8" data-from="D_LOGGED_SUBMIT" data-to="F_RECHECK" data-branch="in" marker-end="url(#arrow)" />
+  <text x="530" y="420" font-size="11" fill="#555555">已登录</text>
+
+  <polyline points="606,346 820,346" fill="none" stroke="#555555" stroke-width="1.8" data-from="D_LOGGED_SUBMIT" data-to="F_LOGIN" data-branch="out" marker-end="url(#arrow)" />
+  <text x="680" y="338" font-size="11" fill="#555555">未登录</text>
+
+  <polyline points="910,374 910,412" fill="none" stroke="#555555" stroke-width="1.8" data-from="F_LOGIN" data-to="D_LOGIN_OK" marker-end="url(#arrow)" />
+
+  <!-- D_LOGIN_OK Branches -->
+  <polyline points="824,454 570,454 570,530" fill="none" stroke="#555555" stroke-width="1.8" data-from="D_LOGIN_OK" data-to="F_RECHECK" data-branch="ok" marker-end="url(#arrow)" />
+  <text x="665" y="446" font-size="11" fill="#555555">登录成功</text>
+
+  <polyline points="910,496 910,530" fill="none" stroke="#555555" stroke-width="1.8" data-from="D_LOGIN_OK" data-to="F_CANCEL_LOGIN" data-branch="cancel" marker-end="url(#arrow)" />
+  <text x="920" y="516" font-size="11" fill="#888888">取消</text>
+
+  <polyline points="996,454 1110,454" fill="none" stroke="#555555" stroke-width="1.8" data-from="D_LOGIN_OK" data-to="F_LOGIN_PENDING" data-branch="pending" marker-end="url(#arrow)" />
+  <text x="1022" y="446" font-size="11" fill="#888888">尚未完成</text>
+
+  <!-- Zone 2: Cloud Risk Check Edges -->
+  <polyline points="520,586 520,630" fill="none" stroke="#555555" stroke-width="1.8" data-from="F_RECHECK" data-to="D_SUBMIT" marker-end="url(#arrow)" />
+
+  <!-- D_SUBMIT Branches -->
+  <polyline points="434,672 130,672 130,1150" fill="none" stroke="#555555" stroke-width="1.8" data-from="D_SUBMIT" data-to="F_SUBMIT" data-branch="allow" marker-end="url(#arrow)" />
+  <text x="230" y="664" font-size="11" fill="#555555">直接放行（白名单/正常）</text>
+
+  <polyline points="520,714 520,760" fill="none" stroke="#555555" stroke-width="1.8" data-from="D_SUBMIT" data-to="F_VERIFY_PUBLISH" data-branch="verify" marker-end="url(#arrow)" />
+  <text x="530" y="742" font-size="11" fill="#555555">需要验证（灰名单）</text>
+
+  <polyline points="606,672 820,672" fill="none" stroke="#555555" stroke-width="1.8" data-from="D_SUBMIT" data-to="F_BLOCK_PUBLISH" data-branch="deny" marker-end="url(#arrow)" />
+  <text x="665" y="664" font-size="11" fill="#888888">直接拒绝（黑名单）</text>
+
+  <!-- Zone 3: Captcha Verify & Result Branches -->
+  <polyline points="520,816 520,856" fill="none" stroke="#555555" stroke-width="1.8" data-from="F_VERIFY_PUBLISH" data-to="D_VERIFY_PUBLISH" marker-end="url(#arrow)" />
+
+  <!-- D_VERIFY_PUBLISH Branches -->
+  <polyline points="434,898 200,898 200,1150" fill="none" stroke="#555555" stroke-width="1.8" data-from="D_VERIFY_PUBLISH" data-to="F_SUBMIT" data-branch="pass" marker-end="url(#arrow)" />
+  <text x="275" y="890" font-size="11" fill="#555555">校验通过（清零失败计数）</text>
+
+  <polyline points="520,940 520,996" fill="none" stroke="#555555" stroke-width="1.8" data-from="D_VERIFY_PUBLISH" data-to="D_RETRY_ALLOWED" data-branch="fail" marker-end="url(#arrow)" />
+  <text x="530" y="972" font-size="11" fill="#555555">明确失败</text>
+
+  <polyline points="606,898 980,898 980,996" fill="none" stroke="#555555" stroke-width="1.8" data-from="D_VERIFY_PUBLISH" data-to="D_PUBLISH_ABORT" data-branch="abort" marker-end="url(#arrow)" />
+  <text x="735" y="890" font-size="11" fill="#888888">边界情况（不计失败）</text>
+
+  <!-- D_RETRY_ALLOWED Branches -->
+  <polyline points="428,1038 360,1038 360,1130" fill="none" stroke="#555555" stroke-width="1.8" data-from="D_RETRY_ALLOWED" data-to="F_WAIT_BLACK" data-branch="reach_n" marker-end="url(#arrow)" />
+  <text x="348" y="1028" font-size="11" fill="#888888">第 N 次入黑</text>
+
+  <polyline points="520,1080 520,1130" fill="none" stroke="#555555" stroke-width="1.8" data-from="D_RETRY_ALLOWED" data-to="F_VERIFY_FAILED_PUBLISH" data-branch="under_n" marker-end="url(#arrow)" />
+  <text x="530" y="1108" font-size="11" fill="#555555">未达 N（留浮层）</text>
+
+  <!-- D_PUBLISH_ABORT Branches -->
+  <polyline points="890,1038 805,1038 805,1130" fill="none" stroke="#555555" stroke-width="1.8" data-from="D_PUBLISH_ABORT" data-to="F_EXPIRE_PUBLISH" data-branch="expired" marker-end="url(#arrow)" />
+  <text x="802" y="1028" font-size="11" fill="#888888">验证过期</text>
+
+  <polyline points="980,1080 980,1130" fill="none" stroke="#555555" stroke-width="1.8" data-from="D_PUBLISH_ABORT" data-to="F_CANCEL_PUBLISH" data-branch="cancel" marker-end="url(#arrow)" />
+  <text x="988" y="1108" font-size="11" fill="#888888">主动取消</text>
+
+  <polyline points="1070,1038 1195,1038 1195,1130" fill="none" stroke="#555555" stroke-width="1.8" data-from="D_PUBLISH_ABORT" data-to="F_PUBLISH_NETWORK" data-branch="timeout" marker-end="url(#arrow)" />
+  <text x="1095" y="1028" font-size="11" fill="#888888">网络超时</text>
+
+  <!-- Retry Convergence & Re-check Loop -->
+  <polyline points="620,1186 620,1246" fill="none" stroke="#555555" stroke-width="1.8" data-from="F_VERIFY_FAILED_PUBLISH" data-to="F_RETRY" marker-end="url(#arrow)" />
+  <polyline points="760,1186 760,1246" fill="none" stroke="#555555" stroke-width="1.8" data-from="F_EXPIRE_PUBLISH" data-to="F_RETRY" marker-end="url(#arrow)" />
+  <polyline points="800,1274 1320,1274 1320,604 655,604 655,558 620,558" fill="none" stroke="#555555" stroke-width="1.6" stroke-dasharray="5 3" data-from="F_RETRY" data-to="F_RECHECK" marker-end="url(#arrow)" />
+  <text x="1332" y="940" font-size="11" fill="#888888" writing-mode="tb">点击「重新验证」回流重判</text>
+
+  <!-- Zone 4: Original Publish Execution Edges -->
+  <polyline points="160,1206 160,1248" fill="none" stroke="#555555" stroke-width="1.8" data-from="F_SUBMIT" data-to="D_PUBLISH_OK" marker-end="url(#arrow)" />
+
+  <polyline points="160,1332 160,1380" fill="none" stroke="#555555" stroke-width="1.8" data-from="D_PUBLISH_OK" data-to="F_SUCCESS" data-branch="yes" marker-end="url(#arrow)" />
+  <text x="170" y="1360" font-size="11" fill="#555555">确认成功</text>
+
+  <polyline points="248,1290 310,1290" fill="none" stroke="#555555" stroke-width="1.8" data-from="D_PUBLISH_OK" data-to="F_SUBMIT_FAILED" data-branch="no" marker-end="url(#arrow)" />
+  <text x="254" y="1282" font-size="10.5" fill="#888888">未成功</text>
+
+  <!-- ================= NODES ================= -->
+  <g class="flow-node" data-node="F_ENTRY" data-node-type="start" role="button" tabindex="0">
+    <rect x="425" y="30" width="190" height="56" rx="8" fill="#ffffff" stroke="#555555" stroke-width="1.8" />
+    <text x="520" y="54" text-anchor="middle" font-size="12.5" font-weight="700" fill="#333333">社区动态流发布入口</text>
+    <text x="520" y="72" text-anchor="middle" font-size="10.5" fill="#888888">F_ENTRY · p-source-base</text>
+  </g>
+
+  <g class="flow-node" data-node="F_EDITOR" data-node-type="process" role="button" tabindex="0">
+    <rect x="420" y="120" width="200" height="56" rx="8" fill="#ffffff" stroke="#555555" stroke-width="1.8" />
+    <text x="520" y="144" text-anchor="middle" font-size="12.5" font-weight="700" fill="#333333">拉起原创或转发发布器</text>
+    <text x="520" y="162" text-anchor="middle" font-size="10.5" fill="#888888">F_EDITOR · p-editor-base</text>
+  </g>
+
+  <g class="flow-node" data-node="F_PUBLISH_CLICK" data-node-type="process" role="button" tabindex="0">
+    <rect x="425" y="210" width="190" height="56" rx="8" fill="#ffffff" stroke="#555555" stroke-width="1.8" />
+    <text x="520" y="234" text-anchor="middle" font-size="12.5" font-weight="700" fill="#333333">点击发布按钮</text>
+    <text x="520" y="252" text-anchor="middle" font-size="10.5" fill="#888888">F_PUBLISH_CLICK · p-editor-base</text>
+  </g>
+
+  <g class="flow-node flow-decision" data-node="D_LOGGED_SUBMIT" data-node-type="decision" role="button" tabindex="0">
+    <polygon points="520,304 606,346 520,388 434,346" fill="#ededed" stroke="#555555" stroke-width="1.8" />
+    <text x="520" y="350" text-anchor="middle" font-size="11.5" font-weight="700" fill="#333333">当前已登录？</text>
+  </g>
+
+  <g class="flow-node" data-node="F_LOGIN" data-node-type="process" role="button" tabindex="0">
+    <rect x="820" y="318" width="180" height="56" rx="8" fill="#ffffff" stroke="#555555" stroke-width="1.8" />
+    <text x="910" y="342" text-anchor="middle" font-size="12.5" font-weight="700" fill="#333333">完成社区账号登录</text>
+    <text x="910" y="360" text-anchor="middle" font-size="10.5" fill="#888888">F_LOGIN · p-login-base</text>
+  </g>
+
+  <g class="flow-node flow-decision" data-node="D_LOGIN_OK" data-node-type="decision" role="button" tabindex="0">
+    <polygon points="910,412 996,454 910,496 824,454" fill="#ededed" stroke="#555555" stroke-width="1.8" />
+    <text x="910" y="458" text-anchor="middle" font-size="11.5" font-weight="700" fill="#333333">登录结果？</text>
+  </g>
+
+  <g class="flow-node" data-node="F_LOGIN_PENDING" data-node-type="end" role="button" tabindex="0">
+    <rect x="1110" y="426" width="180" height="56" rx="8" fill="#ffffff" stroke="#555555" stroke-width="1.8" />
+    <text x="1200" y="450" text-anchor="middle" font-size="12.5" font-weight="700" fill="#333333">停留原登录浮层</text>
+    <text x="1200" y="468" text-anchor="middle" font-size="10.5" fill="#888888">F_LOGIN_PENDING</text>
+  </g>
+
+  <g class="flow-node" data-node="F_CANCEL_LOGIN" data-node-type="end" role="button" tabindex="0">
+    <rect x="820" y="530" width="180" height="56" rx="8" fill="#ffffff" stroke="#555555" stroke-width="1.8" />
+    <text x="910" y="554" text-anchor="middle" font-size="12.5" font-weight="700" fill="#333333">保留内容本次不发</text>
+    <text x="910" y="572" text-anchor="middle" font-size="10.5" fill="#888888">F_CANCEL_LOGIN</text>
+  </g>
+
+  <g class="flow-node" data-node="F_RECHECK" data-node-type="process" role="button" tabindex="0">
+    <rect x="420" y="530" width="200" height="56" rx="8" fill="#ffffff" stroke="#555555" stroke-width="1.8" />
+    <text x="520" y="554" text-anchor="middle" font-size="12.5" font-weight="700" fill="#333333">请求发布前风控判断</text>
+    <text x="520" y="572" text-anchor="middle" font-size="10.5" fill="#888888">F_RECHECK · p-editor-base</text>
+  </g>
+
+  <g class="flow-node flow-decision" data-node="D_SUBMIT" data-node-type="decision" role="button" tabindex="0">
+    <polygon points="520,630 606,672 520,714 434,672" fill="#ededed" stroke="#555555" stroke-width="1.8" />
+    <text x="520" y="676" text-anchor="middle" font-size="11.5" font-weight="700" fill="#333333">云端风控结果？</text>
+  </g>
+
+  <g class="flow-node" data-node="F_BLOCK_PUBLISH" data-node-type="end" role="button" tabindex="0">
+    <rect x="820" y="644" width="200" height="56" rx="8" fill="#ffffff" stroke="#555555" stroke-width="1.8" />
+    <text x="920" y="668" text-anchor="middle" font-size="12.5" font-weight="700" fill="#333333">保留内容提示发布失败</text>
+    <text x="920" y="686" text-anchor="middle" font-size="10.5" fill="#888888">F_BLOCK_PUBLISH · 黑名单</text>
+  </g>
+
+  <g class="flow-node" data-node="F_VERIFY_PUBLISH" data-node-type="process" role="button" tabindex="0">
+    <rect x="415" y="760" width="210" height="56" rx="8" fill="#ffffff" stroke="#555555" stroke-width="1.8" />
+    <text x="520" y="784" text-anchor="middle" font-size="12.5" font-weight="700" fill="#333333">展示随机题型人机校验浮层</text>
+    <text x="520" y="802" text-anchor="middle" font-size="10.5" fill="#888888">F_VERIFY_PUBLISH · 三题型</text>
+  </g>
+
+  <g class="flow-node flow-decision" data-node="D_VERIFY_PUBLISH" data-node-type="decision" role="button" tabindex="0">
+    <polygon points="520,856 606,898 520,940 434,898" fill="#ededed" stroke="#555555" stroke-width="1.8" />
+    <text x="520" y="902" text-anchor="middle" font-size="11.5" font-weight="700" fill="#333333">人机校验结果？</text>
+  </g>
+
+  <g class="flow-node flow-decision" data-node="D_RETRY_ALLOWED" data-node-type="decision" role="button" tabindex="0">
+    <polygon points="520,996 612,1038 520,1080 428,1038" fill="#ededed" stroke="#555555" stroke-width="1.8" />
+    <text x="520" y="1042" text-anchor="middle" font-size="11.5" font-weight="700" fill="#333333">当日失败达 N？</text>
+  </g>
+
+  <g class="flow-node flow-decision" data-node="D_PUBLISH_ABORT" data-node-type="decision" role="button" tabindex="0">
+    <polygon points="980,996 1070,1038 980,1080 890,1038" fill="#ededed" stroke="#555555" stroke-width="1.8" />
+    <text x="980" y="1042" text-anchor="middle" font-size="11.5" font-weight="700" fill="#333333">验证中断原因？</text>
+  </g>
+
+  <g class="flow-node" data-node="F_WAIT_BLACK" data-node-type="end" role="button" tabindex="0">
+    <rect x="280" y="1130" width="180" height="56" rx="8" fill="#ffffff" stroke="#555555" stroke-width="1.8" />
+    <text x="370" y="1154" text-anchor="middle" font-size="12" font-weight="700" fill="#333333">第 N 次入黑提示失败</text>
+    <text x="370" y="1172" text-anchor="middle" font-size="10.5" fill="#888888">F_WAIT_BLACK</text>
+  </g>
+
+  <g class="flow-node" data-node="F_VERIFY_FAILED_PUBLISH" data-node-type="process" role="button" tabindex="0">
+    <rect x="480" y="1130" width="210" height="56" rx="8" fill="#ffffff" stroke="#555555" stroke-width="1.8" />
+    <text x="585" y="1154" text-anchor="middle" font-size="12" font-weight="700" fill="#333333">留浮层：验证失败与重新验证</text>
+    <text x="585" y="1172" text-anchor="middle" font-size="10.5" fill="#888888">F_VERIFY_FAILED_PUBLISH</text>
+  </g>
+
+  <g class="flow-node" data-node="F_EXPIRE_PUBLISH" data-node-type="process" role="button" tabindex="0">
+    <rect x="705" y="1130" width="190" height="56" rx="8" fill="#ffffff" stroke="#555555" stroke-width="1.8" />
+    <text x="800" y="1154" text-anchor="middle" font-size="12" font-weight="700" fill="#333333">留浮层：已过期与重新验证</text>
+    <text x="800" y="1172" text-anchor="middle" font-size="10.5" fill="#888888">F_EXPIRE_PUBLISH</text>
+  </g>
+
+  <g class="flow-node" data-node="F_CANCEL_PUBLISH" data-node-type="end" role="button" tabindex="0">
+    <rect x="905" y="1130" width="165" height="56" rx="8" fill="#ffffff" stroke="#555555" stroke-width="1.8" />
+    <text x="987.5" y="1154" text-anchor="middle" font-size="12" font-weight="700" fill="#333333">保留内容不发布</text>
+    <text x="987.5" y="1172" text-anchor="middle" font-size="10.5" fill="#888888">F_CANCEL_PUBLISH</text>
+  </g>
+
+  <g class="flow-node" data-node="F_PUBLISH_NETWORK" data-node-type="end" role="button" tabindex="0">
+    <rect x="1085" y="1130" width="195" height="56" rx="8" fill="#ffffff" stroke="#555555" stroke-width="1.8" />
+    <text x="1182.5" y="1154" text-anchor="middle" font-size="12" font-weight="700" fill="#333333">保留内容提示网络超时</text>
+    <text x="1182.5" y="1172" text-anchor="middle" font-size="10.5" fill="#888888">F_PUBLISH_NETWORK</text>
+  </g>
+
+  <g class="flow-node" data-node="F_RETRY" data-node-type="process" role="button" tabindex="0">
+    <rect x="590" y="1246" width="210" height="56" rx="8" fill="#ffffff" stroke="#555555" stroke-width="1.8" />
+    <text x="695" y="1270" text-anchor="middle" font-size="12" font-weight="700" fill="#333333">点击「重新验证」重新请求</text>
+    <text x="695" y="1288" text-anchor="middle" font-size="10.5" fill="#888888">F_RETRY · 刷新随机题型</text>
+  </g>
+
+  <g class="flow-node" data-node="F_SUBMIT" data-node-type="process" role="button" tabindex="0">
+    <rect x="65" y="1150" width="190" height="56" rx="8" fill="#ffffff" stroke="#555555" stroke-width="1.8" />
+    <text x="160" y="1174" text-anchor="middle" font-size="12.5" font-weight="700" fill="#333333">执行原有发布流程</text>
+    <text x="160" y="1192" text-anchor="middle" font-size="10.5" fill="#888888">F_SUBMIT · 提交中防重</text>
+  </g>
+
+  <g class="flow-node flow-decision" data-node="D_PUBLISH_OK" data-node-type="decision" role="button" tabindex="0">
+    <polygon points="160,1248 248,1290 160,1332 72,1290" fill="#ededed" stroke="#555555" stroke-width="1.8" />
+    <text x="160" y="1294" text-anchor="middle" font-size="11.5" font-weight="700" fill="#333333">原流程确认成功？</text>
+  </g>
+
+  <g class="flow-node" data-node="F_SUBMIT_FAILED" data-node-type="end" role="button" tabindex="0">
+    <rect x="310" y="1262" width="195" height="56" rx="8" fill="#ffffff" stroke="#555555" stroke-width="1.8" />
+    <text x="407.5" y="1286" text-anchor="middle" font-size="12" font-weight="700" fill="#333333">保留内容沿用原失败提示</text>
+    <text x="407.5" y="1304" text-anchor="middle" font-size="10.5" fill="#888888">F_SUBMIT_FAILED</text>
+  </g>
+
+  <g class="flow-node" data-node="F_SUCCESS" data-node-type="end" role="button" tabindex="0">
+    <rect x="65" y="1380" width="190" height="56" rx="8" fill="#ffffff" stroke="#555555" stroke-width="1.8" />
+    <text x="160" y="1404" text-anchor="middle" font-size="12.5" font-weight="700" fill="#333333">发布成功 / 转发成功</text>
+    <text x="160" y="1422" text-anchor="middle" font-size="10.5" fill="#888888">F_SUCCESS · p-source-success</text>
+  </g>
+</svg>

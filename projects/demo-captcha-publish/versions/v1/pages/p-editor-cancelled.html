@@ -1,0 +1,24 @@
+<div class="wt-navbar">
+  <button type="button" class="wt-btn wt-btn-ghost wt-btn-sm" data-comp-id="editor.cancel.btn" data-comp-name="返回动态流按钮" data-comp-role="control" onclick="goNode('F_ENTRY')">取消</button>
+  <span>发布动态（已取消提交）</span>
+  <button type="button" class="wt-btn wt-btn-primary wt-btn-sm" data-comp-id="editor.publish.btn" data-comp-name="再次点击发布按钮" data-comp-role="control" onclick="goBranch('login_state')">发布</button>
+</div>
+
+<div class="wt-stack" style="padding:12px;">
+  <div class="wt-alert">
+    <strong>静默保留草稿：</strong>用户主动关闭登录浮层或安全验证浮层后，回到当前发布器并完整保留全部已编辑内容，不弹出 Toast，不增加当日验证失败计数。
+  </div>
+
+  <div class="wt-card">
+    <div class="wt-card-bd wt-stack">
+      <textarea class="wt-textarea" style="min-height:108px;" data-comp-id="editor.content.input" data-comp-name="保留的正文编辑区" data-comp-role="control">#周末徒步路线 分享今天实测的山脊环线轨迹，全程 11 公里爬升温和，水源补给点清晰。</textarea>
+      <div class="wt-row">
+        <span class="wt-chip"># 周末徒步路线</span>
+        <span class="wt-chip">[定位] 香山森林公园</span>
+      </div>
+    </div>
+    <div class="wt-card-ft wt-between">
+      <span class="wt-muted">草稿完整保留，可继续修改或再次点击右上角「发布」</span>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,47 @@
+<div style="position:relative;min-height:560px;">
+  <div class="wt-navbar">
+    <span>发布动态</span>
+    <span class="wt-tag">底层草稿已保留</span>
+  </div>
+  <div class="wt-stack" style="padding:12px;opacity:0.42;">
+    <div class="wt-card">
+      <div class="wt-card-bd">
+        <p>#周末徒步路线 分享今天实测的山脊环线轨迹，全程 11 公里爬升温和，水源补给点清晰。</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="wt-mask">
+    <div class="wt-modal" style="max-width:340px;" data-comp-id="captcha.modal" data-comp-name="安全验证浮层" data-comp-role="modal">
+      <div class="wt-modal-hd">
+        <span>安全验证</span>
+        <button type="button" class="wt-btn wt-btn-ghost wt-btn-sm" data-comp-id="captcha.cancel.btn" data-comp-name="安全验证取消按钮" data-comp-role="control" onclick="setVar('verify_result','abort');setVar('abort_reason','cancel');goNode('F_CANCEL_PUBLISH')">✕</button>
+      </div>
+
+      <div class="wt-modal-bd wt-stack">
+        <div class="wt-alert">
+          <strong>验证已过期：</strong>当前题目停留超时失效（不计入当日失败次数），原题目已锁定并隐藏「换一张」，请点击「重新验证」获取最新校验。
+        </div>
+
+        <div class="wt-card" style="padding:12px;background:var(--wt-fill);opacity:0.68;" data-comp-id="captcha.body" data-comp-name="已过期原题区域" data-comp-role="container">
+          <div data-when-var="captcha_type" data-when-val="chars" class="wt-between">
+            <span>原字符题已超时失效</span>
+            <span class="wt-badge">已过期</span>
+          </div>
+          <div data-when-var="captcha_type" data-when-val="slider" class="wt-between hidden">
+            <span>原滑块拼图题已超时失效</span>
+            <span class="wt-badge">已过期</span>
+          </div>
+          <div data-when-var="captcha_type" data-when-val="grid" class="wt-between hidden">
+            <span>原九宫格题已超时失效</span>
+            <span class="wt-badge">已过期</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="wt-modal-ft">
+        <button type="button" class="wt-btn wt-btn-primary wt-btn-block" data-comp-id="captcha.retry.btn" data-comp-name="重新验证按钮" data-comp-role="control" data-anchor="anchor-retry-btn" onclick="goNode('F_RECHECK')">重新验证</button>
+      </div>
+    </div>
+  </div>
+</div>

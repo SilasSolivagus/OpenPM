@@ -1,42 +1,45 @@
 ---
 name: 03-prd-to-wireframe-prototype
-description: 根据 PRD 与 project-context.md 生成中立线框原型片段，强制要求所有可评审组件带 data-comp-id 和 data-comp-name（遵循 specs/anchor-schema.md），支持局部增量重绘。
+description: 根据 prd.md 与 project-context.md 生成 pages/<page_id>.html 纯黑白灰阶 wt-* 线框页面片段（div.page 根容器 + 点分小写 data-comp-id），支持局部增量重绘。
 ---
 
-# 03 - PRD to Wireframe Prototype（中立线框原型生成）
+# 03 - PRD to Wireframe Prototype（纯黑白灰阶线框原型生成）
 
 ## 目标
-将结构化 `prd.md` 与 `project-context.md` 转化为风格中立、结构清晰、可直接嵌入交互演示页的 HTML/CSS 线框原型片段（`.html` fragment），并严格打上组件评审锚点，实现“点击原型即可定位需求与提评审意见”。
+将 `<project_dir>/prd.md` 与 `<project_dir>/project-context.md` 转化为保存在 `<project_dir>/pages/<page_id>.html` 的纯黑白灰阶 `wt-*` 线框原型片段，严格打上标准根容器属性与点分小写组件语义锚点，实现内联 `@[组件名]` 点选评审与增量改点标引。
 
 ## 输入
 - `<project_dir>/prd.md`
-- `<project_dir>/project-context.md`（读取目标端尺寸、桌面端/移动端布局约束及 `ui_kit` 配置）
-- 规范参考：`specs/anchor-schema.md`
-- 可选：`<project_dir>/references/`（本公司现成页面截图或参考 HTML 片段，用于提取设计风格）
-- 可选：`<project_dir>/theme.css`（设计 Token / CSS 变量覆盖文件）
-- 可选：`<project_dir>/review-feedback.md` 或 PRD Diff（用于局部增量重绘）
+- `<project_dir>/project-context.md`（读取端形态 `phone` / `wide` 及 `ui_kit` 骨架配置）
+- 契约参考：`specs/anchor-schema.md`、`specs/spec-v2-schema.md`
+- 可选：`<project_dir>/references/`（现成页面截图或 HTML 片段，**仅提取布局骨架与文案习惯**）
+- 可选：`<project_dir>/review-feedback.md` / `.jsonl`（用于局部增量重绘）
 
-## 强制规范
-1. **跨公司设计规范载入与兜底规则**：
-   - **方式 A（`references/` 自动提取）**：若存在 `<project_dir>/references/` 下的页面截图或参考 HTML 片段，自动提取其中的配色、圆角、导航结构、按钮与表单风格，并映射为标准 `wt-*` 组件结构与 `--wt-*` CSS 变量。
-   - **方式 B（`theme.css` 变量兼容）**：若存在 `<project_dir>/theme.css`，原型 HTML 必须保持使用标准 `wt-*` 类名与 `--wt-*` CSS 变量（如 `--wt-accent`、`--wt-bg`），避免硬编码颜色，确保编译期 `--theme` 注入可直接生效。
-   - **方式 C（端型预设匹配）**：若 `project-context.md` 的 `ui_kit.preset` 指定了 `ios-app` / `android-app` / `miniapp` / `web-admin` / `pc-client`，自动匹配对应视口尺寸（移动端 `phone` / 桌面端 `wide`）与交互控件惯例（如导航栏、底栏、表单及弹窗规范）。
-   - **兜底规则（默认）**：若上述三项均未配置，默认兜底到**中立灰阶高保真线框（`wt-*`）**（中性灰阶、清晰边框、高对比度文字），不引入与业务无关的炫技动效或品牌重度皮肤，专注信息层级、状态流转与交互逻辑，避免视觉配色干扰评审。
-2. **可评审组件锚点（强制）**：
-   - 所有可交互或可评审组件（包括但不限于 `.pwx-track`、`.pwx-modal`、`button.primary`、`button`、表单输入区、状态提示条、弹窗容器、列表操作区等）**必须**同时具备：
-     - `data-comp-id="<页面缩写>_<组件语义ID>"`（全局唯一，如 `pub_btn_submit`、`cap_slider_track`）
-     - `data-comp-name="<可读中文组件名称>"`（如 `发布按钮`、`人机验证滑块轨道`）
-   - 命名与层级规则严格遵循 `specs/anchor-schema.md`。
-3. **多状态覆盖**：
-   - 为 PRD 中定义的每个页面/状态生成对应的页面容器（如 `<section class="proto-page" data-page="P_PUBLISH">`），并保证与流程图节点引用的 `page` ID 一致。
-4. **局部增量重绘**：
-   - 当仅部分 `F-xx` 或 `data-comp-id` 发生变更时，仅重绘受影响的页面或组件片段，保留其余页面的 DOM 结构与既有 `data-comp-id` 不变，避免评审锚点漂移。
+## 强制契约与色彩铁律
+1. **100% 纯黑白灰阶 `wt-*` 业务底图（严禁彩色皮肤与非标私有类）**：
+   - 所有业务页面背景、导航栏、卡片、主次按钮（`.wt-btn` / `.wt-btn-primary`）、表单输入（`.wt-input` / `.wt-select` / `.wt-textarea`）、弹窗（`.wt-modal`）以及驳回/报错提示（`.wt-alert` / `.wt-badge`）一律使用标准 **纯黑白灰阶 `wt-*` 类名**。
+   - **严禁**引入品牌蓝、成功绿、危险红等任何业务语义色，**严禁**使用非 `wt-*` 的私有组件前缀，也**严禁**注入任何彩色主题文件（全系统唯一工程标引色琥珀橙 `#D97706` 由工作台编译器专用于标记 `SPEC_CARDS` 增量与当前焦点，页面 HTML 内禁止自行涂色）。
+   - 若存在 `references/` 参考图，只学习间距密度、圆角、导航/弹窗结构与按钮文案习惯；若需微调骨架尺寸，仅通过 `skeleton.css`（编译期 `--skeleton-css`）调整圆角、间距与字号。
+2. **统一页面根容器格式（强制 `<div>` 四属性）**：
+   - 每个 `<project_dir>/pages/<page_id>.html` 的最外层根容器**必须**严格写为：
+     ```html
+     <div class="page" id="<page_id>" data-page="<page_id>" data-page-id="<page_id>">
+       <!-- 页面纯灰阶 wt-* 结构 -->
+     </div>
+     ```
+   - 严禁使用裸 `<section class="proto-page">` 或缺失 `id` / `data-page` / `data-page-id`。
+3. **点分小写 `data-comp-id` 组件锚点（强制）**：
+   - 页面内所有可交互元素（`button`、`input`、`select`、`textarea`、`[role="button"]`）及关键弹窗/卡片容器，**必须**同时携带：
+     - `data-comp-id="<module>.<element>.<type>"`：**点分小写英文语义路径**（如 `form.submit.btn`、`form.amount.input`、`captcha.slider.track`），同页内绝对唯一，跨版本保持稳定；
+     - `data-comp-name="<可读中文名称>"`（如 `提交采购申请按钮`、`采购金额输入框`）；
+     - 可选 `data-comp-role="control|modal|container|text|feedback|nav"`。
+4. **局部精准重绘**：
+   - 收到 `review-feedback.md` / `.jsonl` 时，仅修改 `targets[].page` 涉及的 `pages/<page_id>.html` 对应组件片段，严禁重写未提及的页面或随意变更既有 `data-comp-id`。
 
 ## 输出
-- `<project_dir>/prototype/pages/` 下的页面片段或 `<project_dir>/prototype/wireframe.html`
-- 组件锚点索引清单（`data-comp-id` ↔ `data-comp-name` ↔ `F-xx` 映射表）
+- `<project_dir>/pages/<page_id>.html`（每个基础页面一个 HTML 片段；多端对称变体可在 `spec.json` 中通过 `variant_of` 继承复用）
 
 ## 验收标准
-- 所有交互元素与评审容器均包含非空的 `data-comp-id` 和 `data-comp-name`。
-- `data-comp-id` 在整个原型中无重复。
-- PRD 中所有核心状态与异常弹窗/提示均有对应的原型 DOM 承载。
+- 所有页面均位于 `pages/<page_id>.html`，根元素为 `<div class="page" id="<page_id>" data-page="<page_id>" data-page-id="<page_id>">`。
+- 100% 交互控件带同页唯一的点分小写 `data-comp-id` 与中文 `data-comp-name`。
+- 100% 使用纯黑白灰阶 `wt-*` 类名，零彩色内联样式、零非标私有类名残留。

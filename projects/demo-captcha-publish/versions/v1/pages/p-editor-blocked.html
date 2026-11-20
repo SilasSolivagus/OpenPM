@@ -1,0 +1,25 @@
+<div class="wt-navbar">
+  <button type="button" class="wt-btn wt-btn-ghost wt-btn-sm" data-comp-id="editor.cancel.btn" data-comp-name="返回动态流按钮" data-comp-role="control" onclick="goNode('F_ENTRY')">取消</button>
+  <span>发布动态（已拦截保留草稿）</span>
+  <button type="button" class="wt-btn wt-btn-sm" data-comp-id="editor.publish.btn" data-comp-name="发布按钮" data-comp-role="control" onclick="setVar('risk_result','deny');goNode('F_RECHECK')">发布</button>
+</div>
+
+<div class="wt-stack" style="padding:12px;">
+  <div class="wt-toast" data-comp-id="common.toast" data-comp-name="全局提示 Toast" data-comp-role="feedback" data-anchor="anchor-toast">
+    发布失败，请稍后再试
+  </div>
+
+  <div class="wt-alert">
+    <strong>风控黑名单拦截说明：</strong>验证浮层已关闭，已编辑的正文与附件 100% 保留。累计拉黑自然日不足 M 天时，将于次日 00:00 自动移出黑名单（不自动重发）。
+  </div>
+
+  <div class="wt-card">
+    <div class="wt-card-bd wt-stack">
+      <textarea class="wt-textarea" style="min-height:100px;" data-comp-id="editor.content.input" data-comp-name="保留的正文编辑区" data-comp-role="control">#周末徒步路线 分享今天实测的山脊环线轨迹，全程 11 公里爬升温和，水源补给点清晰。</textarea>
+      <div class="wt-row">
+        <span class="wt-chip"># 周末徒步路线</span>
+        <span class="wt-chip">[定位] 香山森林公园</span>
+      </div>
+    </div>
+  </div>
+</div>

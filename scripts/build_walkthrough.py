@@ -6,10 +6,12 @@ Usage:
         --spec <spec.json> \
         --svg <flow.svg> \
         --pages-dir <pages_dir> \
-        --out <walkthrough.html>
+        --out <walkthrough.html> \
+        [--skeleton-css <skeleton.css>]
 
 Zero external dependencies (Python 3 standard library only).
-Zero business-specific hardcoding; emits neutral wt-* wireframe CSS.
+Zero business-specific hardcoding; emits 95% pure grayscale wt-* wireframe CSS
+with 5% amber (#d97706) engineering focus & delta callouts.
 """
 
 import argparse
@@ -22,7 +24,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 
 SEL_RING_SVG = (
-    '<rect id="sel-ring" fill="none" stroke="#111111" stroke-width="2.5" '
+    '<rect id="sel-ring" fill="rgba(217,119,6,0.08)" stroke="#d97706" stroke-width="2.5" '
     'stroke-dasharray="6 4" rx="8" visibility="hidden" pointer-events="none"/>'
 )
 
@@ -53,13 +55,16 @@ def _load_spec(spec_path: Path) -> Dict[str, Any]:
 
 
 def _load_svg(svg_path: Path) -> str:
-    """Load flow.svg and ensure selection ring element is present."""
+    """Load flow.svg and ensure amber selection ring element is present."""
     if not svg_path.is_file():
         raise FileNotFoundError(f"SVG file not found: {svg_path}")
     svg_text = svg_path.read_text(encoding="utf-8").strip()
     if "<svg" not in svg_text or "</svg>" not in svg_text:
         raise ValueError(f"Invalid SVG content in {svg_path}: missing <svg>...</svg>")
-    if 'id="sel-ring"' not in svg_text and "id='sel-ring'" not in svg_text:
+    sel_ring_re = re.compile(r'<rect\b[^>]*\bid=["\']sel-ring["\'][^>]*/>', re.IGNORECASE)
+    if sel_ring_re.search(svg_text):
+        svg_text = sel_ring_re.sub(SEL_RING_SVG, svg_text, count=1)
+    elif 'id="sel-ring"' not in svg_text and "id='sel-ring'" not in svg_text:
         idx = svg_text.rfind("</svg>")
         svg_text = svg_text[:idx] + "\n" + SEL_RING_SVG + "\n" + svg_text[idx:]
     return svg_text
@@ -140,7 +145,6 @@ def _wrap_page_fragment(page_id: str, fragment_html: str) -> str:
         attrs_str = open_match.group(1)
         id_match = re.search(r'\bid\s*=\s*["\']([^"\']+)["\']', attrs_str)
         if id_match and id_match.group(1) == page_id:
-            # Normalize class, data-page, data-page-id on existing outer container
             new_attrs = attrs_str
             cls_match = re.search(r'\bclass\s*=\s*["\']([^"\']*)["\']', new_attrs)
             if cls_match:
@@ -165,6 +169,72 @@ def _wrap_page_fragment(page_id: str, fragment_html: str) -> str:
         f"{fragment_html}"
         f"</div>"
     )
+
+
+def _build_variant_map(pages: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
+    """Build deterministic VARIANT_MAP from pages[].variant_of relationships."""
+    root_of: Dict[str, str] = {}
+    groups: Dict[str, List[str]] = {}
+
+    for page_id in pages:
+        cur = page_id
+        visited = {cur}
+        while True:
+            pdef = pages.get(cur)
+            parent = pdef.get("variant_of") if isinstance(pdef, dict) else None
+            if not parent or parent not in pages or parent in visited:
+                break
+            visited.add(parent)
+            cur = parent
+        root_of[page_id] = cur
+        groups.setdefault(cur, []).append(page_id)
+
+    variant_map: Dict[str, Dict[str, Any]] = {}
+    for base_id, members in groups.items():
+        if len(members) < 2:
+            continue
+        variants: Dict[str, str] = {}
+        base_def = pages.get(base_id, {})
+        base_frame = base_def.get("frame", "phone")
+        if base_frame not in ("phone", "wide"):
+            base_frame = "phone"
+        variants[base_frame] = base_id
+
+        for mid in members:
+            mdef = pages.get(mid, {})
+            mframe = mdef.get("frame", "phone")
+            if mframe not in ("phone", "wide"):
+                mframe = "phone"
+            variants.setdefault(mframe, mid)
+
+            plat = mdef.get("platform")
+            if isinstance(plat, str) and plat.strip():
+                variants[plat.strip()] = mid
+
+            if mid != base_id:
+                if base_id.startswith("p-") and mid.startswith("p-"):
+                    rest = base_id[2:]
+                    mrest = mid[2:]
+                    if mrest.endswith("-" + rest):
+                        tok = mrest[: -(len(rest) + 1)]
+                        if tok:
+                            variants.setdefault(tok, mid)
+                elif mid.startswith(base_id + "-"):
+                    tok = mid[len(base_id) + 1 :]
+                    if tok:
+                        variants.setdefault(tok, mid)
+                elif mid.endswith("-" + base_id):
+                    tok = mid[: -(len(base_id) + 1)]
+                    if tok:
+                        variants.setdefault(tok, mid)
+
+        for mid in members:
+            variant_map[mid] = {
+                "base": base_id,
+                "variants": dict(variants),
+            }
+
+    return variant_map
 
 
 def _build_pages_html(
@@ -197,7 +267,8 @@ WB_CSS = """\
   --wt-border: #c0c0c0; --wt-border-light: #e0e0e0;
   --wt-text: #333333; --wt-dim: #888888; --wt-light: #aaaaaa;
   --wt-fill: #e8e8e8; --wt-fill-dark: #d0d0d0; --wt-accent: #555555;
-  --wt-pick: #2563eb; --wt-danger: #dc2626;
+  --wt-spot: #d97706; --wt-spot-bg: rgba(217, 119, 6, 0.08); --wt-spot-border: rgba(217, 119, 6, 0.55);
+  --wt-danger: #dc2626;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html, body {
@@ -250,9 +321,12 @@ button.primary, button.primary:hover:not(:disabled) {
 .zb {
   padding: 3px 9px; border: 1px solid var(--wt-border); border-radius: 4px;
   cursor: pointer; background: var(--wt-white); user-select: none;
-  color: var(--wt-text); white-space: nowrap;
+  color: var(--wt-text); white-space: nowrap; font-size: 12px;
 }
 .zb:hover { background: var(--wt-fill); }
+.zb.active, .zb.active:hover {
+  border-color: var(--wt-spot); color: var(--wt-spot); background: var(--wt-spot-bg); font-weight: 600;
+}
 .zv { min-width: 42px; text-align: center; }
 .memo-toggle { white-space: nowrap; flex-shrink: 0; }
 .memo-toggle.active, .memo-toggle.active:hover {
@@ -279,6 +353,22 @@ button.primary, button.primary:hover:not(:disabled) {
 .flow-svg g[data-node]:hover polygon { stroke: #333333; stroke-width: 2.5px; }
 .flow-svg polyline.branch-active { stroke: #111111 !important; stroke-width: 2.8px !important; }
 .flow-svg polyline.branch-dim { opacity: 0.32; }
+
+/* Delta Highlight Callouts (5% Amber #d97706 when body.show-delta is active) */
+body.show-delta .flow-svg g.wt-delta-node rect,
+body.show-delta .flow-svg g.wt-delta-node polygon {
+  stroke: var(--wt-spot); stroke-width: 2px;
+}
+body.show-delta .flow-svg g.wt-delta-node[data-change="modified"] rect,
+body.show-delta .flow-svg g.wt-delta-node[data-change="modified"] polygon {
+  stroke-dasharray: 5 3;
+}
+.flow-svg .wt-delta-dot { display: none; pointer-events: none; }
+body.show-delta .flow-svg .wt-delta-dot { display: block; }
+body.show-delta .wt-delta-target {
+  outline: 1.5px dashed var(--wt-spot-border); outline-offset: 2px;
+  box-shadow: 0 0 0 3px var(--wt-spot-bg);
+}
 
 /* Inspector Drawer & Device Frames */
 .inspector-drawer {
@@ -315,7 +405,7 @@ button.primary, button.primary:hover:not(:disabled) {
   width: 690px; max-height: 100%; overflow-y: auto;
   background: var(--wt-white); border: 1px solid var(--wt-border); border-radius: 8px; position: relative;
 }
-.pick-mode-on { outline: 2px solid var(--wt-pick); outline-offset: 2px; cursor: crosshair !important; }
+.pick-mode-on { outline: 2px solid var(--wt-spot); outline-offset: 2px; cursor: crosshair !important; }
 .pick-mode-on * { cursor: crosshair !important; }
 .page { display: none; padding-bottom: 24px; background: var(--wt-white); min-height: 100%; }
 .page.active { display: block; }
@@ -364,6 +454,10 @@ button.primary, button.primary:hover:not(:disabled) {
   grid-template-columns: 375px minmax(380px, 1fr); gap: 44px; align-items: start; position: relative;
 }
 .spec-ws.wide-spec { max-width: 1240px; grid-template-columns: 690px minmax(340px, 1fr); gap: 32px; }
+@media (max-width: 960px) {
+  .spec-ws { grid-template-columns: 1fr; }
+  .spec-ws .spec-sticky { position: static; }
+}
 @media (max-width: 1140px) {
   .spec-ws.wide-spec { grid-template-columns: 1fr; }
   .spec-ws.wide-spec .spec-sticky { position: static; }
@@ -374,7 +468,7 @@ button.primary, button.primary:hover:not(:disabled) {
   background: var(--wt-white); border: 1px solid var(--wt-border-light);
   border-radius: 8px; padding: 13px 15px; cursor: pointer;
 }
-.spec-card.active { border-color: var(--wt-text); border-width: 1.5px; }
+.spec-card.active { border-color: var(--wt-spot); border-width: 1.5px; box-shadow: 0 0 0 2px var(--wt-spot-bg); }
 .spec-card-hd { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
 .spec-idx {
   font-size: 11px; font-weight: 700; padding: 1px 7px;
@@ -384,8 +478,8 @@ button.primary, button.primary:hover:not(:disabled) {
 .spec-card-bd { font-size: 12.5px; line-height: 1.65; color: var(--wt-text); }
 .tether-svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 45; overflow: visible; }
 .anchor-box {
-  position: absolute; pointer-events: none; border: 2px dashed var(--wt-text);
-  border-radius: 6px; background: rgba(85, 85, 85, 0.06); z-index: 44;
+  position: absolute; pointer-events: none; border: 2px dashed var(--wt-spot);
+  border-radius: 6px; background: var(--wt-spot-bg); z-index: 44;
 }
 
 /* Memo Drawer (Minimalist Multi-Capsule Picking) */
@@ -412,6 +506,11 @@ button.primary, button.primary:hover:not(:disabled) {
 }
 .memo-editor:focus { border-color: var(--wt-accent); }
 .memo-editor:empty::before { content: attr(data-placeholder); color: var(--wt-light); pointer-events: none; }
+.memo-form-hint {
+  font-size: 11.5px; font-weight: 600; color: var(--wt-text);
+  background: #f0f0f0; border: 1px solid var(--wt-accent);
+  border-radius: 4px; padding: 4px 8px; margin-bottom: 6px;
+}
 .memo-at-chip {
   display: inline-flex; align-items: center; padding: 1px 6px; margin: 0 2px;
   border-radius: 4px; background: var(--wt-fill); border: 1px solid var(--wt-border);
@@ -433,8 +532,8 @@ button.primary, button.primary:hover:not(:disabled) {
 }
 .memo-item-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 5px; }
 .memo-item-tag {
-  font-size: 10.5px; color: var(--wt-pick); background: #eff6ff; border: 1px solid #bfdbfe;
-  border-radius: 999px; padding: 1px 6px;
+  font-size: 10.5px; color: var(--wt-text); background: #f0f0f0; border: 1px solid var(--wt-accent);
+  font-weight: 600; border-radius: 999px; padding: 1px 6px;
 }
 .memo-item-meta {
   font-size: 10.5px; color: var(--wt-dim); margin-bottom: 5px;
@@ -453,12 +552,12 @@ button.primary, button.primary:hover:not(:disabled) {
 
 #pick-highlight-overlay {
   position: fixed; z-index: 9999; pointer-events: none;
-  border: 2px solid var(--wt-pick); background: rgba(37, 99, 235, 0.10);
+  border: 2px solid var(--wt-spot); background: var(--wt-spot-bg);
   border-radius: 4px; display: none; transition: all 0.06s ease;
 }
 #pick-label-badge {
   position: fixed; z-index: 10000; pointer-events: none;
-  background: #1e293b; color: #ffffff; font-size: 11.5px; font-weight: 600;
+  background: #1f1f1f; color: #ffffff; font-size: 11.5px; font-weight: 600;
   padding: 3px 8px; border-radius: 4px; white-space: nowrap; max-width: 300px;
   overflow: hidden; text-overflow: ellipsis; box-shadow: 0 2px 8px rgba(0,0,0,0.22); display: none;
 }
@@ -468,17 +567,17 @@ button.primary, button.primary:hover:not(:disabled) {
   display: flex; align-items: center; justify-content: center; padding: 16px;
 }
 .guard-modal {
-  width: 400px; max-width: 100%; background: var(--wt-white); border: 1px solid var(--wt-border);
+  width: 480px; max-width: 100%; background: var(--wt-white); border: 1px solid var(--wt-border);
   border-radius: 10px; padding: 18px; box-shadow: 0 12px 32px rgba(0,0,0,0.18);
 }
 .guard-modal h3 { font-size: 15px; margin-bottom: 8px; color: var(--wt-danger); }
 .guard-modal p { font-size: 12.5px; line-height: 1.6; color: var(--wt-text); margin-bottom: 14px; }
-.guard-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.guard-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 8px; }
 """
 
 
 WT_WIREFRAME_CSS = """\
-/* Neutral Wireframe Component Library (wt-*) */
+/* Neutral Wireframe Component Library (wt-* · 100% Grayscale) */
 .wt-stack { display: flex; flex-direction: column; gap: 10px; }
 .wt-row { display: flex; align-items: center; gap: 8px; }
 .wt-col { display: flex; flex-direction: column; gap: 6px; }
@@ -561,7 +660,10 @@ WT_WIREFRAME_CSS = """\
 }
 .wt-textarea { min-height: 72px; resize: vertical; }
 .wt-help { font-size: 11px; color: var(--wt-dim); }
-.wt-error { font-size: 11px; color: var(--wt-danger); }
+.wt-error {
+  font-size: 11px; color: var(--wt-text); font-weight: 600;
+  background: #f0f0f0; border: 1px solid var(--wt-accent); border-radius: 4px; padding: 2px 6px;
+}
 
 /* Tables */
 .wt-table { width: 100%; border-collapse: collapse; font-size: 12px; }
@@ -599,7 +701,9 @@ WT_WIREFRAME_CSS = """\
   padding: 8px 12px; border-radius: 6px; border: 1px solid var(--wt-border);
   background: var(--wt-bg); font-size: 12px;
 }
-.wt-alert-danger { border-color: var(--wt-danger); background: #fef2f2; color: var(--wt-danger); }
+.wt-alert-danger {
+  border-color: var(--wt-accent); background: #f0f0f0; color: var(--wt-text); font-weight: 600;
+}
 .wt-empty { padding: 28px 16px; text-align: center; color: var(--wt-dim); font-size: 12px; }
 .wt-skeleton {
   height: 14px; border-radius: 4px; background: var(--wt-fill);
@@ -650,7 +754,8 @@ function computeDocVersionHash() {
 }
 
 var DOC_VERSION_HASH = computeDocVersionHash();
-var MEMO_STORAGE_KEY = "wt_memos_" + DOC_VERSION_HASH;
+var PROJECT_SLUG = (typeof META === "object" && META && META.project) ? String(META.project) : "default";
+var MEMO_STORAGE_KEY = "wt_memos_" + PROJECT_SLUG;
 
 function escapeHtml(str) {
   return String(str || "")
@@ -659,6 +764,110 @@ function escapeHtml(str) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
 }
+
+function resolveVariantPage(pageId, platVal) {
+  if (!pageId || typeof VARIANT_MAP !== "object" || !VARIANT_MAP || !VARIANT_MAP[pageId]) {
+    return pageId;
+  }
+  var plat = platVal !== undefined ? platVal : varValues.platform;
+  if (!plat) return pageId;
+  var vmap = VARIANT_MAP[pageId].variants || {};
+  if (vmap[plat] && PAGE_FRAME[vmap[plat]]) return vmap[plat];
+  var pStr = String(plat).toLowerCase();
+  var targetFrame = "";
+  if (/^(pc|web|web[-_]?admin|desktop|wide|admin|pad)$/.test(pStr)) {
+    targetFrame = "wide";
+  } else if (/^(app|h5|mobile|phone|mp|mini[-_]?program|ios|android)$/.test(pStr)) {
+    targetFrame = "phone";
+  }
+  if (targetFrame && vmap[targetFrame] && PAGE_FRAME[vmap[targetFrame]]) {
+    return vmap[targetFrame];
+  }
+  return pageId;
+}
+
+function initDeltaHighlights() {
+  Object.keys(NODES || {}).forEach(function (nodeId) {
+    var n = NODES[nodeId];
+    var chg = n && n.change;
+    if (chg !== "new" && chg !== "modified") return;
+    var g = document.querySelector('.flow-svg g[data-node="' + nodeId + '"]');
+    if (!g) return;
+    g.classList.add("wt-delta-node");
+    g.setAttribute("data-change", chg);
+    if (!g.querySelector(".wt-delta-dot")) {
+      var dotX = null;
+      var dotY = null;
+      var rectEl = g.querySelector("rect");
+      var polyEl = g.querySelector("polygon");
+      if (rectEl) {
+        var rx = parseFloat(rectEl.getAttribute("x"));
+        var ry = parseFloat(rectEl.getAttribute("y"));
+        var rw = parseFloat(rectEl.getAttribute("width"));
+        if (!isNaN(rx) && !isNaN(ry) && !isNaN(rw)) {
+          dotX = rx + rw - 2;
+          dotY = ry + 2;
+        }
+      } else if (polyEl) {
+        var nums = (polyEl.getAttribute("points") || "").match(/-?\\d+(?:\\.\\d+)?/g);
+        if (nums && nums.length >= 4) {
+          dotX = (parseFloat(nums[0]) + parseFloat(nums[2])) / 2;
+          dotY = (parseFloat(nums[1]) + parseFloat(nums[3])) / 2;
+        }
+      }
+      if (dotX === null || dotY === null) {
+        try {
+          var bb = g.getBBox();
+          dotX = bb.x + bb.width - 3;
+          dotY = bb.y + 3;
+        } catch (e) {}
+      }
+      if (dotX !== null && dotY !== null) {
+        var dot = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+        dot.setAttribute("class", "wt-delta-dot");
+        dot.setAttribute("cx", String(dotX));
+        dot.setAttribute("cy", String(dotY));
+        dot.setAttribute("r", "4.5");
+        dot.setAttribute("fill", "#d97706");
+        dot.setAttribute("stroke", "#ffffff");
+        dot.setAttribute("stroke-width", "1.5");
+        g.appendChild(dot);
+      }
+    }
+  });
+
+  (SPEC_CARDS || []).forEach(function (card) {
+    if (!card || !card.anchor) return;
+    var pageIds = [];
+    if (card.page) {
+      pageIds.push(card.page);
+      if (typeof VARIANT_MAP === "object" && VARIANT_MAP && VARIANT_MAP[card.page]) {
+        var vmap = VARIANT_MAP[card.page].variants || {};
+        Object.keys(vmap).forEach(function (k) {
+          if (vmap[k] && pageIds.indexOf(vmap[k]) < 0) pageIds.push(vmap[k]);
+        });
+      }
+    }
+    var roots = pageIds.length
+      ? pageIds.map(function (pid) { return document.getElementById(pid); }).filter(Boolean)
+      : Array.prototype.slice.call(document.querySelectorAll(".page"));
+    roots.forEach(function (root) {
+      root.querySelectorAll("[data-comp-id], [data-anchor]").forEach(function (el) {
+        if (el.getAttribute("data-comp-id") === card.anchor ||
+            el.getAttribute("data-anchor") === card.anchor) {
+          el.classList.add("wt-delta-target");
+        }
+      });
+    });
+  });
+}
+
+window.toggleDeltaHighlight = function (force) {
+  var on = force !== undefined ? !!force : !document.body.classList.contains("show-delta");
+  document.body.classList.toggle("show-delta", on);
+  var btn = document.getElementById("delta-toggle-btn");
+  if (btn) btn.classList.toggle("active", on);
+};
 
 function checkVarWhen(v) {
   if (!v.when) return true;
@@ -675,7 +884,11 @@ function checkVarWhen(v) {
 }
 
 function isVarApplicable(v) {
-  if (!checkVarWhen(v)) return false;
+  if (!v || !checkVarWhen(v)) return false;
+  if (v.kind === "global") return true;
+  if (currentNode && NODES[currentNode] && NODES[currentNode].isDecision) {
+    if (v.diamond === currentNode || v.id === NODES[currentNode].branchVar) return true;
+  }
   var hasNodes = Array.isArray(v.nodes) && v.nodes.length > 0;
   var hasPages = Array.isArray(v.pages) && v.pages.length > 0;
   if (!hasNodes && !hasPages) return true;
@@ -723,7 +936,7 @@ function renderScopedVars() {
 
   var activeBranches = [];
   (VARS || []).forEach(function (v) {
-    if (v.kind === "branch" && v.diamond) {
+    if (v.kind === "branch" && v.diamond && checkVarWhen(v)) {
       var cur = (v.options || []).find(function (o) { return o.id === varValues[v.id]; });
       if (cur && cur.target) {
         activeBranches.push({ diamond: v.diamond, target: cur.target, optId: cur.id });
@@ -777,11 +990,14 @@ function buildSvgEdgeMap() {
 }
 
 function canReachNode(outMap, startId, goalId) {
+  if (!startId || !goalId) return false;
+  if (startId === goalId) return true;
   var seen = {};
   var q = [startId];
   seen[startId] = true;
   while (q.length) {
     var cur = q.shift();
+    if (cur !== startId && NODES[cur] && !NODES[cur].isDecision) continue;
     var outs = outMap[cur] || [];
     for (var i = 0; i < outs.length; i++) {
       var nxt = outs[i].to;
@@ -801,8 +1017,8 @@ function pickDiamondOutgoingEdge(outMap, diamondChoice, dId) {
   if (!info || !outs.length) return null;
   var rawTarget = info.target;
   var optId = info.optId;
-  return outs.find(function (e) { return e.to === rawTarget; }) ||
-    outs.find(function (e) { return optId && e.branch === optId; }) ||
+  return outs.find(function (e) { return optId && e.branch === optId; }) ||
+    outs.find(function (e) { return e.to === rawTarget; }) ||
     outs.find(function (e) { return diamondChoice[e.to] && canReachNode(outMap, e.to, rawTarget); }) ||
     outs.find(function (e) { return canReachNode(outMap, e.to, rawTarget); }) ||
     null;
@@ -888,12 +1104,18 @@ window.setVar = function (varId, optId) {
   if (!opt) return;
   varValues[varId] = optId;
   if (opt.page && PAGE_FRAME[opt.page]) {
-    showPage(opt.page);
+    showPage(resolveVariantPage(opt.page, varValues.platform));
+  } else if (v.kind === "global" && currentPage) {
+    var variantPg = resolveVariantPage(currentPage, optId);
+    if (variantPg && PAGE_FRAME[variantPg] && variantPg !== currentPage) {
+      showPage(variantPg);
+    }
   }
   syncDeclarativePageVars();
   renderGlobalVars();
   renderScopedVars();
   syncUrlHash();
+  scheduleOverlaySync();
   if (typeof window.onWalkVarChange === "function") {
     window.onWalkVarChange(varId, optId, Object.assign({}, varValues));
   }
@@ -930,6 +1152,7 @@ function renderStates() {
 }
 
 function showPage(pageId) {
+  if (!pageId) return;
   currentPage = pageId;
   var frame = PAGE_FRAME[pageId] || "phone";
   var phoneEl = document.getElementById("frame-phone");
@@ -944,9 +1167,11 @@ function showPage(pageId) {
     p.classList.toggle("active", p.id === pageId);
   });
   syncDeclarativePageVars();
-  if (typeof wbView !== "undefined" && wbView === "spec" && typeof updateSpecTether === "function") {
-    requestAnimationFrame(updateSpecTether);
+  var memoForm = document.getElementById("memo-form");
+  if (memoForm && !memoForm.classList.contains("hidden") && typeof updateMemoFormCtx === "function") {
+    updateMemoFormCtx();
   }
+  scheduleOverlaySync();
 }
 
 window.goState = function (groupId, stateId) {
@@ -955,7 +1180,7 @@ window.goState = function (groupId, stateId) {
   var state = (grp.states || []).find(function (s) { return s.id === stateId; });
   if (!state) return;
   currentState = groupId + "/" + stateId;
-  showPage(state.page);
+  showPage(resolveVariantPage(state.page, varValues.platform));
   renderStates();
   renderScopedVars();
 };
@@ -965,9 +1190,22 @@ function setViewByNode(nodeId) {
   if (!n) return;
   var panel = document.querySelector(".flow-panel");
   if (panel && panel.classList.contains("fs")) toggleFs(false);
+  if (n.isDecision && n.branchVar) {
+    var bv = (VARS || []).find(function (x) { return x.id === n.branchVar; });
+    if (bv && bv.when) {
+      for (var wk in bv.when) {
+        var wexp = bv.when[wk];
+        if (Array.isArray(wexp)) {
+          if (wexp.indexOf(varValues[wk]) < 0 && wexp.length) varValues[wk] = wexp[0];
+        } else if (varValues[wk] !== wexp) {
+          varValues[wk] = wexp;
+        }
+      }
+    }
+  }
   currentNode = nodeId;
   currentState = n.state || null;
-  showPage(n.page);
+  showPage(resolveVariantPage(n.page, varValues.platform));
 
   var ring = document.getElementById("sel-ring");
   var target = document.querySelector('.flow-svg g[data-node="' + nodeId + '"]');
@@ -977,6 +1215,8 @@ function setViewByNode(nodeId) {
     ring.setAttribute("y", bb.y - 7);
     ring.setAttribute("width", bb.width + 14);
     ring.setAttribute("height", bb.height + 14);
+    ring.setAttribute("stroke", "#d97706");
+    ring.setAttribute("fill", "rgba(217,119,6,0.08)");
     ring.setAttribute("visibility", "visible");
   }
 
@@ -1214,7 +1454,7 @@ document.addEventListener("keydown", function (e) {
 });
 
 // =========================================================================
-// Spec Cards Mode (Single-page Spec Tether)
+// Spec Cards Mode (Single-page Cubic Bezier Tether & Scroll Sync)
 // =========================================================================
 function initSpecMode() {
   var sw = document.getElementById("view-switch");
@@ -1250,21 +1490,44 @@ window.switchWbView = function (view) {
     activateSpecCard(activeSpecId || SPEC_CARDS[0].id);
   } else {
     inspBody.insertBefore(stageEl, inspBody.firstChild);
+    var svg = document.getElementById("tether-svg");
+    var abox = document.getElementById("anchor-box");
+    if (svg) svg.innerHTML = "";
+    if (abox) abox.classList.add("hidden");
+    if (currentNode && NODES[currentNode]) {
+      setViewByNode(currentNode);
+    }
   }
   syncUrlHash();
+  scheduleOverlaySync();
 };
 
 function activateSpecCard(cid) {
   activeSpecId = cid;
   var card = (SPEC_CARDS || []).find(function (c) { return c.id === cid; });
   if (!card) return;
-  showPage(card.page);
+  var targetPage = resolveVariantPage(card.page, varValues.platform);
+  showPage(targetPage);
   var specWs = document.getElementById("spec-ws");
-  if (specWs) specWs.classList.toggle("wide-spec", (PAGE_FRAME[card.page] || "phone") === "wide");
+  if (specWs) specWs.classList.toggle("wide-spec", (PAGE_FRAME[targetPage] || "phone") === "wide");
   document.querySelectorAll(".spec-card").forEach(function (el) {
     el.classList.toggle("active", el.getAttribute("data-cid") === cid);
   });
   requestAnimationFrame(updateSpecTether);
+}
+
+function findSpecAnchorElement(anchor) {
+  if (!anchor) return null;
+  var activePage = document.querySelector(".page.active");
+  if (!activePage) return null;
+  var candidates = activePage.querySelectorAll("[data-comp-id], [data-anchor]");
+  for (var i = 0; i < candidates.length; i++) {
+    if (candidates[i].getAttribute("data-comp-id") === anchor ||
+        candidates[i].getAttribute("data-anchor") === anchor) {
+      return candidates[i];
+    }
+  }
+  return null;
 }
 
 function updateSpecTether() {
@@ -1274,10 +1537,7 @@ function updateSpecTether() {
   if (!svg || !abox || !ws || wbView !== "spec" || !activeSpecId) return;
   var cardEl = document.querySelector('.spec-card[data-cid="' + activeSpecId + '"]');
   var anchor = cardEl && cardEl.getAttribute("data-anchor");
-  var targetEl = anchor
-    ? (document.querySelector('.page.active [data-comp-id="' + anchor + '"]') ||
-       document.querySelector('.page.active [data-anchor="' + anchor + '"]'))
-    : null;
+  var targetEl = findSpecAnchorElement(anchor);
   if (!cardEl || !targetEl) {
     svg.innerHTML = "";
     abox.classList.add("hidden");
@@ -1286,24 +1546,61 @@ function updateSpecTether() {
   var wr = ws.getBoundingClientRect();
   var tr = targetEl.getBoundingClientRect();
   var cr = cardEl.getBoundingClientRect();
+  if ((tr.width === 0 && tr.height === 0) || (cr.width === 0 && cr.height === 0)) {
+    svg.innerHTML = "";
+    abox.classList.add("hidden");
+    return;
+  }
   abox.style.left = (tr.left - wr.left - 4) + "px";
   abox.style.top = (tr.top - wr.top - 4) + "px";
   abox.style.width = (tr.width + 8) + "px";
   abox.style.height = (tr.height + 8) + "px";
   abox.classList.remove("hidden");
-  var x1 = tr.right - wr.left + 4;
-  var y1 = tr.top - wr.top + tr.height / 2;
-  var x2 = cr.left - wr.left;
-  var y2 = cr.top - wr.top + 22;
-  svg.innerHTML = '<path d="M ' + x1 + ' ' + y1 + ' L ' + x2 + ' ' + y2 +
-    '" fill="none" stroke="#333333" stroke-width="1.8" stroke-dasharray="5 4"></path>';
+
+  var stageEl = document.getElementById("flow-stage");
+  var sr = stageEl ? stageEl.getBoundingClientRect() : tr;
+  var isStacked = cr.left < (sr.right - 16);
+  var x1, y1, x2, y2, dPath;
+  if (isStacked) {
+    x1 = tr.left - wr.left + tr.width / 2;
+    y1 = tr.bottom - wr.top + 4;
+    x2 = cr.left - wr.left + Math.min(48, cr.width / 2);
+    y2 = cr.top - wr.top;
+    var dy = Math.max(32, Math.abs(y2 - y1) * 0.5);
+    var cy1 = y1 + dy;
+    var cy2 = y2 - dy;
+    dPath = "M " + x1 + " " + y1 + " C " + x1 + " " + cy1 + ", " + x2 + " " + cy2 + ", " + x2 + " " + y2;
+  } else {
+    x1 = tr.right - wr.left + 4;
+    y1 = tr.top - wr.top + tr.height / 2;
+    x2 = cr.left - wr.left;
+    y2 = cr.top - wr.top + Math.min(24, cr.height / 2);
+    var dx = Math.max(32, Math.abs(x2 - x1) * 0.5);
+    var cx1 = x1 + dx;
+    var cx2 = x2 - dx;
+    dPath = "M " + x1 + " " + y1 + " C " + cx1 + " " + y1 + ", " + cx2 + " " + y2 + ", " + x2 + " " + y2;
+  }
+  svg.innerHTML =
+    '<path d="' + dPath + '" fill="none" stroke="#d97706" stroke-width="1.8" stroke-dasharray="5 4"></path>' +
+    '<circle cx="' + x1 + '" cy="' + y1 + '" r="3" fill="#d97706"></circle>' +
+    '<circle cx="' + x2 + '" cy="' + y2 + '" r="3" fill="#d97706"></circle>';
 }
 
 // =========================================================================
-// Minimalist Pick-and-Memo (Auto Capture Picking + Inline @ Component Chips)
+// Minimalist Pick-and-Memo (Strict Semantic Picking + Cross-Page @ Chips)
 // =========================================================================
 var isMemoPickingActive = false;
-var lastPickedPageId = "";
+var lastPickedEl = null;
+var overlayRafId = 0;
+
+function scheduleOverlaySync() {
+  if (overlayRafId) return;
+  overlayRafId = requestAnimationFrame(function () {
+    overlayRafId = 0;
+    if (wbView === "spec") updateSpecTether();
+    if (isMemoPickingActive) updatePickOverlay();
+  });
+}
 
 function getStageContainers() {
   return [document.getElementById("frame-phone"), document.getElementById("frame-wide")].filter(Boolean);
@@ -1351,7 +1648,7 @@ function positionPickOverlay(targetEl, labelText) {
   bg.style.top = topPos + "px";
 }
 
-function getElementDisplayName(el) {
+function getCompDisplayName(el) {
   if (!el) return "";
   var cname = el.getAttribute("data-comp-name");
   if (cname) return cname;
@@ -1359,10 +1656,21 @@ function getElementDisplayName(el) {
   if (cid) return cid;
   var anc = el.getAttribute("data-anchor");
   if (anc) return anc;
-  var tag = el.tagName ? el.tagName.toLowerCase() : "el";
-  var txt = (el.textContent || "").replace(/\\s+/g, " ").trim();
-  if (txt && txt.length <= 14) return tag + "「" + txt + "」";
-  return tag;
+  return "";
+}
+
+function updatePickOverlay() {
+  if (!isMemoPickingActive || !lastPickedEl || !lastPickedEl.isConnected) {
+    hidePickOverlay();
+    return;
+  }
+  var pageEl = lastPickedEl.closest(".page.active");
+  if (!pageEl) {
+    hidePickOverlay();
+    return;
+  }
+  var name = getCompDisplayName(lastPickedEl);
+  positionPickOverlay(lastPickedEl, "已 @：" + name);
 }
 
 function buildFallbackSelector(el, pageEl) {
@@ -1394,6 +1702,21 @@ function buildFallbackSelector(el, pageEl) {
     cur = parent;
   }
   return parts.join(" > ");
+}
+
+function showMemoFormHint(msg) {
+  var hintEl = document.getElementById("memo-form-hint");
+  if (!hintEl) return;
+  hintEl.textContent = msg;
+  hintEl.classList.remove("hidden");
+}
+
+function hideMemoFormHint() {
+  var hintEl = document.getElementById("memo-form-hint");
+  if (hintEl) {
+    hintEl.textContent = "";
+    hintEl.classList.add("hidden");
+  }
 }
 
 function insertMentionChipInEditor(targetObj) {
@@ -1446,40 +1769,50 @@ function updateMemoFormCtx() {
   }
 }
 
-function handlePickSelect(rawTarget) {
-  if (!isMemoPickingActive) return;
-  var pageEl = rawTarget.closest(".page.active") || document.querySelector(".page.active");
-  if (!pageEl) return;
+function findSemanticComp(rawTarget, pageEl) {
+  if (!rawTarget || !pageEl || !rawTarget.closest) return null;
   var compEl = rawTarget.closest("[data-comp-id], [data-anchor]");
   if (compEl && !pageEl.contains(compEl)) compEl = null;
-  var targetEl = compEl || rawTarget;
-  var compId = targetEl.getAttribute("data-comp-id") || targetEl.getAttribute("data-anchor") || "";
-  var compName = getElementDisplayName(targetEl);
-  var fallbackSel = buildFallbackSelector(targetEl, pageEl);
+  return compEl;
+}
+
+function handlePickSelect(rawTarget) {
+  if (!isMemoPickingActive) return;
+  var pageEl = (rawTarget && rawTarget.closest && rawTarget.closest(".page.active")) || document.querySelector(".page.active");
+  if (!pageEl) return;
+  var compEl = findSemanticComp(rawTarget, pageEl);
+  if (!compEl) return;
+
+  var compId = compEl.getAttribute("data-comp-id") || compEl.getAttribute("data-anchor") || "";
+  var compName = getCompDisplayName(compEl);
+  var fallbackSel = buildFallbackSelector(compEl, pageEl);
   var pageId = pageEl.id || currentPage || "";
 
-  lastPickedPageId = pageId;
   insertMentionChipInEditor({
     page: pageId,
     comp_id: compId,
     comp_name: compName,
     fallback_selector: fallbackSel
   });
-  positionPickOverlay(targetEl, "已插入 @" + compName);
+  lastPickedEl = compEl;
+  updateMemoFormCtx();
+  positionPickOverlay(compEl, "已插入 @" + compName);
 }
 
 function handlePickHover(rawTarget) {
   if (!isMemoPickingActive) return;
-  var pageEl = rawTarget.closest(".page.active");
+  var pageEl = rawTarget && rawTarget.closest ? rawTarget.closest(".page.active") : null;
   if (!pageEl) {
-    hidePickOverlay();
+    updatePickOverlay();
     return;
   }
-  var compEl = rawTarget.closest("[data-comp-id], [data-anchor]");
-  if (compEl && !pageEl.contains(compEl)) compEl = null;
-  var targetEl = compEl || rawTarget;
-  var name = getElementDisplayName(targetEl);
-  positionPickOverlay(targetEl, "点击添加 @" + name);
+  var compEl = findSemanticComp(rawTarget, pageEl);
+  if (!compEl) {
+    updatePickOverlay();
+    return;
+  }
+  var name = getCompDisplayName(compEl);
+  positionPickOverlay(compEl, "点击添加 @" + name);
 }
 
 getStageContainers().forEach(function (container) {
@@ -1507,39 +1840,184 @@ getStageContainers().forEach(function (container) {
 
   container.addEventListener("pointerleave", function () {
     if (!isMemoPickingActive) return;
-    hidePickOverlay();
+    updatePickOverlay();
   });
+
+  container.addEventListener("scroll", function () {
+    scheduleOverlaySync();
+  }, { capture: true, passive: true });
+});
+
+var specPanelRootEl = document.getElementById("spec-panel-root");
+if (specPanelRootEl) {
+  specPanelRootEl.addEventListener("scroll", function () {
+    scheduleOverlaySync();
+  }, { passive: true });
+}
+window.addEventListener("resize", function () {
+  scheduleOverlaySync();
 });
 
 // =========================================================================
-// Memo Storage, Dual-Timing Revalidation & Export (.md + .jsonl)
+// Contenteditable Extraction, Memo Normalization, Revalidation & Export
 // =========================================================================
+function extractEditorContent(editorEl) {
+  var targets = [];
+  var seen = {};
+  var fullChunks = [];
+  var commentChunks = [];
+  var BLOCK_TAGS = { DIV: 1, P: 1, LI: 1, PRE: 1, BLOCKQUOTE: 1, H1: 1, H2: 1, H3: 1, H4: 1, H5: 1, H6: 1 };
+
+  function ensureNewline(arr) {
+    if (!arr.length) return;
+    var last = arr[arr.length - 1];
+    if (last && last.slice(-1) !== "\\n") arr.push("\\n");
+  }
+
+  function walk(node) {
+    if (!node) return;
+    if (node.nodeType === 3) {
+      var val = node.nodeValue || "";
+      fullChunks.push(val);
+      commentChunks.push(val);
+      return;
+    }
+    if (node.nodeType !== 1) return;
+    var el = node;
+    if (el.classList && el.classList.contains("memo-at-chip")) {
+      var cid = el.getAttribute("data-comp-id") || "";
+      var cname = el.getAttribute("data-comp-name") || cid || "组件";
+      var fb = el.getAttribute("data-fallback") || "";
+      var pg = el.getAttribute("data-page") || currentPage || "";
+      var key = (cid || fb) + "@" + pg;
+      if ((cid || fb) && !seen[key]) {
+        seen[key] = true;
+        targets.push({
+          page: pg,
+          comp_id: cid,
+          comp_name: cname,
+          fallback_selector: fb
+        });
+      }
+      fullChunks.push("@[" + cname + "]");
+      return;
+    }
+    var tag = el.tagName ? el.tagName.toUpperCase() : "";
+    if (tag === "BR") {
+      var parent = el.parentElement;
+      var pTag = parent && parent !== editorEl && parent.tagName ? parent.tagName.toUpperCase() : "";
+      if (BLOCK_TAGS[pTag] && el.nextSibling === null && el.previousSibling !== null) {
+        return;
+      }
+      fullChunks.push("\\n");
+      commentChunks.push("\\n");
+      return;
+    }
+    var isBlock = !!BLOCK_TAGS[tag];
+    if (isBlock) {
+      ensureNewline(fullChunks);
+      ensureNewline(commentChunks);
+    }
+    var children = el.childNodes;
+    for (var i = 0; i < children.length; i++) {
+      walk(children[i]);
+    }
+    if (isBlock) {
+      ensureNewline(fullChunks);
+      ensureNewline(commentChunks);
+    }
+  }
+
+  if (editorEl) {
+    var topNodes = editorEl.childNodes;
+    for (var i = 0; i < topNodes.length; i++) {
+      walk(topNodes[i]);
+    }
+  }
+
+  var text = fullChunks.join("").replace(/\\u00a0/g, " ").replace(/\\n{3,}/g, "\\n\\n").trim();
+  var commentOnly = commentChunks.join("").replace(/\\u00a0/g, " ").trim();
+  return {
+    targets: targets,
+    text: text,
+    commentOnly: commentOnly,
+    hasValidComment: commentOnly.length > 0
+  };
+}
+
+function normalizeTarget(t, defaultPage) {
+  if (!t || typeof t !== "object") return null;
+  var cid = t.comp_id || t.compId || "";
+  var cname = t.comp_name || t.compName || cid || "";
+  var fb = t.fallback_selector || t.fallbackSelector || "";
+  var pg = t.page || defaultPage || "";
+  if (!cid && !fb) return null;
+  return {
+    page: pg,
+    comp_id: cid,
+    comp_name: cname,
+    fallback_selector: fb
+  };
+}
+
+function getMemoTargets(memo) {
+  if (!memo || typeof memo !== "object") return [];
+  var defPage = memo.page || "";
+  if (Array.isArray(memo.targets) && memo.targets.length > 0) {
+    return memo.targets.map(function (t) { return normalizeTarget(t, defPage); }).filter(Boolean);
+  }
+  var legacy = normalizeTarget({
+    page: defPage,
+    comp_id: memo.comp_id || memo.compId || "",
+    comp_name: memo.comp_name || memo.compName || "",
+    fallback_selector: memo.fallback_selector || memo.fallbackSelector || ""
+  }, defPage);
+  return legacy ? [legacy] : [];
+}
+
+function normalizeMemo(m) {
+  if (!m || typeof m !== "object") return null;
+  var page = m.page || "";
+  var targets = getMemoTargets(m);
+  if (!page && targets[0] && targets[0].page) page = targets[0].page;
+  var gran = targets.length > 0 ? "component" : "page";
+  var compIdStr = targets.map(function (t) { return t.comp_id; }).filter(Boolean).join(", ");
+  var compNameStr = targets.length > 0
+    ? targets.map(function (t) { return "@" + (t.comp_name || t.comp_id); }).join(" ")
+    : page;
+  var fbStr = targets.map(function (t) { return t.fallback_selector; }).filter(Boolean).join(", ");
+  return {
+    id: m.id || ("m_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6)),
+    version_hash: m.version_hash || m.versionHash || DOC_VERSION_HASH,
+    view: m.view || "flow",
+    node: m.node || "",
+    page: page,
+    vars: m.vars || {},
+    granularity: gran,
+    comp_id: compIdStr,
+    comp_name: compNameStr,
+    targets: targets,
+    fallback_selector: fbStr,
+    text: m.body || m.text || "",
+    time: m.time || ""
+  };
+}
+
 var memos = [];
 try {
   var savedRaw = localStorage.getItem(MEMO_STORAGE_KEY);
-  if (savedRaw) memos = JSON.parse(savedRaw) || [];
+  if (savedRaw) {
+    var parsedSaved = JSON.parse(savedRaw);
+    if (Array.isArray(parsedSaved)) {
+      memos = parsedSaved.map(normalizeMemo).filter(Boolean);
+    }
+  }
 } catch (e) {
   memos = [];
 }
 
 if (!memos.length && Array.isArray(INITIAL_MEMOS) && INITIAL_MEMOS.length) {
-  memos = INITIAL_MEMOS.map(function (m) {
-    return {
-      id: m.id || ("m_" + Date.now()),
-      versionHash: m.version_hash || DOC_VERSION_HASH,
-      view: m.view || "flow",
-      node: m.node || "",
-      page: m.page || "",
-      vars: m.vars || {},
-      granularity: m.granularity || (m.comp_id ? "component" : "page"),
-      compId: m.comp_id || "",
-      compName: m.comp_name || "",
-      targets: Array.isArray(m.targets) ? m.targets : [],
-      fallbackSelector: m.fallback_selector || "",
-      text: m.body || m.text || "",
-      time: m.time || ""
-    };
-  });
+  memos = INITIAL_MEMOS.map(normalizeMemo).filter(Boolean);
 }
 
 function persistMemos() {
@@ -1547,9 +2025,15 @@ function persistMemos() {
 }
 
 function validateSingleTarget(pageEl, compId, fallbackSelector) {
+  if (!pageEl || !pageEl.classList || !pageEl.classList.contains("page")) return false;
   if (compId) {
-    if (pageEl.querySelectorAll('[data-comp-id="' + compId + '"]').length > 0) return true;
-    if (pageEl.querySelectorAll('[data-anchor="' + compId + '"]').length > 0) return true;
+    var allComps = pageEl.querySelectorAll("[data-comp-id], [data-anchor]");
+    for (var i = 0; i < allComps.length; i++) {
+      if (allComps[i].getAttribute("data-comp-id") === compId ||
+          allComps[i].getAttribute("data-anchor") === compId) {
+        return true;
+      }
+    }
   }
   if (fallbackSelector) {
     try {
@@ -1560,19 +2044,19 @@ function validateSingleTarget(pageEl, compId, fallbackSelector) {
 }
 
 function validateMemoAnchor(memo) {
-  if (!memo || !memo.page) return false;
-  if (memo.versionHash && memo.versionHash !== DOC_VERSION_HASH) return false;
-  var pageEl = document.getElementById(memo.page);
-  if (!pageEl || !pageEl.classList.contains("page")) return false;
-  if (Array.isArray(memo.targets) && memo.targets.length > 0) {
-    return memo.targets.every(function (t) {
-      var tPage = t.page ? document.getElementById(t.page) : pageEl;
-      if (!tPage || !tPage.classList.contains("page")) return false;
-      return validateSingleTarget(tPage, t.compId, t.fallbackSelector);
+  if (!memo) return false;
+  var targets = getMemoTargets(memo);
+  if (targets.length > 0) {
+    return targets.every(function (t) {
+      var tp = (t && t.page) || memo.page || "";
+      if (!tp) return false;
+      var tPageEl = document.getElementById(tp);
+      return validateSingleTarget(tPageEl, t.comp_id, t.fallback_selector);
     });
   }
-  if (memo.granularity === "page" && !memo.compId && !memo.fallbackSelector) return true;
-  return validateSingleTarget(pageEl, memo.compId, memo.fallbackSelector);
+  if (!memo.page) return false;
+  var pageEl = document.getElementById(memo.page);
+  return !!(pageEl && pageEl.classList.contains("page"));
 }
 
 function renderMemos() {
@@ -1586,18 +2070,22 @@ function renderMemos() {
   }
   listEl.innerHTML = memos.map(function (m, i) {
     var isValid = validateMemoAnchor(m);
-    var titleLabel = m.compName
-      ? ("[" + (m.node || m.page) + "] " + m.compName)
-      : ("[" + (m.node || m.page) + "] " + m.page);
+    var targets = getMemoTargets(m);
+    var compNameLabel = targets.length
+      ? targets.map(function (t) { return "@[" + (t.comp_name || t.comp_id) + "]"; }).join(" ")
+      : (m.page || m.node || "-");
+    var titleLabel = "[" + (m.node || m.page || "-") + "] " + compNameLabel;
     var badgeHtml = isValid ? "" : '<span class="memo-invalid-badge">落点已失效</span>';
     var tagsHtml = "";
-    if (Array.isArray(m.targets) && m.targets.length > 0) {
-      tagsHtml = '<div class="memo-item-tags">' + m.targets.map(function (t) {
-        return '<span class="memo-item-tag">@' + escapeHtml(t.compName || t.compId) + '</span>';
+    if (targets.length > 0) {
+      tagsHtml = '<div class="memo-item-tags">' + targets.map(function (t) {
+        var pgSuffix = (t.page && t.page !== m.page) ? (" (" + t.page + ")") : "";
+        return '<span class="memo-item-tag">@' + escapeHtml((t.comp_name || t.comp_id) + pgSuffix) + '</span>';
       }).join("") + '</div>';
     }
-    var metaText = (m.granularity || "page") +
-      (m.compId ? " · " + m.compId : (m.fallbackSelector ? " · " + m.fallbackSelector : ""));
+    var metaText = targets.length > 0
+      ? ("component · " + targets.map(function (t) { return t.comp_id || t.fallback_selector; }).join(", "))
+      : ("page · " + (m.page || "-"));
     return '<div class="memo-item' + (isValid ? "" : " invalid") + '">' +
       '<div class="memo-item-hd">' +
         '<div class="memo-item-ctx" onclick="jumpToMemo(' + i + ')" title="点击定位">' + escapeHtml(titleLabel) + '</div>' +
@@ -1621,7 +2109,8 @@ window.jumpToMemo = function (idx) {
   if (m.view === "spec" && wbView !== "spec") switchWbView("spec");
   else if (m.view === "flow" && wbView !== "flow") switchWbView("flow");
   if (m.node && NODES[m.node]) setViewByNode(m.node);
-  if (m.page && PAGE_FRAME[m.page]) showPage(m.page);
+  var targetPg = (m.targets && m.targets[0] && m.targets[0].page) || m.page;
+  if (targetPg && PAGE_FRAME[targetPg]) showPage(targetPg);
   renderGlobalVars();
   renderScopedVars();
 };
@@ -1640,12 +2129,15 @@ window.toggleMemo = function (force) {
   var btn = document.getElementById("memo-toggle-btn");
   if (btn) btn.classList.toggle("active", on);
   if (!on) closeMemoForm();
+  requestAnimationFrame(updateSpecTether);
+  scheduleOverlaySync();
 };
 
 window.openMemoForCurrent = function () {
   toggleMemo(true);
-  lastPickedPageId = currentPage || "";
+  lastPickedEl = null;
   hidePickOverlay();
+  hideMemoFormHint();
   document.getElementById("memo-form").classList.remove("hidden");
   setMemoPickingActive(true);
   updateMemoFormCtx();
@@ -1658,64 +2150,62 @@ window.closeMemoForm = function () {
   if (form) form.classList.add("hidden");
   var inp = document.getElementById("memo-input");
   if (inp) inp.innerHTML = "";
-  lastPickedPageId = "";
+  hideMemoFormHint();
+  lastPickedEl = null;
   setMemoPickingActive(false);
 };
 
 window.saveMemoItem = function () {
   var inp = document.getElementById("memo-input");
-  var text = inp ? inp.textContent.trim() : "";
-  if (!text) return;
+  var extracted = extractEditorContent(inp);
+  if (!extracted.hasValidComment) {
+    showMemoFormHint("请输入具体修改意见（仅选择 @组件 无法保存）");
+    if (inp) inp.focus();
+    return;
+  }
+  hideMemoFormHint();
 
-  var targets = [];
-  var seen = {};
-  inp.querySelectorAll(".memo-at-chip").forEach(function (chip) {
-    var cid = chip.getAttribute("data-comp-id") || "";
-    var cname = chip.getAttribute("data-comp-name") || "";
-    var fb = chip.getAttribute("data-fallback") || "";
-    var pg = chip.getAttribute("data-page") || lastPickedPageId || currentPage || "";
-    var key = (cid || fb) + "@" + pg;
-    if (!(cid || fb) || seen[key]) return;
-    seen[key] = true;
-    targets.push({
-      page: pg,
-      compId: cid,
-      compName: cname,
-      fallbackSelector: fb
-    });
-  });
-
-  var pageId = (targets[0] && targets[0].page) || lastPickedPageId || currentPage || "";
+  var targets = extracted.targets;
+  var pageId = currentPage || (targets[0] && targets[0].page) || "";
   var gran = targets.length > 0 ? "component" : "page";
-  var compId = targets.map(function (t) { return t.compId; }).filter(Boolean).join(", ");
-  var compName = targets.length > 0
-    ? targets.map(function (t) { return "@" + t.compName; }).join(" ")
+  var compIdStr = targets.map(function (t) { return t.comp_id; }).filter(Boolean).join(", ");
+  var compNameStr = targets.length > 0
+    ? targets.map(function (t) { return "@" + (t.comp_name || t.comp_id); }).join(" ")
     : pageId;
-  var fallbackSel = targets.map(function (t) { return t.fallbackSelector; }).filter(Boolean).join(", ");
+  var fallbackSel = targets.map(function (t) { return t.fallback_selector; }).filter(Boolean).join(", ");
 
   var now = new Date();
   var timeStr = now.toTimeString().slice(0, 5);
 
   memos.unshift({
     id: "m_" + Date.now(),
-    versionHash: DOC_VERSION_HASH,
+    version_hash: DOC_VERSION_HASH,
     view: wbView,
     node: currentNode || "",
     page: pageId,
     vars: Object.assign({}, varValues),
     granularity: gran,
-    compId: compId,
-    compName: compName,
+    comp_id: compIdStr,
+    comp_name: compNameStr,
     targets: targets,
-    fallbackSelector: fallbackSel,
-    text: text,
+    fallback_selector: fallbackSel,
+    text: extracted.text,
     time: timeStr
   });
-  inp.innerHTML = "";
+  if (inp) inp.innerHTML = "";
   persistMemos();
   closeMemoForm();
   renderMemos();
 };
+
+function cleanMemoEditorIfEmpty(el) {
+  if (!el) return;
+  if (el.querySelector(".memo-at-chip")) return;
+  var plain = (el.textContent || "").replace(/[\\u00a0\\u200b\\r\\n]/g, "").trim();
+  if (!plain && el.innerHTML !== "") {
+    el.innerHTML = "";
+  }
+}
 
 var memoInputEl = document.getElementById("memo-input");
 if (memoInputEl) {
@@ -1725,9 +2215,40 @@ if (memoInputEl) {
       saveMemoItem();
     }
   });
+  memoInputEl.addEventListener("paste", function (e) {
+    e.preventDefault();
+    var text = "";
+    if (e.clipboardData && e.clipboardData.getData) {
+      text = e.clipboardData.getData("text/plain");
+    } else if (window.clipboardData && window.clipboardData.getData) {
+      text = window.clipboardData.getData("Text");
+    }
+    if (!text) return;
+    var sel = window.getSelection();
+    if (sel && sel.rangeCount > 0) {
+      var range = sel.getRangeAt(0);
+      if (memoInputEl.contains(range.commonAncestorContainer)) {
+        range.deleteContents();
+        var textNode = document.createTextNode(text);
+        range.insertNode(textNode);
+        range.setStartAfter(textNode);
+        range.collapse(true);
+        sel.removeAllRanges();
+        sel.addRange(range);
+        hideMemoFormHint();
+        return;
+      }
+    }
+    memoInputEl.appendChild(document.createTextNode(text));
+    hideMemoFormHint();
+  });
   memoInputEl.addEventListener("input", function () {
-    if (memoInputEl.innerHTML === "<br>" || memoInputEl.innerHTML === "<br/>") {
-      memoInputEl.innerHTML = "";
+    cleanMemoEditorIfEmpty(memoInputEl);
+    if ((memoInputEl.textContent || "").trim()) hideMemoFormHint();
+  });
+  memoInputEl.addEventListener("keyup", function (e) {
+    if (e.key === "Backspace" || e.key === "Delete") {
+      cleanMemoEditorIfEmpty(memoInputEl);
     }
   });
 }
@@ -1737,7 +2258,7 @@ function buildMemosMarkdown(items) {
   var invalidCount = items.length - validCount;
   var lines = [
     "---",
-    "project: " + (META.project || "walkthrough"),
+    "project: " + PROJECT_SLUG,
     "version_hash: " + DOC_VERSION_HASH,
     "exported_at: " + new Date().toISOString(),
     "total_comments: " + items.length,
@@ -1751,29 +2272,36 @@ function buildMemosMarkdown(items) {
   items.forEach(function (m, idx) {
     var valid = validateMemoAnchor(m);
     var statusStr = valid ? "valid" : "invalid";
-    lines.push("## [FB-" + String(idx + 1).padStart(3, "0") + "] " + (m.compName || m.page || m.node) + "（" + statusStr + "）");
+    var targets = getMemoTargets(m);
+    var targetHeading = targets.length
+      ? targets.map(function (t) { return "@[" + (t.comp_name || t.comp_id) + "]"; }).join(" ")
+      : (m.page || m.node || "page");
+    var gran = targets.length > 0 ? "component" : "page";
+    var compIdStr = targets.map(function (t) { return t.comp_id; }).filter(Boolean).join(", ");
+    var compNameStr = targets.map(function (t) { return t.comp_name; }).filter(Boolean).join(", ");
+    var fbStr = targets.map(function (t) { return t.fallback_selector; }).filter(Boolean).join(", ");
+
+    lines.push("## [FB-" + String(idx + 1).padStart(3, "0") + "] " + targetHeading + "（" + statusStr + "）");
     if (!valid) {
       lines.push("");
       lines.push("> [!WARNING] 落点已失效");
-      lines.push("> 该条批注在当前原型中未命中目标组件或版本指纹不匹配，请人工核对。");
+      lines.push("> 该条批注的 `targets` 中存在未命中当前原型的落点（命中数为 0），请人工核对后再修改。");
     }
     lines.push("");
-    lines.push("- **version_hash**: `" + DOC_VERSION_HASH + "`");
+    lines.push("- **version_hash**: `" + (m.version_hash || m.versionHash || DOC_VERSION_HASH) + "`");
     lines.push("- **status**: `" + statusStr + "`");
     lines.push("- **view**: `" + (m.view || "flow") + "`");
     lines.push("- **node**: `" + (m.node || "") + "`");
     lines.push("- **page**: `" + (m.page || "") + "`");
     lines.push("- **vars**: `" + JSON.stringify(m.vars || {}) + "`");
-    lines.push("- **granularity**: `" + (m.granularity || "page") + "`");
-    lines.push("- **comp_id**: `" + (m.compId || "") + "`");
-    lines.push("- **comp_name**: `" + (m.compName || "") + "`");
-    if (Array.isArray(m.targets) && m.targets.length > 0) {
-      lines.push("- **targets**: `" + JSON.stringify(m.targets) + "`");
-    }
-    lines.push("- **fallback_selector**: `" + (m.fallbackSelector || "") + "`");
+    lines.push("- **granularity**: `" + gran + "`");
+    lines.push("- **comp_id**: `" + compIdStr + "`");
+    lines.push("- **comp_name**: `" + compNameStr + "`");
+    lines.push("- **targets**: `" + JSON.stringify(targets) + "`");
+    lines.push("- **fallback_selector**: `" + fbStr + "`");
     lines.push("");
     lines.push("**修改意见**：");
-    lines.push(m.text);
+    lines.push(m.text || "");
     lines.push("");
     lines.push("---");
     lines.push("");
@@ -1784,18 +2312,23 @@ function buildMemosMarkdown(items) {
 function buildMemosJsonl(items) {
   return items.map(function (m) {
     var valid = validateMemoAnchor(m);
+    var targets = getMemoTargets(m);
+    var gran = targets.length > 0 ? "component" : "page";
+    var compIdStr = targets.map(function (t) { return t.comp_id; }).filter(Boolean).join(", ");
+    var compNameStr = targets.map(function (t) { return t.comp_name; }).filter(Boolean).join(", ");
+    var fbStr = targets.map(function (t) { return t.fallback_selector; }).filter(Boolean).join(", ");
     return JSON.stringify({
-      version_hash: DOC_VERSION_HASH,
+      version_hash: m.version_hash || m.versionHash || DOC_VERSION_HASH,
       status: valid ? "valid" : "invalid",
       view: m.view || "flow",
       node: m.node || "",
       page: m.page || "",
       vars: m.vars || {},
-      granularity: m.granularity || "page",
-      comp_id: m.compId || "",
-      comp_name: m.compName || "",
-      targets: m.targets || [],
-      fallback_selector: m.fallbackSelector || "",
+      granularity: gran,
+      comp_id: compIdStr,
+      comp_name: compNameStr,
+      targets: targets,
+      fallback_selector: fbStr,
       text: m.text || "",
       time: m.time || ""
     });
@@ -1814,7 +2347,7 @@ function runWithExportGuard(actionType) {
   if (invalidCount > 0) {
     pendingExportAction = actionType;
     document.getElementById("export-guard-msg").textContent =
-      "检测到 " + invalidCount + " 条备注的原型落点已失效（可能因页面或组件结构变更），共 " + validCount + " 条有效备注。建议先删除失效备注，或选择仅导出有效备注。";
+      "检测到 " + invalidCount + " 条备注的原型落点已失效（可能因页面或组件结构变更），共 " + validCount + " 条有效备注。请选择处理方式：";
     var validBtn = document.getElementById("export-valid-only-btn");
     validBtn.disabled = validCount === 0;
     validBtn.textContent = "仅导出有效备注 (" + validCount + " 条)";
@@ -1835,6 +2368,13 @@ window.confirmExportValidOnly = function () {
   var validItems = memos.filter(function (m) { return validateMemoAnchor(m); });
   if (!validItems.length || !actionType) return;
   executeExport(actionType, validItems);
+};
+
+window.confirmExportAllWithInvalid = function () {
+  var actionType = pendingExportAction;
+  closeExportGuard();
+  if (!memos.length || !actionType) return;
+  executeExport(actionType, memos);
 };
 
 function triggerDownload(content, mimeType, filename) {
@@ -1907,6 +2447,7 @@ function applyHashState() {
 
 window.addEventListener("hashchange", applyHashState);
 
+initDeltaHighlights();
 initSpecMode();
 renderMemos();
 fitBootZoom();
@@ -1919,20 +2460,20 @@ def compile_walkthrough(
     svg_path: Path,
     pages_dir: Path,
     out_path: Path,
-    theme_path: Optional[Path] = None,
+    skeleton_css_path: Optional[Path] = None,
 ) -> None:
     """Compile spec.json, flow.svg, and page HTML fragments into a single walkthrough.html."""
     spec = _load_spec(spec_path)
     svg_html = _load_svg(svg_path)
 
-    custom_theme_block = ""
-    if theme_path is not None:
-        if not theme_path.is_file():
-            raise FileNotFoundError(f"Theme CSS file not found: {theme_path}")
-        theme_css = theme_path.read_text(encoding="utf-8").strip()
-        if theme_css:
-            safe_theme_css = re.sub(r"</style", r"<\/style", theme_css, flags=re.IGNORECASE)
-            custom_theme_block = f'\n<style id="custom-theme">\n{safe_theme_css}\n</style>'
+    skeleton_css_block = ""
+    if skeleton_css_path is not None:
+        if not skeleton_css_path.is_file():
+            raise FileNotFoundError(f"Skeleton CSS file not found: {skeleton_css_path}")
+        skeleton_css = skeleton_css_path.read_text(encoding="utf-8").strip()
+        if skeleton_css:
+            safe_skeleton_css = re.sub(r"</style", r"<\/style", skeleton_css, flags=re.IGNORECASE)
+            skeleton_css_block = f'\n<style id="skeleton-css">\n{safe_skeleton_css}\n</style>'
 
     meta = spec.get("meta", {})
     title = str(meta.get("title") or meta.get("project") or "交互走查工作台")
@@ -1948,6 +2489,7 @@ def compile_walkthrough(
         entry_node = next(iter(nodes.keys()))
 
     phone_pages_html, wide_pages_html, page_frame = _build_pages_html(pages, pages_dir)
+    variant_map = _build_variant_map(pages)
 
     escaped_title = html.escape(title)
     html_doc = f"""<!doctype html>
@@ -1959,9 +2501,9 @@ def compile_walkthrough(
 <style>
 {WB_CSS}
 {WT_WIREFRAME_CSS}
-</style>{custom_theme_block}
+</style>{skeleton_css_block}
 </head>
-<body>
+<body class="show-delta">
 
 <header class="wb-topbar">
   <div class="fp-title">{escaped_title}</div>
@@ -1979,6 +2521,7 @@ def compile_walkthrough(
     <span class="zb" onclick="setZoom(0)">适宽</span>
     <span class="zb" id="fs-btn" onclick="toggleFs()">全屏画布</span>
   </div>
+  <button type="button" class="zb active" id="delta-toggle-btn" onclick="toggleDeltaHighlight()">改动高亮</button>
   <button type="button" class="memo-toggle" id="memo-toggle-btn" onclick="toggleMemo()">评审备注 (0)</button>
 </header>
 
@@ -2036,6 +2579,7 @@ def compile_walkthrough(
     <div class="memo-form hidden" id="memo-form">
       <div class="memo-ctx" id="memo-ctx"></div>
       <div id="memo-input" class="memo-editor" contenteditable="true" data-placeholder="记录评审结论或待确认项，可直接点选原型插入 @组件（Cmd/Ctrl+Enter 保存）"></div>
+      <div class="memo-form-hint hidden" id="memo-form-hint"></div>
       <div style="display:flex;justify-content:flex-end;gap:6px">
         <button type="button" onclick="closeMemoForm()">取消</button>
         <button type="button" class="primary" onclick="saveMemoItem()">保存</button>
@@ -2059,6 +2603,7 @@ def compile_walkthrough(
     <p id="export-guard-msg"></p>
     <div class="guard-actions">
       <button type="button" onclick="closeExportGuard()">取消（去处理）</button>
+      <button type="button" id="export-all-with-invalid-btn" onclick="confirmExportAllWithInvalid()">仍导出全部（含失效标记）</button>
       <button type="button" class="primary" id="export-valid-only-btn" onclick="confirmExportValidOnly()">仅导出有效备注</button>
     </div>
   </div>
@@ -2069,6 +2614,7 @@ var META = {_json_for_script(meta)};
 var ENTRY_NODE = {_json_for_script(entry_node)};
 var NODES = {_json_for_script(nodes)};
 var PAGE_FRAME = {_json_for_script(page_frame)};
+var VARIANT_MAP = {_json_for_script(variant_map)};
 var STATE_GROUPS = {_json_for_script(state_groups)};
 var VARS = {_json_for_script(vars_list)};
 var SPEC_CARDS = {_json_for_script(spec_cards)};
@@ -2091,10 +2637,18 @@ def main() -> int:
     parser.add_argument("--pages-dir", required=True, help="Directory containing <page_id>.html fragments")
     parser.add_argument("--out", required=True, help="Output path for walkthrough.html")
     parser.add_argument(
-        "--theme",
+        "--skeleton-css",
+        dest="skeleton_css",
         required=False,
         default=None,
-        help="Optional path to theme.css to inline into <style id=\"custom-theme\"> and override --wt-* variables",
+        help="Optional path to skeleton.css to inline into <style id=\"skeleton-css\"> for layout skeleton tokens",
+    )
+    parser.add_argument(
+        "--theme",
+        dest="skeleton_css",
+        required=False,
+        default=None,
+        help=argparse.SUPPRESS,
     )
     args = parser.parse_args()
 
@@ -2104,7 +2658,7 @@ def main() -> int:
             svg_path=Path(args.svg),
             pages_dir=Path(args.pages_dir),
             out_path=Path(args.out),
-            theme_path=Path(args.theme) if args.theme else None,
+            skeleton_css_path=Path(args.skeleton_css) if args.skeleton_css else None,
         )
     except Exception as exc:
         print(f"[build_walkthrough] Error: {exc}", file=sys.stderr)

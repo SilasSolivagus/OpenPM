@@ -1,19 +1,28 @@
 # 本地 / Obsidian 适配器（`local-obsidian`）
 
-`local-obsidian` 是本工作区的**默认零依赖适配器**。它直接基于本地文件系统运行，既可以用 **Obsidian** 作为 Vault 打开获得图形化双向链接与属性视图，也可以用 **VS Code / Cursor / 任意编辑器**直接读写，**不依赖任何 Obsidian 付费服务或第三方插件**。
+`local-obsidian` 是 OpenPM 的**默认零依赖离线适配器**。它直接基于本地标准目录结构运行，既可以用 **Obsidian** 作为 Vault 直接打开管理，也可以用任意编辑器读写，无需配置任何外部 API 密钥。
 
 ---
 
-## 1. 目录与文件落盘规范
+## 1. 标准项目目录与文件约定
 
-所有项目产物统一落盘在工作区 `projects/<project-slug>/` 目录下：
+所有项目产物统一落盘在 `projects/<project>/` 目录下：
 
 ```text
-projects/<project-slug>/
-├── project-context.md       # 项目上下文配置
-├── prd.md                   # 主 PRD 文档
-├── walkthrough.html         # 三栏交互走查单文件（交付物）
-└── review-feedback.md       # 评审导出的结构化反馈
+projects/<project>/
+├── project-context.md       # 项目上下文与端型/骨架配置
+├── history/                 # 历史基线与拉取对比目录
+│   ├── prd-remote.md        # 远端或旧版基线 PRD
+│   └── pull-diff.md         # 基线与当前 prd.md 的结构化差异对比
+├── prd.md                   # 结构化文字版主 PRD（含 F-xx 功能点 ID）
+├── pages/                   # 纯黑白灰阶 wt-* 原型页面片段
+│   └── <page_id>.html       # <div class="page" id="..." data-page="..." data-page-id="...">
+├── flow.svg                 # 业务拓扑流程图（带 data-from/data-to/data-branch 与 D_* 菱形）
+├── spec.json                # spec-v2 单一真相源（meta/vars/nodes/pages/state_groups/spec_cards/memos）
+├── walkthrough.html         # 确定性编译出的单文件交互走查工作台
+├── review-feedback.md       # 评审导出的 Markdown 批注（或 review-feedback.jsonl）
+├── wiki-export/             # 执行 wiki_sync.py push 生成的离线图文对照交付包与 .zip
+└── versions/                # version_manager.py 管理的版本快照与 changelog.md
 ```
 
 ---
@@ -22,31 +31,17 @@ projects/<project-slug>/
 
 | 工作流字段 | 本地 / Obsidian 载体 | 说明 |
 | :--- | :--- | :--- |
-| `project` | `prd.md` YAML Frontmatter `project` | 与 `<project-slug>` 保持一致 |
-| `version_hash` | `prd.md` YAML Frontmatter `version_hash` | 与 `walkthrough.html` 内置 `VERSION_HASH` 一致 |
-| `status` | `prd.md` YAML Frontmatter `status` | 枚举：`draft` \| `in_review` \| `approved` \| `archived` |
-| `owner` | `prd.md` YAML Frontmatter `owner` | 负责人姓名或花名 |
-| `walkthrough` | 同目录 `walkthrough.html` + 文内双链/相对链接 | `[[walkthrough.html]]` 或 `[打开交互走查](./walkthrough.html)` |
-| `feedback` | 同目录 `review-feedback.md` | 评审人在浏览器导出后直接覆盖/保存至此路径 |
-
-### 推荐 `prd.md` 顶部 Frontmatter 模板
-
-```yaml
----
-project: <project-slug>
-title: <需求标题>
-version_hash: <8位哈希>
-status: in_review
-platform: [H5, Web]
-owner: <PM名称>
-updated_at: 2026-11-20
----
-```
+| `project` | `prd.md` Frontmatter `project` | 与目录名 `<project>` 保持一致 |
+| `version_hash` | `prd.md` Frontmatter `version_hash` | 与 `walkthrough.html` 内置 `DOC_VERSION_HASH` 对齐 |
+| `status` | `prd.md` Frontmatter `status` | `draft` \| `in_review` \| `approved` \| `archived` |
+| `owner` | `prd.md` Frontmatter `owner` | 产品经理姓名或花名 |
+| `walkthrough` | 同目录 `walkthrough.html` 及 `wiki-export/walkthrough.html.zip` | 双击即可在任意浏览器离线打开 |
+| `feedback` | 同目录 `review-feedback.md` / `review-feedback.jsonl` | 浏览器导出后放回项目目录，供 `02` / `03` / `04` 局部精准回写 |
 
 ---
 
-## 3. Obsidian 零插件增强技巧（可选）
+## 3. Obsidian 零插件协同技巧
 
-- **属性面板（Properties）**：Obsidian 原生支持解析 YAML Frontmatter，可直接在文档顶部可视化查看 `status`、`version_hash` 与 `platform`。
-- **双链溯源（Backlinks）**：在 `prd.md` 中写入 `[[project-context]]` 与 `[[review-feedback]]`，即可在右侧边栏「反向链接」中一键跳转上下文与历史评审意见。
-- **直接预览 HTML**：在系统文件管理器中双击 `walkthrough.html` 即可用默认浏览器打开；若需团队共享，直接将 `walkthrough.html` 单文件发送至群聊或网盘即可。
+- **属性面板（Properties）**：Obsidian 原生解析 `project-context.md` 与 `prd.md` 顶部的 YAML Frontmatter，直观管理需求状态与版本号。
+- **双链溯源（Backlinks）**：在 `prd.md` 中使用 `[[project-context]]`、`[[history/pull-diff]]`、`[[review-feedback]]` 双链串联需求演变脉络。
+- **一键离线归档**：定稿后执行 `python3 scripts/wiki_sync.py push projects/<project>` 与 `python3 scripts/version_manager.py snapshot projects/<project>`，自动生成离线图文对照包与不可变历史快照。

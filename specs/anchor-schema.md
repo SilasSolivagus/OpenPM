@@ -1,40 +1,49 @@
-# 组件落点 Schema 规范（Anchor Schema）
+# 组件落点与内联批注契约（Anchor Schema）
 
-本规范定义了三栏交互 HTML（`walkthrough.html`）中**原型组件落点**的 HTML 属性契约、语义组件点选吸附规则、支持单条备注 `@` 多组件的评审备注结构化导出格式（`review-feedback.md` / `review-feedback.jsonl`），以及**双时机回查校验规则**，确保评审意见能够精准回写到 PRD 与原型源码，杜绝错位或静默失效。
+本规范定义了交互走查工作台（`walkthrough.html`）中**原型页面根容器与语义组件落点**的 HTML 属性契约、输入框内联 `@[组件名]` 胶囊点选与退格删除规则、统一的 `review-feedback.md` / `review-feedback.jsonl` 导出格式，以及**加载 + 导出双时机回查校验规则**，确保评审意见能够局部精准回写到 `prd.md` 与 `pages/<page_id>.html`。
 
 ---
 
-## 1. 原型 HTML 属性契约
+## 1. 页面根容器与组件 HTML 属性契约
 
-所有在 `walkthrough.html` 中可被评审点选的原型元素、组件与页面容器，必须遵循以下 `data-*` 属性契约：
+### 1.1 页面根容器统一格式
+
+每个位于 `pages/<page_id>.html` 的原型页面片段，最外层根容器**必须**统一为 `<div>` 并同时声明 `class="page"`、`id`、`data-page` 与 `data-page-id`：
+
+```html
+<div class="page" id="p-apply-form" data-page="p-apply-form" data-page-id="p-apply-form">
+  <!-- 页面内容：100% 纯黑白灰阶 wt-* 组件 -->
+</div>
+```
+
+### 1.2 语义组件 `data-*` 属性契约
+
+所有可交互控件或可被评审点选的业务区块，必须遵循以下属性契约：
 
 | 属性名 | 必填性 | 命名与格式规范 | 示例 | 说明 |
 | :--- | :--- | :--- | :--- | :--- |
-| `data-comp-id` | 语义组件必填 | 点分小写英文语义路径：`<domain>.<module>.<element>` | `captcha.slider.track` | **全局稳定语义 ID**。跨版本迭代时只要语义未变，ID 必须保持不变，严禁使用随机哈希或动态索引。 |
-| `data-comp-name` | 语义组件必填 | 简洁的中文/人类可读名称 | `滑块拖动条` | 用于在评审面板、导出反馈与 PRD 对照中展示给产品、研发与评审人。 |
-| `data-comp-role` | 推荐必填 | 枚举值：`control` \| `modal` \| `container` \| `text` \| `feedback` \| `nav` | `control` | 标识组件在交互中的语义角色，辅助 AI 修改策略选择。 |
-| `data-page-id` | 页面根容器必填 | 小写短横线或下划线标识 | `page_captcha_verify` | 标识整页根容器，供页面级关联与可达性检查使用。 |
-| `data-anchor` | 兼容旧版（可选） | 同旧版锚点字符串 | `slider-track` | **向后兼容**：读取与回查时优先识别 `data-comp-id`，若不存在则降级读取 `data-anchor`；新生成原型必须输出 `data-comp-id`。 |
+| `data-comp-id` | 语义组件必填 | **点分小写英文语义路径**：`<module>.<element>.<type>` | `form.submit.btn` | **同页唯一稳定语义 ID**。跨版本迭代只要语义未变，ID 必须保持稳定，严禁使用下划线杂糅前缀、随机哈希或动态下标。 |
+| `data-comp-name` | 语义组件必填 | 简洁的人类可读中文名称 | `提交采购申请按钮` | 用于在备注输入框 `@[组件名]` 胶囊、评审列表与导出文件中展示。 |
+| `data-comp-role` | 推荐填写 | 枚举：`control` \| `modal` \| `container` \| `text` \| `feedback` \| `nav` | `control` | 标识组件语义角色，辅助 AI 局部增量修订。 |
+| `data-anchor` | 兼容旧版（可选） | 旧版锚点字符串 | `anchor-submit` | 仅作向后兼容降级查找；所有新生成原型必须输出标准点分小写 `data-comp-id`。 |
 
-### `data-comp-role` 枚举说明
-
-- `control`：可交互控件（按钮、输入框、滑块、开关、下拉菜单等）。
-- `modal`：弹窗、抽屉、浮层、二次确认框。
-- `container`：卡片、表单区块、列表项容器、布局分组。
-- `text`：核心文案、规则说明、错误提示文案。
-- `feedback`：Toast、Banner、Loading 状态、空状态提示。
-- `nav`：Tab 栏、面包屑、步骤条、底部导航。
+> **色彩边界约束（95% 纯黑白灰 + 5% 琥珀橙 `#D97706`）**：原型页面内的所有业务组件（含主按钮 `.wt-btn-primary`、弹窗 `.wt-modal`、驳回/错误提示 `.wt-alert`）一律保持 **100% 纯黑白灰阶 `wt-*`**，严禁引入品牌蓝、成功绿、危险红等业务语义色。全系统仅在**点选/走查当前焦点框（Focus）**与 **`SPEC_CARDS` 增量改点锚定框（Delta）**上使用唯一工程标引色 **琥珀橙 `#D97706`**。
 
 ### 示例 HTML 片段
 
 ```html
-<div data-page-id="page_captcha_verify" data-comp-id="captcha.page" data-comp-name="安全验证页" data-comp-role="container">
-  <div class="captcha-modal" data-comp-id="captcha.slider.modal" data-comp-name="滑块验证弹窗" data-comp-role="modal">
-    <p class="captcha-tip" data-comp-id="captcha.slider.hint" data-comp-name="拖动提示文案" data-comp-role="text">
-      请拖动滑块完成拼图
-    </p>
-    <div class="slider-track" data-comp-id="captcha.slider.track" data-comp-name="滑块拖动条" data-comp-role="control">
-      <button class="slider-thumb" data-comp-id="captcha.slider.thumb" data-comp-name="滑块按钮" data-comp-role="control">→</button>
+<div class="page" id="p-apply-form" data-page="p-apply-form" data-page-id="p-apply-form">
+  <div class="wt-card" data-comp-id="form.main.card" data-comp-name="采购单填写卡片" data-comp-role="container">
+    <div class="wt-field">
+      <label class="wt-label">采购金额（元） *</label>
+      <input class="wt-input" type="number" value="65000"
+             data-comp-id="form.amount.input"
+             data-comp-name="采购金额输入框"
+             data-comp-role="control" />
+    </div>
+    <div class="wt-card-ft wt-between">
+      <button class="wt-btn" data-comp-id="form.draft.btn" data-comp-name="保存草稿按钮" data-comp-role="control">保存草稿</button>
+      <button class="wt-btn wt-btn-primary" data-comp-id="form.submit.btn" data-comp-name="提交采购申请按钮" data-comp-role="control">确认发起审批</button>
     </div>
   </div>
 </div>
@@ -42,41 +51,50 @@
 
 ---
 
-## 2. 语义组件点选规则（无粒度概念）
+## 2. 内联 `@[组件名]` 胶囊点选与退格删除规则
 
-评审者在 `walkthrough.html` 中打开「新增评审备注」进入点选模式后，点选器**不再区分**「此元素 / 所在组件 / 整页」粒度，而是统一吸附语义组件并支持多选：
+当评审人在 `walkthrough.html` 中点击「+ 记备注」或「+ 新增」打开备注编辑器（`#memo-input`）时，自动进入捕获阶段语义组件点选模式：
 
-1. **向上吸附语义组件**：点击或悬停原型区任意位置时，只从目标 DOM 节点向上冒泡查找最近的携带 `data-comp-id`（或兼容 `data-anchor`）且位于当前激活页面（`.page.active`）内的语义组件。
-2. **禁止裸节点选中**：若未命中任何带语义 ID 的祖先节点，则不选中裸 `<span>` 或无语义容器，避免生成脆弱的 DOM 路径。
-3. **未点选时的默认关联**：若评审人未点选任何语义组件直接提交备注，则 `targets` 为空数组 `[]`，默认关联当前流程图节点（`node`）与当前页面（`page`）。
-4. **单条备注 `@` 多组件**：打开备注表单后，每次点击原型组件即去重追加一个 `@[组件名] ×` 胶囊到已选列表（支持点击 `×` 单个移除），高亮框展示最后一次点中的组件。
+1. **向上冒泡吸附语义组件**：点击或悬停当前激活页面（`.page.active`）内任意位置时，从事件目标向上查找最近的携带 `data-comp-id`（兼容 `data-anchor`）的元素，并以琥珀橙 `#D97706` 焦点框标示；禁止选中无语义 ID 的裸 DOM 节点。
+2. **输入框内联插入 `@[组件名]` 胶囊**：点击组件后，直接在 `contenteditable` 输入框光标处内联插入原子胶囊 `<span class="memo-at-chip" contenteditable="false" data-page="..." data-comp-id="..." data-comp-name="..." data-fallback="...">@[组件名]</span>`，单条备注支持连续点选插入多个不同组件的 `@[组件名]` 胶囊（同页同 `comp_id` 自动去重）。
+3. **原生退格一键删除**：由于胶囊设置 `contenteditable="false"` 作为不可拆分的原子内联节点，评审人在输入框内按 **`Backspace`（退格键）或 `Delete` 键**即可将整个 `@[组件名]` 胶囊干净删除，无需额外寻找微小的关闭按钮。
+4. **未点选组件时的默认关联**：若输入框中未包含任何 `@[组件名]` 胶囊直接保存，则 `targets` 为空数组 `[]`，备注默认关联当前视图（`view: "flow" | "spec"`）、当前流程节点（`node`）与当前页面（`page`）。
 
 ---
 
-## 3. 评审备注结构化导出格式（`review-feedback.md`）
+## 3. 评审备注统一数据结构与导出格式（`.md` & `.jsonl`）
 
-从 `walkthrough.html` 导出的评审文件必须为标准 Markdown，顶部包含 YAML Frontmatter 摘要，正文按条目结构化输出，每条批注**必须**包含以下全部字段：
+运行时内存、`spec.json` 中的 `memos`（`memoDef`）以及导出的 `review-feedback.jsonl` / `review-feedback.md` 严格共用同一套字段契约（不设粒度字段，也不使用顶层单组件字段，统一通过 `targets` 数组与 `text` 承载）：
 
-### 必填字段定义
+### 3.1 标准字段定义（对齐 `spec-v2.schema.json#/memoDef`）
 
-| 字段 | 类型 | 说明 | 示例 |
-| :--- | :--- | :--- | :--- |
-| `version_hash` | `string` | 生成该 `walkthrough.html` 时的版本指纹（如 Git short SHA 或内容哈希），用于防止旧版页面批注错写到新版 PRD。 | `a1b2c3d4` |
-| `status` | `enum` | 落点有效性状态：`valid`（有效）\| `invalid`（落点已失效）。 | `valid` |
-| `view` | `string` | 批注发起时的视图上下文（如 `prototype` / `flow` / `prd`）。 | `prototype` |
-| `node` | `string` | 当前关联或选中的流程图节点 ID（若无关联则为 `null` 或 `""`）。 | `D_captcha_check` |
-| `page` | `string` | 当前所处的原型页面 ID（`data-page-id`）。 | `page_captcha_verify` |
-| `vars` | `object` | 批注时的全局/局部状态变量快照（如 `platform`、`publish_scene`、`captcha_type`）。 | `{ "platform": "H5", "publish_scene": "comment", "captcha_type": "slider" }` |
-| `targets` | `array` | 绑定的语义组件落点数组，每项为 `{ comp_id, comp_name, fallback_selector }`；空数组 `[]` 表示未指定具体组件，仅关联当前 `node` 与 `page`。 | `[{"comp_id": "captcha.slider.track", "comp_name": "滑块拖动条", "fallback_selector": "[data-comp-id=\"captcha.slider.track\"]"}]` |
-| **修改意见正文** | `markdown` | 评审人填写的具体修改建议、预期行为或验收标准补充。 | 建议在弱网失败时保留滑块轨道并在下方展示重试按钮。 |
+| 字段 | 类型 | 必填 | 说明 | 示例 |
+| :--- | :--- | :--- | :--- | :--- |
+| `id` | `string` | **必填** | 批注唯一标识 | `"m_1732093800000"` |
+| `version_hash` | `string` | **必填** | 页面全局常量 `DOC_VERSION_HASH` 的值，防止旧版批注错写到新版 | `"b-end-approval-flow-v2.0"` |
+| `status` | `"valid" \| "invalid"` | **必填** | 落点实时回查状态：`valid`（有效）\| `invalid`（落点已失效） | `"valid"` |
+| `view` | `"flow" \| "spec"` | **必填** | 批注发起时的工作台视图：`flow`（全局流程）\| `spec`（单页改点） | `"flow"` |
+| `node` | `string` | **必填** | 当前关联的流程图节点 ID（无则 `""`） | `"F_FORM"` |
+| `page` | `string` | **必填** | 当前所处的原型页面 ID（对应 `data-page-id`） | `"p-apply-form"` |
+| `spec_id` | `string` | 可选 | 在 `spec` 视图下关联的改点卡 ID（如 `"SC_AMOUNT_THRESHOLD"`） | `"SC_AMOUNT_THRESHOLD"` |
+| `vars` | `object` | **必填** | 批注时的全局/局部/分支状态变量快照 | `{"amount_tier":"gt_50k","audit_decision":"approve"}` |
+| `targets` | `array` | **必填** | 结构化组件落点列表，每项为 `{ page, comp_id, comp_name, fallback_selector }`；未 `@` 组件时为 `[]` | `[{"page":"p-apply-form","comp_id":"form.submit.btn","comp_name":"提交采购申请按钮","fallback_selector":"[data-comp-id=\"form.submit.btn\"]"}]` |
+| `text` | `string` | **必填** | 评审修改意见正文（含内联 `@[组件名]` 文本表达） | `"@[提交采购申请按钮] 文案统一改为「确认发起审批」。"` |
+| `time` | `string` | **必填** | 记录时间字符串 | `"14:30"` |
 
-### 标准 `review-feedback.md` 导出模板
+### 3.2 标准 `review-feedback.jsonl` 导出格式（每行一条 JSON）
+
+```jsonl
+{"id":"m_1732093800001","version_hash":"b-end-approval-flow-v2.0","status":"valid","view":"flow","node":"F_FORM","page":"p-apply-form","vars":{"amount_tier":"gt_50k","audit_decision":"approve"},"targets":[{"page":"p-apply-form","comp_id":"form.amount.input","comp_name":"采购金额输入框","fallback_selector":"[data-comp-id=\"form.amount.input\"]"},{"page":"p-apply-form","comp_id":"form.submit.btn","comp_name":"提交采购申请按钮","fallback_selector":"[data-comp-id=\"form.submit.btn\"]"}],"text":"@[采购金额输入框] 提示补充小数点后两位说明，@[提交采购申请按钮] 文案改为「确认发起审批」。","time":"14:30"}
+```
+
+### 3.3 标准 `review-feedback.md` 导出模板
 
 ```markdown
 ---
-project: captcha-upgrade
-version_hash: a1b2c3d4
-exported_at: 2026-11-20T14:30:00+08:00
+project: b-end-approval-flow
+version_hash: b-end-approval-flow-v2.0
+exported_at: 2026-11-20T14:30:00Z
 total_comments: 2
 valid_count: 1
 invalid_count: 1
@@ -84,51 +102,57 @@ invalid_count: 1
 
 # 评审反馈记录（Review Feedback）
 
-## [FB-001] @[滑块拖动条] @[安全验证确认按钮]（valid）
+## [FB-001] @[采购金额输入框] @[提交采购申请按钮]（valid）
 
-- **version_hash**: `a1b2c3d4`
+- **id**: `m_1732093800001`
+- **version_hash**: `b-end-approval-flow-v2.0`
 - **status**: `valid`
-- **view**: `prototype`
-- **node**: `N_slider_verify`
-- **page**: `page_captcha_verify`
-- **vars**: `{"platform": "H5", "publish_scene": "comment", "captcha_type": "slider"}`
-- **targets**: @[滑块拖动条] (`captcha.slider.track`)、@[安全验证确认按钮] (`captcha.confirm.btn`)
+- **view**: `flow`
+- **node**: `F_FORM`
+- **page**: `p-apply-form`
+- **vars**: `{"amount_tier":"gt_50k","audit_decision":"approve"}`
+- **targets**:
+  - `p-apply-form` :: `form.amount.input`（采购金额输入框，`[data-comp-id="form.amount.input"]`）
+  - `p-apply-form` :: `form.submit.btn`（提交采购申请按钮，`[data-comp-id="form.submit.btn"]`）
+- **time**: `14:30`
 
 **修改意见**：
-滑块拖动到最右侧但网络请求超时时，当前直接关闭弹窗会导致用户困惑。建议保留弹窗，在轨道下方展示「网络开小差了，请重试」文案并重置滑块位置。
+@[采购金额输入框] 提示补充小数点后两位说明，@[提交采购申请按钮] 文案改为「确认发起审批」。
 
 ---
 
-## [FB-002] @[旧版短信入口]（invalid - 落点已失效）
+## [FB-002] @[旧版加急开关]（invalid - 落点已失效）
 
 > [!WARNING] 落点已失效
-> 该条批注的 `targets` 中存在未命中任何元素的落点（命中数为 0），严禁作为有效落点自动修改。请人工核对是否因组件重命名或移除导致。
+> 该条批注的 `targets` 在当前原型 DOM 中未命中目标组件或 `version_hash` 与 `DOC_VERSION_HASH` 不匹配，严禁自动回写，请人工核对。
 
-- **version_hash**: `a1b2c3d4`
+- **id**: `m_1732093800002`
+- **version_hash**: `b-end-approval-flow-v1.0`
 - **status**: `invalid`
-- **view**: `prototype`
-- **node**: `D_verify_type`
-- **page**: `page_captcha_verify`
-- **vars**: `{"platform": "Web", "publish_scene": "login", "captcha_type": "sms"}`
-- **targets**: @[旧版短信入口] (`captcha.sms.entry`)
+- **view**: `spec`
+- **node**: `F_FORM`
+- **page**: `p-apply-form`
+- **spec_id**: `SC_AMOUNT_THRESHOLD`
+- **vars**: `{"amount_tier":"le_50k","audit_decision":"approve"}`
+- **targets**:
+  - `p-apply-form` :: `form.urgent.switch`（旧版加急开关，`[data-comp-id="form.urgent.switch"]`）
+- **time**: `14:12`
 
 **修改意见**：
-希望把短信验证码倒计时从 60s 改成 30s。
+@[旧版加急开关] 默认置为关闭。
 ```
 
 ---
 
 ## 4. 双时机回查规则（严禁静默失效）
 
-为防止原型结构变更或变量切换后，历史缓存（如 `localStorage`）中的批注变成「幽灵落点」，`walkthrough.html` 运行时必须在**两个关键时机**执行落点回查（Re-validation）：
+为防止原型局部重绘或版本升级后，`localStorage` 或 `INITIAL_MEMOS` 中的历史批注变成「幽灵落点」，`walkthrough.html` 运行时必须在**两个关键时机**强制执行落点回查：
 
-1. **时机一：HTML 加载时（On Load / On Render）**
-   - 当 `walkthrough.html` 初始化或从本地存储恢复批注列表时，逐条校验其 `page` 容器存在，并遍历 `targets` 数组中的每一项，根据 `comp_id`（即 `[data-comp-id="<comp_id>"]`，兼容 `[data-anchor="<comp_id>"]`）和 `fallback_selector` 在当前 DOM（或对应页面/变量状态快照下）执行查询。
-   - **命中判定**：若 `targets` 为空数组 `[]`，只需确认 `page` 存在即标记 `status = "valid"`；若 `targets` 非空，仅当**全部**落点均命中（`matchCount >= 1`）时标记 `status = "valid"`；只要 `targets` 中**任一**落点命中数为 `0`，立即将 `status` 置为 `"invalid"`，并在评审列表 UI 中**标红显示「落点已失效」**徽标。
+1. **时机一：HTML 加载与渲染时（On Load / On Render）**
+   - 校验 `memo.version_hash` 是否与当前页面注入的 `DOC_VERSION_HASH` 一致，且 `document.getElementById(memo.page)` 为有效 `.page` 容器。
+   - 遍历 `memo.targets`：对每个 `{ page, comp_id, fallback_selector }`，在目标页容器内查找 `[data-comp-id="<comp_id>"]`（降级兼容 `[data-anchor="<comp_id>"]` 与 `fallback_selector`）。
+   - **命中判定**：`targets` 为 `[]` 时只要 `page` 存在且版本一致即为 `"valid"`；`targets` 非空时，必须**全部**目标均命中（`matchCount >= 1`）才标记 `"valid"`，任一落点未命中立即置为 `"invalid"` 并在抽屉条目展示「落点已失效」警示标签。
 
-2. **时机二：导出 `.md` / `.jsonl` 时（On Export）**
-   - 在用户点击「导出 `review-feedback.md`」或「导出 `.jsonl`」触发导出逻辑前，必须强制再执行一次全量回查。
-   - 若某条批注在导出时 `targets` 中任一落点命中数为 `0`：
-     - 必须将该条目的 `status` 强制写入为 `invalid`；
-     - 必须在导出的 Markdown 中显式标红/警告（如 `> [!WARNING] 落点已失效`）；
-     - **严禁静默将命中为 0 的批注当成 `valid` 导出**，确保下游 AI Skill 读取 `review-feedback.md` / `review-feedback.jsonl` 时能够准确跳过或提示人工确认 `invalid` 条目。
+2. **时机二：复制或导出 `.md` / `.jsonl` 时（On Export）**
+   - 点击「复制 MD」「导出 .md」「导出 .jsonl」前必须再次全量执行回查。
+   - 若存在 `invalid` 批注，弹出导出守卫提示框提醒评审人「先处理失效备注」或「仅导出有效备注」；若包含失效条目导出，必须强制写入 `status: "invalid"` 并附带 `> [!WARNING] 落点已失效`，**严禁将失效落点静默当作 `valid` 导出**。

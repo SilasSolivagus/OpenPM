@@ -1,44 +1,37 @@
 ---
 name: 01-pull-wiki
-description: 通过 adapters/ 从内网 Wiki 或本地 Obsidian/Markdown 拉取历史 PRD，生成 Diff 对比页并输出标准工作区文件。
+description: 调用 scripts/wiki_sync.py 从企业微信、Confluence、飞书或本地 Obsidian 拉取历史 PRD 至 history/prd-remote.md，生成 history/pull-diff.md 对比基线。
 ---
 
-# 01 - Pull Wiki（拉取历史 PRD 与上下文）
+# 01 - Pull Wiki（拉取历史 PRD 与基线对比）
 
 ## 目标
-从内网 Wiki（Confluence / 飞书 / Notion 等）或本地 Obsidian / Markdown 仓库拉取目标项目的历史 PRD、既有交互说明与附件元信息，在本地工作区初始化或更新标准项目目录，并生成与本地当前版本的 Diff 对比页，确保后续改动有据可依。
+从团队知识库（`wecom` 企业微信 / `confluence` / `feishu` 飞书 / `local-obsidian` 本地）拉取目标项目的线上历史 PRD，落盘至标准路径 `<project_dir>/history/prd-remote.md`，并自动生成与本地草稿的结构化差异文件 `<project_dir>/history/pull-diff.md`，确保改线上已有功能时有据可依。
 
 ## 输入
-- `project_dir`：目标项目工作区路径（如 `projects/demo-captcha-publish/`）
-- `project-context.md` 中的数据源配置（`wiki_source`、`page_id` / `local_path`、`adapter` 类型）
-- 可选：`--force` 或指定拉取的历史版本/分支
-
-## 依赖与适配器
-- 优先通过 `adapters/` 目录下对应的适配器脚本或配置执行拉取（如 `adapters/wiki_adapter.py` 或 `adapters/obsidian_adapter.py`）。
-- 严禁在 Skill 中硬编码内网凭证或私有域名；所有鉴权信息必须从环境变量或本地未提交配置文件读取。
+- `project_dir`：目标项目路径（如 `projects/b-end-approval-flow`）
+- `<project_dir>/project-context.md`（读取 `wiki_adapter` 与 `wiki_config`）
+- 根目录 `.env.local`（存放平台凭证，已被 `.gitignore` 隔离，严禁进 Git）
 
 ## 执行步骤
 0. **首次启动强制引导（Onboarding Gate）**：
-   - 若目标项目 `<project_dir>/project-context.md` 不存在，**必须先按根目录 `AGENTS.md` 执行 `AskUserQuestion` 初始化 5 问**（① 公司/团队 ② 业务领域 ③ 产品名称 ④ 目标端形态 ⑤ 页面参考结构 & Wiki 平台）及对应 Wiki 最小凭证询问（企微智能机器人 `Bot ID`/`Secret`、Confluence `PAT` 或 `local-obsidian`，凭证只写 `.env.local`）。
-   - 若 PM 跳过或不回答，立即生成默认 `project-context.md`（纯黑白灰阶 `wt-*` + `local-obsidian` 兜底），绝不卡死流程。
-1. **校验工作区与配置**：
-   - 检查 `<project_dir>/project-context.md` 是否存在且包含数据源标识。
-   - 若 `<project_dir>/prd.md` 已存在，先提示或备份当前工作区状态。
-2. **调用 Adapter 拉取远端/本地基线**：
-   - 通过 `adapters/` 获取最新已发布版本的 PRD 正文、图片/原型附件清单及版本号/更新时间。
-   - 将拉取到的原始基线保存至 `<project_dir>/baseline/prd-remote.md`（不直接覆盖用户未提交的 `prd.md`）。
-3. **生成 Diff 对比页**：
-   - 若本地已存在 `<project_dir>/prd.md`，对比 `baseline/prd-remote.md` 与本地 `prd.md`，生成 `<project_dir>/baseline/pull-diff.md`（或 `.html`），高亮新增、修改与删除的段落与功能点 ID。
-   - 若本地尚无 `prd.md`，则将基线复制为初始 `<project_dir>/prd.md`。
-4. **输出标准工作区清单**：
-   - 确保以下目录与文件就绪：
-     - `<project_dir>/project-context.md`
-     - `<project_dir>/prd.md`
-     - `<project_dir>/baseline/prd-remote.md`
-     - `<project_dir>/baseline/pull-diff.md`（存在差异时）
-     - `<project_dir>/versions/changelog.md`
+   - 若 `<project_dir>/project-context.md` 不存在，**必须先按根目录 `AGENTS.md` 调用 `AskUserQuestion` 执行基础 5 问**；
+   - 若 PM 选了 `wecom`、`confluence` 或 `feishu`，**必须主动向 PM 索要对应凭证（`Bot ID`+`Secret` / `CONFLUENCE_PAT` / `FEISHU_APP_ID`+`FEISHU_APP_SECRET`）并由你自动代写入 `.env.local`**，严禁甩锅让 PM 手改文件；
+   - 若 PM 跳过或不答，自动启用纯黑白灰阶 `wt-*` + `local-obsidian` 兜底生成 `project-context.md`，绝不卡死流程。
+1. **调用统一同步脚本拉取基线**：
+   ```bash
+   python3 scripts/wiki_sync.py pull <project_dir>
+   ```
+   - 脚本根据 `project-context.md` 中的 `wiki_adapter`（遵循 `adapters/` 协议）拉取远端文档，写入 `<project_dir>/history/prd-remote.md`（不会直接覆盖本地未提交的 `<project_dir>/prd.md`）。
+2. **生成或核对 `history/pull-diff.md`**：
+   - 若本地已有 `<project_dir>/prd.md`，对比 `history/prd-remote.md` 与 `prd.md`，输出 `<project_dir>/history/pull-diff.md`，清晰标注新增、修改、删除的章节与功能点；
+   - 若本地尚无 `<project_dir>/prd.md`，以 `history/prd-remote.md` 为基线初始化 `<project_dir>/prd.md` 供 `02-draft-prd` 增量改写。
+3. **输出标准工作区文件**：
+   - `<project_dir>/project-context.md`
+   - `<project_dir>/history/prd-remote.md`
+   - `<project_dir>/history/pull-diff.md`
+   - `<project_dir>/prd.md`
 
 ## 验收标准
-- 成功输出标准工作区文件，不丢失本地未保存修改。
-- Diff 对比页能清晰展示远端基线与本地草稿的差异功能点（按 `F-xxx` ID 索引）。
-- 若远端不可达或鉴权失败，明确报错并停止，不伪造历史文档。
+- 远端基线统一保存在 `history/prd-remote.md`，差异对比保存在 `history/pull-diff.md`，全程统一调用 `python3 scripts/wiki_sync.py pull`。
+- 凭证未泄露至任何 Git 跟踪文件；若远端无权限或离线，清晰提示引导 PM 将旧文档放入 `history/prd-remote.md` 兜底继续，绝不伪造历史需求。

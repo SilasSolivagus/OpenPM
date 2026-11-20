@@ -1,0 +1,37 @@
+<div style="position:relative;min-height:560px;">
+  <div class="wt-navbar">
+    <span>发布原创动态</span>
+    <span class="wt-tag">底层草稿已保留</span>
+  </div>
+  <div class="wt-stack" style="padding:12px;opacity:0.45;">
+    <div class="wt-card">
+      <div class="wt-card-bd">
+        <p>#周末徒步路线 分享今天实测的山脊环线轨迹，全程 11 公里爬升温和，水源补给点清晰。</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="wt-mask">
+    <div class="wt-modal" data-comp-id="login.sheet" data-comp-name="登录浮层" data-comp-role="modal" data-anchor="anchor-login-sheet">
+      <div class="wt-modal-hd">
+        <span>登录后继续发布</span>
+        <button type="button" class="wt-btn wt-btn-ghost wt-btn-sm" data-comp-id="login.cancel.btn" data-comp-name="关闭登录浮层按钮" data-comp-role="control" onclick="setVar('login_result','cancel');goNode('F_CANCEL_LOGIN')">✕</button>
+      </div>
+      <div class="wt-modal-bd wt-stack">
+        <p class="wt-muted">当前处于未登录状态，完成登录后将自动携带当前账号衔接发布风控判断，已编辑正文不会丢失。</p>
+        <div class="wt-field">
+          <label class="wt-label">手机号码</label>
+          <input type="tel" class="wt-input" value="138 **** 6620" placeholder="请输入手机号" data-comp-id="login.phone.input" data-comp-name="手机号输入框" data-comp-role="control" />
+        </div>
+        <div class="wt-field">
+          <label class="wt-label">短信验证码</label>
+          <input type="text" class="wt-input" value="839204" placeholder="请输入 6 位验证码" data-comp-id="login.code.input" data-comp-name="短信验证码输入框" data-comp-role="control" />
+        </div>
+      </div>
+      <div class="wt-modal-ft wt-between">
+        <button type="button" class="wt-btn wt-btn-sm" data-comp-id="login.pending.btn" data-comp-name="模拟待完成停留按钮" data-comp-role="control" onclick="setVar('login_result','pending');goNode('F_LOGIN_PENDING')">输错停留</button>
+        <button type="button" class="wt-btn wt-btn-primary wt-btn-sm" data-comp-id="login.submit.btn" data-comp-name="登录并继续发布按钮" data-comp-role="control" onclick="setVar('login_result','ok');goNode('F_RECHECK')">登录并继续发布</button>
+      </div>
+    </div>
+  </div>
+</div>

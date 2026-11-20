@@ -1,0 +1,25 @@
+<div class="wt-navbar">
+  <button type="button" class="wt-btn wt-btn-ghost wt-btn-sm" data-comp-id="editor.cancel.btn" data-comp-name="返回动态流按钮" data-comp-role="control" onclick="goNode('F_ENTRY')">取消</button>
+  <span>发布动态（网络超时）</span>
+  <button type="button" class="wt-btn wt-btn-primary wt-btn-sm" data-comp-id="editor.publish.btn" data-comp-name="重试发布按钮" data-comp-role="control" onclick="goNode('F_RECHECK')">重试发布</button>
+</div>
+
+<div class="wt-stack" style="padding:12px;">
+  <div class="wt-toast" data-comp-id="common.toast" data-comp-name="全局提示 Toast" data-comp-role="feedback" data-anchor="anchor-toast">
+    网络超时，请稍后重试
+  </div>
+
+  <div class="wt-alert">
+    <strong>网络超时兜底：</strong>风控请求或人机校验网络超时后自动关闭浮层，完整保留草稿内容，本次异常不计入当日失败次数。
+  </div>
+
+  <div class="wt-card">
+    <div class="wt-card-bd wt-stack">
+      <textarea class="wt-textarea" style="min-height:100px;" data-comp-id="editor.content.input" data-comp-name="保留的正文编辑区" data-comp-role="control">#周末徒步路线 分享今天实测的山脊环线轨迹，全程 11 公里爬升温和，水源补给点清晰。</textarea>
+      <div class="wt-row">
+        <span class="wt-chip"># 周末徒步路线</span>
+        <span class="wt-chip">[定位] 香山森林公园</span>
+      </div>
+    </div>
+  </div>
+</div>

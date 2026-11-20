@@ -1,0 +1,21 @@
+<div class="wt-navbar">
+  <button type="button" class="wt-btn wt-btn-ghost wt-btn-sm" disabled data-comp-id="editor.cancel.btn" data-comp-name="取消按钮（提交中禁用）" data-comp-role="control">取消</button>
+  <span>正在提交发布...</span>
+  <button type="button" class="wt-btn wt-btn-primary wt-btn-sm" disabled data-comp-id="editor.publish.btn" data-comp-name="发布中按钮" data-comp-role="control">发布中...</button>
+</div>
+
+<div class="wt-stack" style="padding:12px;">
+  <div class="wt-alert">
+    <strong>风控已放行 / 验证已通过：</strong>正在自动续传原有发布接口请求，按钮置为防重禁用态，无需用户再次点击发布。
+  </div>
+
+  <div class="wt-card">
+    <div class="wt-card-bd wt-stack">
+      <textarea class="wt-textarea" style="min-height:100px;" readonly data-comp-id="editor.content.input" data-comp-name="正文编辑区" data-comp-role="control">#周末徒步路线 分享今天实测的山脊环线轨迹，全程 11 公里爬升温和，水源补给点清晰。</textarea>
+    </div>
+    <div class="wt-card-ft wt-between">
+      <span class="wt-muted">等待原有发布服务返回确认结果</span>
+      <button type="button" class="wt-btn wt-btn-primary wt-btn-sm" data-comp-id="editor.sim_finish.btn" data-comp-name="模拟收到发布接口响应按钮" data-comp-role="control" onclick="goBranch('publish_ok')">推进发布结果 →</button>
+    </div>
+  </div>
+</div>

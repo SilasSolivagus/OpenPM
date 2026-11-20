@@ -1,0 +1,18 @@
+<div class="wt-navbar">
+  <button type="button" class="wt-btn wt-btn-ghost wt-btn-sm" data-comp-id="editor.cancel.btn" data-comp-name="返回动态流按钮" data-comp-role="control" onclick="goNode('F_ENTRY')">取消</button>
+  <span>发布动态（原流程未成功）</span>
+  <button type="button" class="wt-btn wt-btn-primary wt-btn-sm" data-comp-id="editor.publish.btn" data-comp-name="修改后重新发布按钮" data-comp-role="control" onclick="goNode('F_RECHECK')">重新发布</button>
+</div>
+
+<div class="wt-stack" style="padding:12px;">
+  <div class="wt-toast" data-comp-id="common.toast" data-comp-name="全局提示 Toast" data-comp-role="feedback" data-anchor="anchor-toast">
+    原动态暂不支持转发或命中内容规范限制，请修改后重试
+  </div>
+
+  <div class="wt-card">
+    <div class="wt-card-bd wt-stack">
+      <textarea class="wt-textarea" style="min-height:100px;" data-comp-id="editor.content.input" data-comp-name="保留的正文编辑区" data-comp-role="control">#周末徒步路线 分享今天实测的山脊环线轨迹，全程 11 公里爬升温和，水源补给点清晰。</textarea>
+      <span class="wt-help">原有业务接口返回失败时，草稿内容完整保留，且不累加人机验证失败次数。</span>
+    </div>
+  </div>
+</div>

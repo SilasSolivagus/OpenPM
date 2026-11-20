@@ -1,55 +1,82 @@
-# 发布器人机验证 PRD
+# 动态社区内容发布器人机验证 PRD（v2.0）
 
-- **版本**：v1.0（示例基线）
+- **项目标识**：`demo-captcha-publish`
+- **版本**：`v2.0`
+- **目标端**：动态社区（App 375px + Web 宽屏）
 - **关联上下文**：`project-context.md`
 
 ---
 
 ## 1. 业务目标与非目标
-- **目标**：拦截自动化脚本批量发帖行为，保障中高风险发布请求 100% 经过人机校验，同时确保验证通过后自动续传发布，避免用户内容丢失。
-- **非目标（Out of Scope）**：本期暂不改造账号登录注册环节的人机验证逻辑；暂不接入第三方语音验证码。
+
+- **业务目标**：在动态社区的原创动态发布器与转发动态发布器提交环节接入云端前置风控与三题型人机验证，对白名单/正常用户保持零打扰放行，对灰名单请求拉起安全验证并在通过后自动续传发布，对高频失败或黑名单账号精准拦截，全链路 100% 保留用户已编辑内容。
+- **非目标（Out of Scope）**：
+  - 点击社区底部「+ 发动态」、话题页参与按钮或动态卡片「转发」**进入发布器前**的交互保持线上现状，不前置拦截。
+  - C 端不提供手动切换验证码题型入口（统一由云端随机下发）。
 
 ---
 
-## 2. 功能点清单
+## 2. 核心业务流程与判断规则
 
-### F-01：发布提交与前置风控检测
-- **触发条件**：用户在发布器编辑完成正文/图片后，点击「立即发布」（`pub_btn_submit`）。
-- **主流程**：
-  1. 客户端校验正文非空（>= 1 字符，<= 2000 字符），置发布按钮为「发布中」禁用态，防止重复提交。
-  2. 服务端发布接口执行前置风控评分：
-     - **低风险**：直接落库并发布成功，Toast 提示「发布成功」并跳转内容详情页。
-     - **中/高风险**：接口返回 `40310`（`CAPTCHA_REQUIRED`）及一次性 `challenge_token`，客户端保持当前草稿内容不清空，拉起人机验证弹窗（F-02）。
-- **状态定义**：
-  - `idle`（可发布） / `submitting`（发布请求中） / `challenging`（等待人机验证） / `published`（已发布）
-- **异常分支**：
-  - **正文为空或超长**：前端直接拦截，输入框下方红字提示具体字数限制，不发起网络请求。
-  - **网络超时（> 10s）**：恢复按钮为可点击态，Toast 提示「网络开小差了，请重试」，保留已编辑内容。
-- **验收规则（AC）**：
-  - 点击发布后按钮进入禁用态，连点 3 次仅发出 1 次请求。
-  - 服务端返回 `40310` 时，编辑器内容 100% 保留且立即展示人机弹窗。
+### 2.1 提交前置校验与未登录衔接（`F_ENTRY` → `F_EDITOR` → `F_PUBLISH_CLICK` → `D_LOGGED_SUBMIT`）
+1. **发布器同页内容校验（`F_EDITOR`）**：用户点击「发布」（Web 宽屏支持 `Ctrl/Cmd+Enter`）时，先执行原有内容非空及字数校验；空内容仅展示同页提示，不触发云端风控请求。
+2. **登录状态判断（`D_LOGGED_SUBMIT`）**：
+   - **已登录（`in`）**：直接携带当前登录账号（`uid`）请求发布前云端风控判断（`F_RECHECK`）。
+   - **未登录（`out`）**：拉起社区登录浮层（`F_LOGIN`），底层发布器内容完整保留。
+3. **登录结果分流（`D_LOGIN_OK`）**：
+   - **登录成功（`ok`）**：仅由点击发布触发的登录，在成功后自动按当前登录账号（`uid`）衔接请求云端风控判断（`F_RECHECK`）；非发布动作触发的登录不发起发布风控判断。
+   - **取消关闭（`cancel`）**：点击关闭或按 `ESC` 退出登录浮层，回到发布器保留已编辑内容，本次不发布且不弹 Toast（`F_CANCEL_LOGIN`）。
+   - **尚未完成（`pending`）**：验证码输错或待确认时停留在原登录浮层，不计入人机验证失败次数（`F_LOGIN_PENDING`）。
 
-### F-02：滑块人机验证弹窗交互
-- **触发条件**：F-01 收到 `40310`（`CAPTCHA_REQUIRED`）响应。
-- **主流程**：
-  1. 展示模态弹窗（`cap_slider_modal`），加载拼图背景图与缺口滑块。
-  2. 用户按住滑块（`cap_slider_track`）向右拖动至缺口位置后松手。
-  3. 前端提交滑动轨迹与偏移量至校验接口，校验通过后关闭弹窗并自动携带 `captcha_ticket` 重试 F-01 发布接口。
-- **状态定义**：
-  - `ready`（待滑动） / `dragging`（拖动中） / `verifying`（校验中） / `success`（通过） / `failed`（拼图未对齐） / `locked`（连续失败锁定）
-- **异常分支**：
-  - **校验失败（< 3 次）**：滑块红框抖动 300ms 后自动复位，刷新拼图题目并提示「请重新拖动滑块完成拼图」。
-  - **连续失败达到 3 次**：进入 `locked` 状态，锁定滑块 60 秒并显示倒计时，同时提供「切换短信验证兜底」入口（见 F-03）。
-  - **用户主动关闭弹窗**：中止本次发布流程，关闭弹窗并恢复发布按钮为可点击态，草稿内容保留。
-  - **拼图图片加载失败**：弹窗内展示「加载失败，点击重试」占位按钮，支持手动刷新题目。
-- **验收规则（AC）**：
-  - 验证通过后无需用户再次点击「立即发布」，系统自动完成续传发布。
-  - 连续失败第 3 次必须触发 60 秒冷却，刷新页面或重开弹窗不可绕过冷却计时。
+### 2.2 云端风控分级处置（`F_RECHECK` → `D_SUBMIT`）
+同一登录账号（`uid`）在 App 375px 与 Web 宽屏、原创动态与转发动态、三种验证题型间**跨端共用**当日失败计数与黑白名单状态。云端按以下优先级返回结果：
+1. **直接放行（`allow`）**：命中白名单或正常低风险用户，静默进入原有发布提交流程（`F_SUBMIT`）。
+2. **直接拒绝（`deny`）**：当前处于黑名单内，停留发布器保留全部已编辑内容，Toast 提示「发布失败，请稍后再试」（`F_BLOCK_PUBLISH`），不重复累加失败次数或拉黑天数。
+3. **需要验证（`verify`）**：命中风控灰名单，保持发布器内容不丢失，弹出「安全验证」浮层（`F_VERIFY_PUBLISH`）。
 
-### F-03：高风险/锁定态短信兜底验证（可选分支）
-- **触发条件**：F-02 连续失败 3 次进入锁定态，用户点击「切换短信验证」。
-- **主流程**：向当前绑定手机号发送 6 位短信验证码，校验通过后同样签发 `captcha_ticket` 并自动续传发布。
-- **异常分支**：
-  - **验证码错误或过期**：输入框下方提示「验证码无效或已过期」，允许 60s 后重新获取。
-- **验收规则（AC）**：
-  - 短信验证通过后与滑块验证等价，可正常完成续传发布。
+### 2.3 三题型安全验证浮层与结果分流（`F_VERIFY_PUBLISH` → `D_VERIFY_PUBLISH`）
+- **随机下发三种题型（`captcha_type`）**：云端从 **字符验证码（`chars`）**、**滑块拼图（`slider`）**、**九宫格图片（`grid`）** 中随机下发 1 种展示于验证主区域（`captcha.body`）。
+- **换题规则**：点击「换一张」（`captcha.refresh.btn`）刷新同题型新题，不计入失败次数。
+- **校验结果判断（`D_VERIFY_PUBLISH`）**：
+  - **通过（`pass`）**：清零当日明确失败计数，关闭验证浮层并自动续传原有发布流程（`F_SUBMIT`）。
+  - **明确失败（`fail`）**：进入当日失败上限 `N` 判断（`D_RETRY_ALLOWED`）。
+  - **边界中断（`abort`）**：进入验证中断原因分流（`D_PUBLISH_ABORT`），所有边界中断均**不计入**当日失败次数。
+
+### 2.4 明确失败重试与累计入黑解黑机制（`D_RETRY_ALLOWED`）
+- **未达当日上限 `N`（`under_n` → `F_VERIFY_FAILED_PUBLISH`）**：
+  - 保留安全验证浮层（不弹 Toast、无强制读秒冷却），原题目置灰锁定并隐藏「换一张」，展示「验证失败」状态提示与「重新验证」按钮（`captcha.retry.btn`）。
+  - 用户点击「重新验证」（`F_RETRY`）时，重新向云端发起完整风控判断（回流 `F_RECHECK`）；若仍需验证则随机下发新题。
+- **达到第 `N` 次失败（`reach_n` → `F_WAIT_BLACK`）**：
+  - 立即将该账号加入风控黑名单，关闭安全验证浮层，停留发布器保留全部草稿内容，Toast 提示「发布失败，请稍后再试」。
+  - **自然日解黑规则（参数 `M`）**：同一自然日内多次触发最多记 1 个拉黑自然日；历史累计拉黑自然日不足 `M` 天时，于北京时间次日 `00:00` 自动移出黑名单（不自动重发草稿）；达到第 `M` 个拉黑自然日起不再每日自动解黑。
+
+### 2.5 验证中断与异常边界处理（`D_PUBLISH_ABORT`）
+1. **主动取消（`cancel` → `F_CANCEL_PUBLISH`）**：点击「取消」、右上角关闭按钮或 Web 按 `ESC`，静默关闭浮层回到发布器，保留已编辑内容，不弹 Toast，不计失败。
+2. **网络超时（`timeout` → `F_PUBLISH_NETWORK`）**：请求云端风控判断或提交校验答案超时，关闭验证浮层，停留发布器保留内容，Toast 提示「网络超时，请稍后重试」，不计失败。
+3. **验证已过期（`expired` → `F_EXPIRE_PUBLISH`）**：浮层停留过久导致 `challenge_token` 过期时，保留安全验证浮层（复用失败重试布局，隐藏「换一张」），展示「验证已过期」与「重新验证」按钮（`captcha.retry.btn`），不计失败；点击「重新验证」同样回流 `F_RECHECK` 重新请求完整判断。
+
+### 2.6 原有发布流程确认（`F_SUBMIT` → `D_PUBLISH_OK`）
+- 风控放行或人机校验通过后，提交按钮置为「发布中...」防重状态（`p-editor-submitting`）。
+- **确认成功（`yes` → `F_SUCCESS`）**：展示「发布成功 / 转发成功」提示并刷新社区动态流（`p-source-success`）。
+- **发布未成功（`no` → `F_SUBMIT_FAILED`）**：若原有业务接口报错（如内容审核限制或原帖不可转发），停留发布器保留内容并沿用原有失败提示（`p-editor-publish-failed`），不增加人机验证失败计数。
+
+---
+
+## 3. 页面与核心组件锚点清单
+
+| 基础页面 ID（`phone`） | Web 宽屏变体（`wide`） | 页面说明 | 核心组件锚点（`data-comp-id`） |
+| :--- | :--- | :--- | :--- |
+| `p-source-base` | `p-pc-source-base` | 动态社区信息流发布入口页 | `source.entry.publish_btn`、`source.repost.btn` |
+| `p-editor-base` | `p-pc-editor-base` | 发布器（已填写内容有效态） | `editor.cancel.btn`、`editor.publish.btn`、`editor.content.input`、`editor.empty_state.btn` |
+| `p-editor-empty` | `p-pc-editor-empty` | 发布器（空内容同页校验提示） | `editor.cancel.btn`、`editor.publish.btn`、`editor.content.input`、`common.toast` |
+| `p-login-base` | `p-pc-login-base` | 未登录提交衔接登录浮层 | `login.sheet`、`login.phone.input`、`login.code.input`、`login.cancel.btn`、`login.pending.btn`、`login.submit.btn` |
+| `p-login-pending` | `p-pc-login-pending` | 登录浮层（待完成确认态） | `login.sheet`、`login.cancel.btn`、`login.continue.btn` |
+| `p-editor-verify` | `p-pc-editor-verify` | 安全验证浮层（三题型正常作答态） | `captcha.modal`、`captcha.body`、`captcha.chars.input`、`captcha.slider.thumb`、`captcha.grid.cell1`、`captcha.refresh.btn`、`captcha.cancel.btn`、`captcha.submit.btn` |
+| `p-editor-verify-failed` | `p-pc-editor-verify-failed` | 安全验证浮层（未达 `N` 失败重试态） | `captcha.modal`、`captcha.body`、`captcha.cancel.btn`、`captcha.retry.btn` |
+| `p-editor-expired` | `p-pc-editor-expired` | 安全验证浮层（题目已过期重试态） | `captcha.modal`、`captcha.body`、`captcha.cancel.btn`、`captcha.retry.btn` |
+| `p-editor-blocked` | `p-pc-editor-blocked` | 黑名单拦截 / 第 `N` 次失败入黑页 | `editor.cancel.btn`、`editor.publish.btn`、`editor.content.input`、`common.toast` |
+| `p-editor-cancelled` | `p-pc-editor-cancelled` | 主动取消登录/验证保留草稿页 | `editor.cancel.btn`、`editor.publish.btn`、`editor.content.input` |
+| `p-editor-network` | `p-pc-editor-network` | 风控或验证网络超时提示页 | `editor.cancel.btn`、`editor.publish.btn`、`editor.content.input`、`common.toast` |
+| `p-editor-submitting` | `p-pc-editor-submitting` | 原有发布接口提交中防重态 | `editor.cancel.btn`、`editor.publish.btn`、`editor.content.input` |
+| `p-editor-publish-failed` | `p-pc-editor-publish-failed` | 原有发布流程失败保留草稿页 | `editor.cancel.btn`、`editor.publish.btn`、`editor.content.input`、`common.toast` |
+| `p-source-success` | `p-pc-source-success` | 发布/转发成功返回动态流页 | `common.toast`、`source.new_post.btn` |

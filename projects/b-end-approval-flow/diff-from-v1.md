@@ -4,13 +4,13 @@
 
 | 维度 | v1.0（历史基线） | v2.0（本次迭代） | 变更类型 |
 | :--- | :--- | :--- | :--- |
-| 审批层级 | 固定直属主管单级审批 | 金额 `<= 5万` 单级审批；金额 `> 5万` 加签财务总监复核 | **新增路由分支** |
-| 判断节点 | 无金额/结果分支判断 | 新增 `D_AMOUNT_50K`（金额 > 5万？）与 `D_AUDIT_OK`（审批是否通过？） | **新增拓扑节点** |
+| 审批层级 | 固定直属主管单级审批 | 所有单据先经直属主管初审；同意后按金额分流：`<= 5万` 直接办结，`> 5万` 加签财务总监复核 | **新增路由分支** |
+| 判断节点 | 仅主管单级通过/驳回 | 升级 `D_AUDIT_LEADER` 分流，新增 `D_AMOUNT_50K`（金额 > 5万？）与 `D_AUDIT_OK`（复核是否通过？） | **新增拓扑节点** |
 | 财务复核 | 无 | 新增 `p-finance-audit` 财务总监复核页（含复核意见必填与通过/驳回） | **新增页面** |
-| 驳回处理 | 驳回即终止作废，不保留数据 | 驳回后保留采购单草稿，进入 `p-audit-rejected` 支持「重新编辑」重提 | **流程闭环改造** |
+| 驳回处理 | 驳回即终止作废，不保留数据 | 主管或财务驳回后均保留采购单草稿，统一进入 `p-audit-rejected` 支持「重新编辑」回流 `F_FORM` | **流程闭环改造** |
 
 ## 2. 受影响页面与组件
 
-1. **`p-apply-form`**：新增金额阈值提示文案（提示超过 50,000 元将自动触发财务总监复核）及「保存草稿」入口。
-2. **`p-finance-audit`**（新增）：承接 `amount_tier = gt_50k` 分支，提供 `finance.comment.input`、`finance.approve.btn`、`finance.reject.btn`。
-3. **`p-audit-rejected`**（新增）：承接 `audit_decision = reject` 分支，展示驳回原因与草稿保留状态，提供 `rejected.reedit.btn` 回跳表单页。
+1. **`p-apply-form`**（`modified`）：新增金额阈值提示文案（提示超过 50,000 元在主管初审同意后自动加签财务总监复核）及「保存草稿」入口。
+2. **`p-finance-audit`**（`new`）：承接 `amount_tier = gt_50k` 分支，提供 `finance.comment.input`、`finance.approve.btn`、`finance.reject.btn`。
+3. **`p-audit-rejected`**（`new`）：统一承接主管初审与财务复核的驳回分支，展示驳回原因与草稿保留状态，提供 `rejected.reedit.btn` 回跳表单页。

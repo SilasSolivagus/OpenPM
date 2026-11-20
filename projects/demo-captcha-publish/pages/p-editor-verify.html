@@ -1,0 +1,75 @@
+<div style="position:relative;min-height:580px;">
+  <div class="wt-navbar">
+    <span>发布动态</span>
+    <span class="wt-tag">等待人机验证</span>
+  </div>
+  <div class="wt-stack" style="padding:12px;opacity:0.42;">
+    <div class="wt-card">
+      <div class="wt-card-bd">
+        <p>#周末徒步路线 分享今天实测的山脊环线轨迹，全程 11 公里爬升温和，水源补给点清晰。</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="wt-mask">
+    <div class="wt-modal" style="max-width:340px;" data-comp-id="captcha.modal" data-comp-name="安全验证浮层" data-comp-role="modal">
+      <div class="wt-modal-hd">
+        <span>安全验证</span>
+        <button type="button" class="wt-btn wt-btn-ghost wt-btn-sm" data-comp-id="captcha.cancel.btn" data-comp-name="安全验证取消按钮" data-comp-role="control" onclick="setVar('verify_result','abort');setVar('abort_reason','cancel');goNode('F_CANCEL_PUBLISH')">✕</button>
+      </div>
+
+      <div class="wt-modal-bd wt-stack">
+        <div class="wt-between">
+          <span class="wt-muted">请完成下方安全验证以继续发布</span>
+          <button type="button" class="wt-btn wt-btn-sm" data-comp-id="captcha.refresh.btn" data-comp-name="换一张按钮" data-comp-role="control">换一张</button>
+        </div>
+
+        <div class="wt-card" style="padding:10px;background:var(--wt-bg);" data-comp-id="captcha.body" data-comp-name="验证题型主区域" data-comp-role="container" data-anchor="anchor-captcha-body">
+          <!-- 题型 1：字符验证码 -->
+          <div data-when-var="captcha_type" data-when-val="chars" class="wt-stack">
+            <div style="height:64px;border:1px dashed var(--wt-border);border-radius:6px;background:var(--wt-white);display:flex;align-items:center;justify-content:center;letter-spacing:10px;font-size:22px;font-weight:700;">
+              K 7 M 9
+            </div>
+            <input type="text" class="wt-input" value="K7M9" placeholder="请输入上方 4 位字符（不区分大小写）" data-comp-id="captcha.chars.input" data-comp-name="字符验证码输入框" data-comp-role="control" />
+          </div>
+
+          <!-- 题型 2：滑块拼图 -->
+          <div data-when-var="captcha_type" data-when-val="slider" class="wt-stack hidden">
+            <div style="height:96px;border:1px solid var(--wt-border);border-radius:6px;background:var(--wt-white);position:relative;display:flex;align-items:center;justify-content:center;">
+              <span class="wt-muted">拼图背景区 · 拖动下方滑块对齐右侧缺口</span>
+              <span style="position:absolute;right:38px;top:28px;width:36px;height:36px;border:2px dashed var(--wt-accent);background:var(--wt-fill);border-radius:4px;"></span>
+            </div>
+            <div style="height:36px;border:1px solid var(--wt-border);border-radius:6px;background:var(--wt-white);display:flex;align-items:center;padding:2px;">
+              <button type="button" class="wt-btn wt-btn-primary wt-btn-sm" data-comp-id="captcha.slider.thumb" data-comp-name="滑块拖动按钮" data-comp-role="control" onclick="setVar('verify_result','pass');goNode('F_SUBMIT')">→ 拖动滑块</button>
+              <span class="wt-muted" style="margin-left:10px;">向右拖动滑块完成拼图</span>
+            </div>
+          </div>
+
+          <!-- 题型 3：九宫格图片 -->
+          <div data-when-var="captcha_type" data-when-val="grid" class="wt-stack hidden">
+            <div class="wt-between">
+              <span style="font-size:12px;font-weight:600;">请点击所有包含「路灯」的图片</span>
+              <span class="wt-badge">已选 2 项</span>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;">
+              <button type="button" class="wt-btn" style="height:52px;background:var(--wt-fill);" data-comp-id="captcha.grid.cell1" data-comp-name="九宫格候选图按钮" data-comp-role="control">[图1 ✓]</button>
+              <div class="wt-card" style="height:52px;display:flex;align-items:center;justify-content:center;"><span class="wt-muted">[图2]</span></div>
+              <div class="wt-card" style="height:52px;display:flex;align-items:center;justify-content:center;background:var(--wt-fill);"><strong>[图3 ✓]</strong></div>
+              <div class="wt-card" style="height:52px;display:flex;align-items:center;justify-content:center;"><span class="wt-muted">[图4]</span></div>
+              <div class="wt-card" style="height:52px;display:flex;align-items:center;justify-content:center;"><span class="wt-muted">[图5]</span></div>
+              <div class="wt-card" style="height:52px;display:flex;align-items:center;justify-content:center;"><span class="wt-muted">[图6]</span></div>
+              <div class="wt-card" style="height:52px;display:flex;align-items:center;justify-content:center;"><span class="wt-muted">[图7]</span></div>
+              <div class="wt-card" style="height:52px;display:flex;align-items:center;justify-content:center;"><span class="wt-muted">[图8]</span></div>
+              <div class="wt-card" style="height:52px;display:flex;align-items:center;justify-content:center;"><span class="wt-muted">[图9]</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="wt-modal-ft wt-between">
+        <button type="button" class="wt-btn wt-btn-sm" data-comp-id="captcha.fail_sim.btn" data-comp-name="模拟校验失败按钮" data-comp-role="control" onclick="setVar('verify_result','fail');goBranch('fail_limit')">模拟失败</button>
+        <button type="button" class="wt-btn wt-btn-primary wt-btn-sm" data-comp-id="captcha.submit.btn" data-comp-name="提交验证按钮" data-comp-role="control" onclick="setVar('verify_result','pass');goNode('F_SUBMIT')">确认提交验证</button>
+      </div>
+    </div>
+  </div>
+</div>

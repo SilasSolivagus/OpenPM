@@ -1,39 +1,37 @@
 ---
 name: 02-draft-prd
-description: 读取 project-context.md 与历史 PRD，输出结构化文字版 PRD（含功能点 ID、状态、异常分支），并支持接收 review-feedback.md 进行基于 Diff 的局部增量修改。
+description: 读取 project-context.md 与 history/ 基线，编写或按 review-feedback.md / .jsonl 局部增量修订结构化 prd.md（含 F-xx 功能点、状态机与异常分支）。
 ---
 
-# 02 - Draft PRD（结构化文字版 PRD 起草与增量修订）
+# 02 - Draft PRD（结构化文字版 PRD 起草与局部增量修订）
 
 ## 目标
-结合 `project-context.md`（业务背景、目标用户、终端约束、非功能边界）与历史 PRD（如有），编写或增量修订结构化文字版 `prd.md`。文档必须具备清晰的功能点 ID、完整状态机、异常分支及可验证的验收规则，为下游原型与流程图提供无歧义的单一事实来源（SSOT）。
+结合 `<project_dir>/project-context.md` 与 `<project_dir>/history/` 历史基线（如有），编写或局部修订结构化文字版 `<project_dir>/prd.md`。文档必须具备唯一功能点 ID（`F-xx`）、完整状态流转、异常兜底与验收标准（AC），作为下游 `pages/*.html`、`flow.svg` 与 `spec.json` 的需求事实源。
 
 ## 输入
-- `<project_dir>/project-context.md`（**前置门禁**：若该文件不存在，必须先按根目录 `AGENTS.md` 调用 `AskUserQuestion` 完成首次启动 5 问与 Wiki 最小凭证配置；若 PM 跳过不答，则自动生成纯黑白灰阶 `wt-*` + `local-obsidian` 默认兜底的 `project-context.md` 后再继续）
-- `<project_dir>/prd.md`（修订模式）或 `<project_dir>/baseline/prd-remote.md`（基线参考）
-- 可选：`<project_dir>/review-feedback.md`（评审意见文件，用于局部增量修改）
+- `<project_dir>/project-context.md`（**前置门禁**：若不存在，必须先按根目录 `AGENTS.md` 执行 `AskUserQuestion` 5 问并代写 `.env.local` 凭证；若跳过则自动生成纯黑白灰阶 `wt-*` + `local-obsidian` 默认 `project-context.md`）
+- 可选：`<project_dir>/history/prd-remote.md` 与 `<project_dir>/history/pull-diff.md`（改线上已有功能时的历史基线）
+- 可选：`<project_dir>/review-feedback.md` 或 `<project_dir>/review-feedback.jsonl`（评审导出的结构化批注，用于局部精准回写）
 
-## 输出结构规范（`prd.md`）
-1. **文档元信息**：项目名称、版本、目标端（C 端 / B 端 / 多端）、关联上下文。
-2. **业务背景与目标**：解决什么问题、核心指标、非目标（Out of Scope）。
-3. **功能点清单（必须含唯一 ID）**：
-   - 每个功能点使用统一编号，如 `F-01`、`F-02`（子功能 `F-01.1`）。
-   - 每个功能点必须包含：
-     - **触发条件**
-     - **主流程（正常路径）**
-     - **状态定义**（如：初始态 / 加载中 / 成功 / 失败 / 锁定态）
-     - **异常分支与兜底策略**（如：网络超时、接口报错、风控拦截、权限不足）
-     - **埋点/审计或验收规则（AC）**
-4. **权限与数据边界**：角色矩阵、敏感操作限制、频率限制。
+## 输出结构规范（`<project_dir>/prd.md`）
+1. **文档元信息（YAML Frontmatter）**：`project`、`title`、`version_hash`、`status`、`platform`、`owner`、`updated_at`。
+2. **业务背景与范围边界**：核心痛点、目标指标、本期范围（In Scope，标注相对于 `history/prd-remote.md` 的新增/修改项）与明确不做（Out of Scope）。
+3. **功能点详述（必须含唯一 `F-xx` ID）**：
+   - 每个功能点编号如 `F-01`、`F-02`（子项 `F-01.1`），并显式包含：
+     - **触发条件与前置校验**
+     - **正常主流程**
+     - **页面与组件状态定义**（初始态 / 加载态 / 成功态 / 空态 / 错误或驳回态）
+     - **异常分支与兜底策略**（网络超时、并发冲突、次数超限锁定、权限拦截等）
+     - **验收标准（AC）**
+   - **严禁把彩色皮肤写入需求**：遵循「学骨架不学配色」铁律，只定义文案、布局层级与交互反馈，严禁将“主按钮改成品牌蓝色 / 驳回弹窗改成红色”当作产品需求写入 PRD。
+4. **角色权限与数据约束**：多角色操作矩阵、字段校验规则与频控阈值。
 
-## 增量修订模式（当存在 `review-feedback.md` 时）
-1. **解析评审意见**：逐条读取 `review-feedback.md` 中关联的 `F-xxx` 功能点或组件锚点（`data-comp-id`）。
-2. **基于 Diff 的局部修改**：
-   - **严禁全篇重写**未涉及的章节，保持未变更功能点的 ID 与原文稳定。
-   - 仅针对评审意见涉及的功能点、状态或异常分支做精准增删改。
-3. **输出修订摘要**：在回复中列出本次修改涉及的 `F-xxx` 列表及对应 Diff 摘要，便于下游 `03-prd-to-wireframe-prototype` 与 `04-flow-canvas` 进行局部增量重绘。
+## 局部精准回写模式（收到 `review-feedback.md` / `.jsonl` 时）
+1. **校验批注状态**：逐条解析批注中的 `status`、`node`、`page`、`vars` 与 `targets: [{ page, comp_id, comp_name, fallback_selector }]`：
+   - 仅自动回写 `status: "valid"` 的批注；
+   - 若存在 `status: "invalid"`（落点已失效或 `version_hash` 不匹配），必须向 PM 指出并请人工确认，严禁盲目猜测修改。
+2. **局部增量修改**：只修改受影响的 `F-xx` 章节，**严禁全篇重写未提及的功能点**，保持既有编号与未变更段落完全稳定，并同步告知下游 `03` / `04` 仅重绘对应页面与节点。
 
 ## 验收标准
-- 所有功能点均具备唯一 `F-xx` ID，无孤立无编号的需求描述。
-- 每个核心交互功能点均显式覆盖正常态、加载/过渡态、至少 1 个异常分支与验收规则。
-- 增量修改模式下，未提及章节的文本保持原样。
+- `<project_dir>/prd.md` 中所有核心功能均带唯一 `F-xx` ID，且覆盖正常态、过渡态与异常兜底。
+- 增量修订时未波及无关章节；无任何品牌色/业务红绿配色伪需求。

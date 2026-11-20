@@ -4,14 +4,42 @@
 import argparse
 import datetime
 import difflib
+import fnmatch
+import os
 import re
 import shutil
 import sys
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Set
 
 
-EXCLUDED_NAMES = {"versions", ".git", "__pycache__", ".DS_Store"}
+EXCLUDED_NAMES: Set[str] = {
+    "versions",
+    ".git",
+    "__pycache__",
+    ".DS_Store",
+    "_manifest.json",
+    "wiki-export",
+    "wiki-remote",
+}
+
+EXCLUDED_PATTERNS = (
+    "*_manifest.secret.json",
+    "*.env",
+    "*.env.*",
+    "*.pyc",
+    "*.log",
+)
+
+
+def _is_part_excluded(name: str) -> bool:
+    if name in EXCLUDED_NAMES or name.startswith("."):
+        return True
+    return any(fnmatch.fnmatch(name, pat) for pat in EXCLUDED_PATTERNS)
+
+
+def _is_rel_excluded(rel: Path) -> bool:
+    return any(_is_part_excluded(part) for part in rel.parts)
 
 
 def _normalize_version(version: str) -> str:
@@ -28,23 +56,143 @@ def _existing_versions(versions_dir: Path) -> List[int]:
         return []
     nums: List[int] = []
     for entry in versions_dir.iterdir():
-        if entry.is_dir():
+        if entry.is_dir() and not entry.is_symlink():
             m = re.fullmatch(r"v(\d+)", entry.name)
             if m:
                 nums.append(int(m.group(1)))
     return sorted(nums)
 
 
-def _iter_project_files(root: Path) -> Dict[Path, Path]:
-    """Return mapping of relative_path -> absolute_path for tracked workspace files."""
+def _iter_project_files(root: Path, warn_dangling: bool = False) -> Dict[Path, Path]:
+    """Return mapping of relative_path -> absolute_path for tracked regular workspace files.
+
+    Safely skips excluded names/patterns and dangling symlinks without crashing.
+    """
     files: Dict[Path, Path] = {}
-    for path in sorted(root.rglob("*")):
-        rel = path.relative_to(root)
-        if any(part in EXCLUDED_NAMES or part.startswith(".") for part in rel.parts):
+    root_resolved = root.resolve()
+
+    for dirpath, dirnames, filenames in os.walk(root_resolved, topdown=True, followlinks=False):
+        cur_dir = Path(dirpath)
+        # Prune excluded directories and directory symlinks in-place
+        kept_dirs: List[str] = []
+        for d in sorted(dirnames):
+            if _is_part_excluded(d):
+                continue
+            d_path = cur_dir / d
+            if d_path.is_symlink():
+                if warn_dangling and not d_path.exists():
+                    rel_d = d_path.relative_to(root_resolved)
+                    print(f"WARNING: Skipping dangling symlink: {rel_d}", file=sys.stderr)
+                continue
+            kept_dirs.append(d)
+        dirnames[:] = kept_dirs
+
+        for fname in sorted(filenames):
+            if _is_part_excluded(fname):
+                continue
+            fpath = cur_dir / fname
+            rel = fpath.relative_to(root_resolved)
+            if _is_rel_excluded(rel):
+                continue
+            if fpath.is_symlink():
+                if not fpath.exists():
+                    if warn_dangling:
+                        print(f"WARNING: Skipping dangling symlink: {rel}", file=sys.stderr)
+                    continue
+                if fpath.is_dir():
+                    continue
+            if fpath.is_file():
+                files[rel] = fpath
+
+    return dict(sorted(files.items(), key=lambda kv: kv[0]))
+
+
+def _iter_workspace_removable_entries(root: Path) -> Dict[Path, Path]:
+    """Return all non-excluded files AND symlinks (including dangling symlinks) under root."""
+    entries: Dict[Path, Path] = {}
+    root_resolved = root.resolve()
+
+    for dirpath, dirnames, filenames in os.walk(root_resolved, topdown=True, followlinks=False):
+        cur_dir = Path(dirpath)
+        kept_dirs: List[str] = []
+        for d in sorted(dirnames):
+            if _is_part_excluded(d):
+                continue
+            d_path = cur_dir / d
+            if d_path.is_symlink():
+                rel_d = d_path.relative_to(root_resolved)
+                if not _is_rel_excluded(rel_d):
+                    entries[rel_d] = d_path
+                continue
+            kept_dirs.append(d)
+        dirnames[:] = kept_dirs
+
+        for fname in sorted(filenames):
+            if _is_part_excluded(fname):
+                continue
+            fpath = cur_dir / fname
+            rel = fpath.relative_to(root_resolved)
+            if _is_rel_excluded(rel):
+                continue
+            if fpath.is_symlink() or fpath.is_file():
+                entries[rel] = fpath
+
+    return entries
+
+
+def _cleanup_empty_parents(unlinked_path: Path, stop_root: Path) -> None:
+    """Recursively remove empty parent directories bottom-up up to stop_root."""
+    stop_resolved = stop_root.resolve()
+    parent = unlinked_path.parent
+    while True:
+        try:
+            parent_resolved = parent.resolve()
+        except OSError:
+            break
+        if parent_resolved == stop_resolved or stop_resolved not in parent_resolved.parents:
+            break
+        if _is_part_excluded(parent.name) or parent.is_symlink() or not parent.is_dir():
+            break
+        try:
+            if any(parent.iterdir()):
+                break
+            parent.rmdir()
+        except OSError:
+            break
+        parent = parent.parent
+
+
+def _prune_all_empty_subdirs(root: Path) -> None:
+    """Sweep any remaining empty non-excluded subdirectories bottom-up."""
+    root_resolved = root.resolve()
+    for dirpath, dirnames, _ in os.walk(root_resolved, topdown=False, followlinks=False):
+        cur_dir = Path(dirpath)
+        if cur_dir == root_resolved:
             continue
-        if path.is_file():
-            files[rel] = path
-    return files
+        rel = cur_dir.relative_to(root_resolved)
+        if _is_rel_excluded(rel) or cur_dir.is_symlink():
+            continue
+        try:
+            if not any(cur_dir.iterdir()):
+                cur_dir.rmdir()
+        except OSError:
+            pass
+
+
+def _has_unsnapshotted_additions_or_edits(
+    current_files: Dict[Path, Path],
+    latest_files: Dict[Path, Path],
+) -> bool:
+    """Return True if workspace has added or modified files compared to latest snapshot."""
+    for rel, cur_path in current_files.items():
+        if rel not in latest_files:
+            return True
+        try:
+            if cur_path.read_bytes() != latest_files[rel].read_bytes():
+                return True
+        except OSError:
+            return True
+    return False
 
 
 def _append_changelog(versions_dir: Path, entry: str) -> None:
@@ -69,7 +217,7 @@ def cmd_snapshot(project_dir: Path, note: str) -> int:
     target_dir = versions_dir / version_tag
     target_dir.mkdir(parents=True, exist_ok=False)
 
-    files = _iter_project_files(project_dir)
+    files = _iter_project_files(project_dir, warn_dangling=True)
     for rel, src in files.items():
         dst = target_dir / rel
         dst.parent.mkdir(parents=True, exist_ok=True)
@@ -146,6 +294,10 @@ def cmd_diff(project_dir: Path, v1: str, v2: str) -> int:
 
 
 def cmd_rollback(project_dir: Path, version: str) -> int:
+    if not project_dir.is_dir():
+        print(f"ERROR: Project directory not found: {project_dir}", file=sys.stderr)
+        return 1
+
     versions_dir = project_dir / "versions"
     try:
         tag = _normalize_version(version)
@@ -158,17 +310,36 @@ def cmd_rollback(project_dir: Path, version: str) -> int:
         print(f"ERROR: Snapshot {tag} not found at {snap_dir}", file=sys.stderr)
         return 1
 
-    current_files = _iter_project_files(project_dir)
+    # Dirty workspace protection against latest snapshot v_latest
+    existing = _existing_versions(versions_dir)
+    if existing:
+        latest_tag = f"v{existing[-1]}"
+        latest_dir = versions_dir / latest_tag
+        current_tracked = _iter_project_files(project_dir)
+        latest_tracked = _iter_project_files(latest_dir)
+        if _has_unsnapshotted_additions_or_edits(current_tracked, latest_tracked):
+            backup_note = f"auto-backup before rollback to {tag}"
+            rc = cmd_snapshot(project_dir, backup_note)
+            if rc != 0:
+                return rc
+
+    removable_entries = _iter_workspace_removable_entries(project_dir)
     snap_files = _iter_project_files(snap_dir)
 
-    for rel, cur_path in current_files.items():
-        if rel not in snap_files:
-            cur_path.unlink()
+    # Remove extra files and any symlinks (including dangling symlinks), then prune empty parent dirs
+    for rel, cur_path in sorted(removable_entries.items(), key=lambda kv: len(kv[0].parts), reverse=True):
+        if rel not in snap_files or cur_path.is_symlink():
+            cur_path.unlink(missing_ok=True)
+            _cleanup_empty_parents(cur_path, project_dir)
 
     for rel, src_path in snap_files.items():
         dst_path = project_dir / rel
         dst_path.parent.mkdir(parents=True, exist_ok=True)
+        if dst_path.is_symlink():
+            dst_path.unlink(missing_ok=True)
         shutil.copy2(src_path, dst_path)
+
+    _prune_all_empty_subdirs(project_dir)
 
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     _append_changelog(

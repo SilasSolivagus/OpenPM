@@ -8,7 +8,7 @@
 
   <div class="wt-stack" style="padding:14px;">
     <div class="wt-card">
-      <div class="wt-card-hd">
+      <div class="wt-card-hd wt-between">
         <span>采购单审批通过</span>
         <span class="wt-badge">单号：PO-20261120-02</span>
       </div>
@@ -22,12 +22,13 @@
         </div>
         <div class="wt-between">
           <span class="wt-muted">审批轨迹</span>
-          <span>申请人提交 → 直属主管同意 →（若 &gt;5万）财务总监复核通过</span>
+          <span data-when-var="amount_tier" data-when-val="gt_50k">申请人提交 → 直属主管初审同意 → 财务总监复核通过</span>
+          <span data-when-var="amount_tier" data-when-val="le_50k" class="hidden">申请人提交 → 直属主管初审同意（≤ 5 万单级办结）</span>
         </div>
       </div>
       <div class="wt-card-ft wt-between">
-        <button class="wt-btn" data-comp-id="done.back_list.btn" data-comp-name="返回采购申请列表按钮">返回采购列表</button>
-        <button class="wt-btn wt-btn-primary" data-comp-id="done.new_order.btn" data-comp-name="继续新建采购单按钮">继续新建采购单</button>
+        <button type="button" class="wt-btn" data-comp-id="done.back_list.btn" data-comp-name="返回采购申请列表按钮" data-comp-role="nav" onclick="goNode('F_LIST')">返回采购列表</button>
+        <button type="button" class="wt-btn wt-btn-primary" data-comp-id="done.new_order.btn" data-comp-name="继续新建采购单按钮" data-comp-role="control" onclick="goNode('F_FORM')">继续新建采购单</button>
       </div>
     </div>
   </div>

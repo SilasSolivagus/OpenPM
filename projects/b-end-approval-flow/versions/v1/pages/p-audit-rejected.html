@@ -7,12 +7,12 @@
   </div>
 
   <div class="wt-stack" style="padding:14px;">
-    <div class="wt-alert wt-alert-danger">
+    <div class="wt-alert">
       <strong>审批已驳回：</strong>采购单未通过审批，系统已为您完整保留原金额与事由草稿数据，无需重新建单。
     </div>
 
     <div class="wt-card">
-      <div class="wt-card-hd">
+      <div class="wt-card-hd wt-between">
         <span>驳回详情与草稿保留说明</span>
         <span class="wt-badge">单号：PO-20261120-02</span>
       </div>
@@ -27,8 +27,8 @@
         </div>
       </div>
       <div class="wt-card-ft wt-between">
-        <button class="wt-btn" data-comp-id="rejected.back_list.btn" data-comp-name="返回列表暂不修改按钮">返回采购列表</button>
-        <button class="wt-btn wt-btn-primary" data-comp-id="rejected.reedit.btn" data-comp-name="重新编辑并提交按钮">重新编辑</button>
+        <button type="button" class="wt-btn" data-comp-id="rejected.back_list.btn" data-comp-name="返回列表暂不修改按钮" data-comp-role="nav" onclick="goNode('F_LIST')">返回采购列表</button>
+        <button type="button" class="wt-btn wt-btn-primary" data-comp-id="rejected.reedit.btn" data-comp-name="重新编辑并提交按钮" data-comp-role="control" onclick="goNode('F_FORM')">重新编辑</button>
       </div>
     </div>
   </div>

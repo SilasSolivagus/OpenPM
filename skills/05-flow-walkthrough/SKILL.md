@@ -1,48 +1,59 @@
 ---
 name: 05-flow-walkthrough
-description: 组装三栏交互 HTML（全局流程 + 单页改点 + 捕获阶段点选器 + 评审备注抽屉），交付前必须运行 scripts/preflight_check.py 门禁。
+description: 汇总补全 spec.json（pages、state_groups、spec_cards），依次执行 preflight_check.py spec.json、build_walkthrough.py 确定性编译与 preflight_check.py walkthrough.html 门禁。
 ---
 
-# 05 - Flow Walkthrough（三栏交互式评审演示组装）
+# 05 - Flow Walkthrough（`spec.json` 汇总与交互走查工作台确定性编译）
 
 ## 目标
-将 `02-draft-prd` 的需求改点、`03-prd-to-wireframe-prototype` 的线框原型页面与 `04-flow-canvas` 的业务流程图 SVG，组装为单文件可离线打开的三栏交互式 HTML（`walkthrough.html`），支持研发、测试与设计在同一页面内完成全链路走查与组件级评审标注。
+汇总 `02-draft-prd`、`03-prd-to-wireframe-prototype` 与 `04-flow-canvas` 的产物，补全单一真相源 `<project_dir>/spec.json`（`version: "spec-v2"`），通过确定性编译器 `scripts/build_walkthrough.py` 生成单文件离线交互工作台 `<project_dir>/walkthrough.html`，并在后台静默通过编译前后双阶段 `preflight_check.py` 门禁。
 
 ## 输入
 - `<project_dir>/prd.md`
-- `<project_dir>/prototype/`（线框原型页面片段）
-- `<project_dir>/flow/flow-canvas.svg` 与 `NODES` 元数据
-- 可选：`<project_dir>/theme.css`（设计 Token / CSS 变量覆盖文件，用于 `--theme` 注入）
-- 可选：`<project_dir>/references/`（参考截图/HTML，已在 `03-prd-to-wireframe-prototype` 阶段提取）
+- `<project_dir>/pages/<page_id>.html`（纯黑白灰阶 `wt-*` 页面片段）
+- `<project_dir>/flow.svg`
+- `<project_dir>/spec.json`（已含 `04-flow-canvas` 同步的 `nodes` 与 `vars`）
+- 可选：`<project_dir>/skeleton.css`（仅允许微调圆角、间距、字号，严禁彩色皮肤）
+- 契约参考：`specs/spec-v2.schema.json`、`specs/spec-v2-schema.md`、`specs/preflight-checklist.md`
 
-## 主题注入与兜底编译
-使用 `scripts/build_walkthrough.py` 组装单文件 `walkthrough.html` 时：
-- **有 `theme.css` 时**：传入 `--theme <project_dir>/theme.css`，脚本会将该 CSS 内容内联注入到 `<style id="custom-theme">` 中，覆盖默认 `--wt-*` 变量（如 `--wt-accent`、`--wt-bg`、圆角、字体等）。
-- **无 `theme.css` 时（兜底）**：不传 `--theme` 参数，自动使用内置的中立灰阶高保真线框（`wt-*`）样式作为兜底，保证零外部依赖、离线可用且专注交互逻辑评审。
+## 标准执行步骤（严禁跳步）
 
-## 三栏交互架构要求
-1. **左栏：全局业务流程图**
-   - 嵌入 `flow-canvas.svg`，支持点击节点切换当前激活节点与右侧原型页面。
-   - 高亮当前节点及关联的 `data-from` / `data-to` 连线。
-2. **中栏：单页原型 + 改点说明**
-   - 渲染当前节点对应的原型页面（与 `NODES[id].page` 一一对应）。
-   - 展示本节点关联的 PRD 功能点 ID（`F-xx`）及本期改点摘要（新增/修改/异常分支）。
-3. **右栏：评审备注抽屉 + 捕获阶段点选器**
-   - 实现**捕获阶段点选器（Capture-phase Inspector）**：开启点选模式时，在 DOM 捕获阶段拦截点击，读取最近带 `data-comp-id` 和 `data-comp-name` 的祖先组件，高亮轮廓并自动填充至评审备注表单。
-   - 评审备注抽屉支持：添加/编辑/删除针对特定 `data-comp-id` 或 `data-node` 的评审意见，并支持一键导出为结构化 `review-feedback.md`（供 `02-draft-prd` 增量修订）。
+### 第 1 步：汇总补全 `<project_dir>/spec.json`
+确保 `spec.json` 完整包含并对齐以下字段：
+1. `version`: `"spec-v2"`；`meta`: `{ project, title, doc_version, platform_default, entry_node, prd_source }`。
+2. `vars` 与 `nodes`：核对与 `flow.svg` 节点、`data-branch` 出边及本期 `change: "new" | "modified"` 标记完全一致。
+3. `pages`：登记所有 `pages/<page_id>.html` 的 `frame`（`"phone" | "wide"`）、`title`、`components`（点分小写 `comp_id`、`comp_name`、`role`）及可选多端 `variant_of` / `overrides`。
+4. `state_groups`（可选）：登记同页局部状态切换组。
+5. `spec_cards`：提炼本期核心需求改点卡（`{ id, title, page, anchor, body }`），`anchor` 指向对应页面内改点组件的 `data-comp-id`（用于在 `spec` 单页改点视图触发唯一工程标引色 **琥珀橙 `#D97706`** 锚定高亮）。
+6. `memos`（可选）：默认为空数组 `[]`（或保留符合 `memoDef` 的有效历史批注）。
 
-## 交付门禁（强制）
-在声明交付完成前，**必须**运行静态门禁脚本：
+### 第 2 步：编译前门禁校验 `spec.json`
+```bash
+python3 scripts/preflight_check.py <project_dir>/spec.json
+```
+必须返回退出码 `0` 方可进入编译；若有报错，先静默修复 `spec.json`。
+
+### 第 3 步：确定性编译 `walkthrough.html`
+```bash
+python3 scripts/build_walkthrough.py \
+  --spec <project_dir>/spec.json \
+  --svg <project_dir>/flow.svg \
+  --pages-dir <project_dir>/pages \
+  --out <project_dir>/walkthrough.html
+```
+- 如项目配置了 `<project_dir>/skeleton.css`，可追加 `--skeleton-css <project_dir>/skeleton.css`（仅限微调圆角、间距、字号；**严禁**注入任何品牌蓝/红/绿彩色皮肤）。
+- 编译产物自带：95% 纯黑白灰 `wt-*` 底图 + 5% `#D97706` 琥珀橙增量/焦点标引、`flow | spec` 双视图切换、输入框内联 `@[组件名]` 胶囊（支持 `Backspace` 退格一键删除）及 `DOC_VERSION_HASH` 双时机回查导出（`.md` / `.jsonl`）。
+
+### 第 4 步：编译后门禁校验 `walkthrough.html`
 ```bash
 python3 scripts/preflight_check.py <project_dir>/walkthrough.html
 ```
-- 仅当退出码为 `0` 时才允许交付。
-- 若返回非 `0` 退出码，必须根据输出的错误清单逐项修复 SVG 属性、组件锚点或 `NODES` 页面引用后重新检查，严禁跳过门禁。
+- 仅当退出码为 `0` 时，才可将干净的 `<project_dir>/walkthrough.html` 交付给 PM（**严禁向 PM 倾倒门禁校验日志、文件字节数或后台命令流水账**）。
 
 ## 输出
-- `<project_dir>/walkthrough.html`
-- `preflight_check.py` 零错误通过报告
+- `<project_dir>/spec.json`（通过 `spec-v2` 门禁）
+- `<project_dir>/walkthrough.html`（通过 DOM 拓扑、菱形分支与锚点门禁）
 
 ## 验收标准
-- 三栏联动正常：点击流程节点可切换原型页与改点；开启点选器可准确捕获 `data-comp-id` / `data-comp-name` 并记录评审备注。
-- `python3 scripts/preflight_check.py <project_dir>/walkthrough.html` 退出码为 `0`。
+- `preflight_check.py <project_dir>/spec.json` 与 `preflight_check.py <project_dir>/walkthrough.html` 退出码均为 `0`。
+- 离线 `file://` 双击打开三栏联动、菱形分支切换、内联 `@[组件名]` 退格删除及 `.md` / `.jsonl` 导出全部正常。
