@@ -8,19 +8,22 @@ OpenPM 不是一组零散的写 PRD 提示词，而是一套**「契约驱动 + 
 
 ---
 
-## ⚡ 30 秒一键启动（复制粘贴即可用）
+## ⚡ 30 秒一键安装与启动（复制这一句发给任意 AI Agent 即可）
 
-### 1. 克隆仓库并在你的 AI 工具中打开
-```bash
-git clone https://github.com/SilasSolivagus/OpenPM.git && cd OpenPM
-```
+无论你用的是 **`dsh`（deepseek-harness）、Antigravity（反重力）、Claude Code、Cursor 还是 WorkBuddy**，直接复制下面这一句话发给 Agent：
 
-### 2. 复制下面这句话，直接发给你的 AI Agent
 ```text
-请先阅读本仓库根目录的 AGENTS.md，帮我初始化 OpenPM 工作区并开始一个新需求。
+帮我安装并启动 https://github.com/SilasSolivagus/OpenPM
 ```
 
-> Agent 会通过 `AskUserQuestion` 一次性向你确认 **5 项基础信息**（公司/业务/产品/端形态/参考与 Wiki）及最小 Wiki 凭证（支持 **企业微信智能机器人 API 长连接**、**Confluence PAT** 或 **纯本地 Obsidian**）。即使你直接跳过不回答，也会自动启用纯黑白灰阶 `wt-*` 线框 + 纯本地模式兜底开跑，绝不卡死。
+---
+
+## 🤖 Agent 自动安装与启动规范（For AI Agents）
+
+> **注意（写给读取本 README 的 AI Agent）**：当用户向你发送上述仓库链接或要求安装/启动 `OpenPM` 时，请**自动连续完成以下 3 步，无需用户额外指令**：
+> 1. **克隆工作区**：若当前不在 `OpenPM` 目录内，执行 `git clone https://github.com/SilasSolivagus/OpenPM.git` 并进入该目录；同时将 `templates/.env.local.example` 复制为 `.env.local`（若尚未存在）。
+> 2. **挂载 Skills**：若当前运行在 `dsh`（deepseek-harness）环境，将 `skills/01-*` ~ `07-*` 复制或软链至 `~/.dsh/skills/`；其他客户端按各自工作区规则直接加载本仓库。
+> 3. **立即发起首次启动 5 问（Onboarding Gate）**：安装完成后**不要停留在“安装成功”**，必须立即读取根目录 [AGENTS.md](./AGENTS.md)，调用 `AskUserQuestion`（或结构化提问）向 PM 发起**初始化 5 问**（① 公司/团队 ② 业务领域 ③ 产品名称 ④ 覆盖端形态 ⑤ 页面参考结构 & Wiki 平台）以及对应 Wiki 的最小凭证清单（企业微信智能机器人 `Bot ID`/`Secret`、Confluence `PAT` 或纯本地 `local-obsidian`）。若 PM 选择跳过或不回答，立即启用纯黑白灰阶 `wt-*` + `local-obsidian` 默认兜底并继续。
 
 ---
 

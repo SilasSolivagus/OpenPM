@@ -9,7 +9,7 @@ description: 读取 project-context.md 与历史 PRD，输出结构化文字版 
 结合 `project-context.md`（业务背景、目标用户、终端约束、非功能边界）与历史 PRD（如有），编写或增量修订结构化文字版 `prd.md`。文档必须具备清晰的功能点 ID、完整状态机、异常分支及可验证的验收规则，为下游原型与流程图提供无歧义的单一事实来源（SSOT）。
 
 ## 输入
-- `<project_dir>/project-context.md`
+- `<project_dir>/project-context.md`（**前置门禁**：若该文件不存在，必须先按根目录 `AGENTS.md` 调用 `AskUserQuestion` 完成首次启动 5 问与 Wiki 最小凭证配置；若 PM 跳过不答，则自动生成纯黑白灰阶 `wt-*` + `local-obsidian` 默认兜底的 `project-context.md` 后再继续）
 - `<project_dir>/prd.md`（修订模式）或 `<project_dir>/baseline/prd-remote.md`（基线参考）
 - 可选：`<project_dir>/review-feedback.md`（评审意见文件，用于局部增量修改）
 

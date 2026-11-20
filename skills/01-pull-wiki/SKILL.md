@@ -18,6 +18,9 @@ description: 通过 adapters/ 从内网 Wiki 或本地 Obsidian/Markdown 拉取�
 - 严禁在 Skill 中硬编码内网凭证或私有域名；所有鉴权信息必须从环境变量或本地未提交配置文件读取。
 
 ## 执行步骤
+0. **首次启动强制引导（Onboarding Gate）**：
+   - 若目标项目 `<project_dir>/project-context.md` 不存在，**必须先按根目录 `AGENTS.md` 执行 `AskUserQuestion` 初始化 5 问**（① 公司/团队 ② 业务领域 ③ 产品名称 ④ 目标端形态 ⑤ 页面参考结构 & Wiki 平台）及对应 Wiki 最小凭证询问（企微智能机器人 `Bot ID`/`Secret`、Confluence `PAT` 或 `local-obsidian`，凭证只写 `.env.local`）。
+   - 若 PM 跳过或不回答，立即生成默认 `project-context.md`（纯黑白灰阶 `wt-*` + `local-obsidian` 兜底），绝不卡死流程。
 1. **校验工作区与配置**：
    - 检查 `<project_dir>/project-context.md` 是否存在且包含数据源标识。
    - 若 `<project_dir>/prd.md` 已存在，先提示或备份当前工作区状态。
