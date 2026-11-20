@@ -33,7 +33,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 XML_ILLEGAL_RE = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\ufffe\uffff]")
-SCREENSHOT_DPR = 1.5
+SCREENSHOT_DPR = 2.0
 
 PRE_CHAPTER_RE = re.compile(
     r"(背景|目标|痛点|概述|价值|定位|范围|不做|术语|名词|定义|缩略语|角色|职责|主流程|业务流程|核心流程|全局流程|端到端|状态流转|"
@@ -1043,10 +1043,12 @@ def render_fig2_html(
         if fshot and fshot.is_file():
             fb64 = base64.b64encode(fshot.read_bytes()).decode("ascii")
             cap = "End-to-End Flow Topology (Top-Down)" if is_en else "全局业务主流程拓扑图"
+            zoom_tip = "Click to zoom" if is_en else "点击放大查看高清流程图"
             flow_img_html = (
                 f'<div class="flow-overview-box">'
                 f'<div class="flow-overview-cap">{cap}</div>'
-                f'<img class="flow-overview-img" src="data:image/png;base64,{fb64}" alt="{cap}" />'
+                f'<img class="flow-overview-img zoomable-shot" data-caption="{_xe(cap)}" title="{zoom_tip}" '
+                f'src="data:image/png;base64,{fb64}" alt="{cap}" />'
                 f"</div>"
             )
         hd_tag = f'<h2 class="zone-sec-hd">{_xe(stitle)}</h2>' if stitle else ""
@@ -1063,12 +1065,15 @@ def render_fig2_html(
 
         if valid_labeled:
             blocks = [f'<div class="ctx-pill">{_xe(ctx_tag)}</div>']
+            zoom_tip = "Click to zoom high-res prototype" if is_en else "点击放大查看高清原型图"
             for lbl, sp in valid_labeled:
                 b64 = base64.b64encode(sp.read_bytes()).decode("ascii")
                 cap = f'<div class="plat-cap">{_xe(lbl)}</div>' if lbl else ""
+                full_cap = f"{ctx_tag} · {lbl}" if lbl else ctx_tag
                 blocks.append(
                     f'<div class="shot-card">{cap}'
-                    f'<img class="wf-shot" src="data:image/png;base64,{b64}" alt="{_xe(row["subtitle"])}" /></div>'
+                    f'<img class="wf-shot zoomable-shot" data-caption="{_xe(full_cap)}" title="{zoom_tip}" '
+                    f'src="data:image/png;base64,{b64}" alt="{_xe(row["subtitle"])}" /></div>'
                 )
             left_cell = f'<div class="col-page-sticky">{"".join(blocks)}</div>'
         else:
@@ -1149,7 +1154,9 @@ def render_fig2_html(
   }}
   .flow-overview-img {{
     display: inline-block; max-width: 780px; width: 100%; height: auto; border: 1px solid #e0e0e0; border-radius: 4px; background: #ffffff; filter: grayscale(100%);
+    cursor: zoom-in; transition: border-color 0.15s ease, box-shadow 0.15s ease;
   }}
+  .flow-overview-img:hover {{ border-color: #595959; box-shadow: 0 2px 10px rgba(0,0,0,0.08); }}
   .proto-link-line {{ margin: 0 0 14px; font-size: 13.5px; color: #333333; }}
   a, .proto-link-line a {{ color: #0052cc; font-weight: 500; text-decoration: none; }}
   a:hover, .proto-link-line a:hover {{ text-decoration: underline; }}
@@ -1167,7 +1174,7 @@ def render_fig2_html(
     font-size: 11.5px; font-weight: 700; color: #333333; background: #ececec;
     border: 1px solid #d4d4d4; border-radius: 4px; padding: 3px 8px; margin-bottom: 8px;
   }}
-  .shot-card {{ margin-bottom: 12px; }}
+  .shot-card {{ margin-bottom: 12px; position: relative; }}
   .shot-card:last-child {{ margin-bottom: 0; }}
   .plat-cap {{
     font-size: 11px; font-weight: 600; color: #595959; margin-bottom: 4px;
@@ -1176,7 +1183,38 @@ def render_fig2_html(
   .col-spec {{ width: auto; word-break: break-word; background: #ffffff; }}
   .wf-shot {{
     display: block; max-width: 100%; height: auto; border: 1px solid #d4d4d4;
-    border-radius: 4px; filter: grayscale(100%);
+    border-radius: 4px; filter: grayscale(100%); cursor: zoom-in;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }}
+  .wf-shot:hover {{ border-color: #404040; box-shadow: 0 3px 12px rgba(0,0,0,0.10); }}
+  /* Full-screen High-Res Prototype Lightbox (outside #copy-target so clipboard stays clean) */
+  .lb-mask {{
+    display: none; position: fixed; inset: 0; z-index: 99999;
+    background: rgba(18, 18, 20, 0.88); backdrop-filter: blur(3px);
+    flex-direction: column; user-select: none;
+  }}
+  .lb-mask.open {{ display: flex; }}
+  .lb-topbar {{
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 10px 18px; background: rgba(24, 24, 27, 0.96); border-bottom: 1px solid #333;
+    color: #f4f4f5; font-size: 13px; flex-shrink: 0;
+  }}
+  .lb-caption {{ font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }}
+  .lb-controls {{ display: flex; align-items: center; gap: 6px; flex-shrink: 0; }}
+  .lb-btn {{
+    background: #27272a; color: #f4f4f5; border: 1px solid #3f3f46; border-radius: 5px;
+    padding: 4px 10px; font-size: 12.5px; font-weight: 600; cursor: pointer;
+  }}
+  .lb-btn:hover {{ background: #3f3f46; }}
+  .lb-zoom-lbl {{ min-width: 48px; text-align: center; font-family: ui-monospace, monospace; font-size: 12px; color: #d4d4d8; }}
+  .lb-stage {{
+    flex: 1; overflow: auto; display: flex; align-items: flex-start; justify-content: center;
+    padding: 28px; cursor: zoom-out;
+  }}
+  .lb-img {{
+    display: block; max-width: none; height: auto; background: #ffffff;
+    border-radius: 6px; box-shadow: 0 12px 42px rgba(0,0,0,0.55);
+    filter: grayscale(100%); cursor: default; transform-origin: top center;
   }}
   .wf-global-tag {{
     padding: 10px 12px; background: #f2f2f2; border: 1px solid #d4d4d4; border-radius: 4px;
@@ -1194,7 +1232,7 @@ def render_fig2_html(
   code {{ font-family: ui-monospace, monospace; font-size: 12px; background: #f2f2f2; padding: 1px 4px; border-radius: 3px; color: #262626; }}
   blockquote {{ margin: 8px 0; padding: 6px 12px; border-left: 3px solid #8c8c8c; background: #f7f7f7; color: #404040; }}
   @media print {{
-    .doc-toolbar {{ display: none; }}
+    .doc-toolbar, .lb-mask {{ display: none !important; }}
     body {{ padding: 0; }}
     .col-page-sticky {{ position: static; }}
   }}
@@ -1226,6 +1264,25 @@ def render_fig2_html(
     {post_zone_html}
   </div>
 </div>
+
+<div class="lb-mask" id="img-lightbox" aria-hidden="true">
+  <div class="lb-topbar">
+    <div class="lb-caption" id="lb-caption"></div>
+    <div class="lb-controls">
+      <button type="button" class="lb-btn" onclick="lbStep(-1)">{'← Prev' if is_en else '← 上一张'}</button>
+      <button type="button" class="lb-btn" onclick="lbStep(1)">{'Next →' if is_en else '下一张 →'}</button>
+      <button type="button" class="lb-btn" onclick="lbZoomBy(-0.2)">&#65293;</button>
+      <span class="lb-zoom-lbl" id="lb-zoom-lbl">100%</span>
+      <button type="button" class="lb-btn" onclick="lbZoomBy(0.2)">&#65291;</button>
+      <button type="button" class="lb-btn" onclick="lbFit()">{'Fit' if is_en else '适屏'}</button>
+      <button type="button" class="lb-btn" onclick="lbClose()">{'Close (Esc)' if is_en else '关闭 (Esc)'}</button>
+    </div>
+  </div>
+  <div class="lb-stage" id="lb-stage" onclick="if(event.target===this)lbClose()">
+    <img class="lb-img" id="lb-img" alt="" />
+  </div>
+</div>
+
 <script>
 function copyRichDoc() {{
   var target = document.getElementById('copy-target');
@@ -1243,6 +1300,80 @@ function copyRichDoc() {{
     setTimeout(function() {{ btn.textContent = orig; }}, 2400);
   }}
 }}
+
+(function() {{
+  var shots = Array.prototype.slice.call(document.querySelectorAll('img.zoomable-shot'));
+  var mask = document.getElementById('img-lightbox');
+  var lbImg = document.getElementById('lb-img');
+  var lbCap = document.getElementById('lb-caption');
+  var lbZoomLbl = document.getElementById('lb-zoom-lbl');
+  var lbStage = document.getElementById('lb-stage');
+  var curIdx = 0;
+  var baseWidth = 800;
+  var zoom = 1;
+
+  function applyZoom() {{
+    lbImg.style.width = Math.round(baseWidth * zoom) + 'px';
+    lbZoomLbl.textContent = Math.round(zoom * 100) + '%';
+  }}
+
+  window.lbFit = function() {{
+    var natW = (lbImg.naturalWidth || 1200) / {SCREENSHOT_DPR};
+    var natH = (lbImg.naturalHeight || 900) / {SCREENSHOT_DPR};
+    var availW = Math.max(320, lbStage.clientWidth - 64);
+    var availH = Math.max(240, lbStage.clientHeight - 56);
+    baseWidth = natW;
+    zoom = Math.min(1.35, availW / natW, (availH / natH) * 1.15);
+    if (zoom < 0.4) zoom = 0.4;
+    applyZoom();
+  }};
+
+  window.lbZoomBy = function(delta) {{
+    zoom = Math.max(0.35, Math.min(3.5, zoom + delta));
+    applyZoom();
+  }};
+
+  function openAt(idx) {{
+    if (!shots.length) return;
+    curIdx = (idx + shots.length) % shots.length;
+    var target = shots[curIdx];
+    lbImg.onload = function() {{ window.lbFit(); }};
+    lbImg.src = target.src;
+    var cap = target.getAttribute('data-caption') || target.alt || '';
+    lbCap.textContent = '[' + (curIdx + 1) + '/' + shots.length + '] ' + cap;
+    mask.classList.add('open');
+    mask.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+    if (lbImg.complete && lbImg.naturalWidth) window.lbFit();
+  }}
+
+  window.lbStep = function(dir) {{ openAt(curIdx + dir); }};
+
+  window.lbClose = function() {{
+    mask.classList.remove('open');
+    mask.setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = '';
+  }};
+
+  shots.forEach(function(el, i) {{
+    el.addEventListener('click', function() {{ openAt(i); }});
+  }});
+
+  lbStage.addEventListener('wheel', function(e) {{
+    if (!mask.classList.contains('open')) return;
+    e.preventDefault();
+    window.lbZoomBy(e.deltaY < 0 ? 0.12 : -0.12);
+  }}, {{ passive: false }});
+
+  document.addEventListener('keydown', function(e) {{
+    if (!mask.classList.contains('open')) return;
+    if (e.key === 'Escape') window.lbClose();
+    else if (e.key === 'ArrowLeft') window.lbStep(-1);
+    else if (e.key === 'ArrowRight') window.lbStep(1);
+    else if (e.key === '+' || e.key === '=') window.lbZoomBy(0.2);
+    else if (e.key === '-') window.lbZoomBy(-0.2);
+  }});
+}})();
 </script>
 </body>
 </html>
