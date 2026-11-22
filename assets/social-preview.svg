@@ -14,10 +14,11 @@
     </linearGradient>
   </defs>
 
-  <!-- Canvas (1280x640 with 64px GitHub safe-zone margin) -->
+  <!-- Canvas (1280x640 with 132px horizontal GitHub/OG safe-zone margin) -->
   <rect width="1280" height="640" fill="#0B0B0D"/>
   <rect width="1280" height="640" fill="url(#sp-grid)"/>
   <rect width="1280" height="640" fill="url(#sp-glow)"/>
+  <g transform="translate(64, 32) scale(0.9)">
   <rect x="28" y="28" width="1224" height="584" rx="20" fill="none" stroke="#24242B" stroke-width="1.5"/>
 
   <!-- Left Column: Brand + Value Prop -->
@@ -185,5 +186,6 @@
     <path d="M 432 162 C 402 162, 416 222, 391 222" fill="none" stroke="#D97706" stroke-width="2.4" stroke-dasharray="6 4"/>
     <circle cx="432" cy="162" r="4.5" fill="#D97706"/>
     <circle cx="391" cy="222" r="4.5" fill="#D97706"/>
+  </g>
   </g>
 </svg>
