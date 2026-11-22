@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" role="img" aria-label="OpenPM Logo">
+  <defs>
+    <linearGradient id="openpm-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#17171C"/>
+      <stop offset="100%" stop-color="#0B0B0E"/>
+    </linearGradient>
+    <radialGradient id="openpm-glow" cx="68%" cy="68%" r="46%">
+      <stop offset="0%" stop-color="#D97706" stop-opacity="0.20"/>
+      <stop offset="100%" stop-color="#0B0B0E" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect x="32" y="32" width="960" height="960" rx="216" fill="url(#openpm-bg)" stroke="#2C2C35" stroke-width="12"/>
+  <rect x="38" y="38" width="948" height="948" rx="210" fill="url(#openpm-glow)"/>
+  <line x1="512" y1="128" x2="512" y2="896" stroke="#FFFFFF" stroke-opacity="0.04" stroke-width="4"/>
+  <line x1="128" y1="512" x2="896" y2="512" stroke="#FFFFFF" stroke-opacity="0.04" stroke-width="4"/>
+
+  <rect x="232" y="240" width="312" height="168" rx="44" fill="none" stroke="#FAFAFA" stroke-width="64"/>
+  <path d="M 544 324 L 684 324 L 684 496" fill="none" stroke="#FAFAFA" stroke-width="64" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <rect x="200" y="528" width="256" height="56" rx="28" fill="#71717A"/>
+  <rect x="200" y="656" width="176" height="56" rx="28" fill="#3F3F46"/>
+
+  <g transform="translate(684, 684) rotate(45)">
+    <rect x="-98" y="-98" width="196" height="196" rx="34" fill="#D97706"/>
+    <rect x="-36" y="-36" width="72" height="72" rx="14" fill="#FFFBEB"/>
+  </g>
+</svg>

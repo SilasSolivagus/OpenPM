@@ -4,6 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>OpenPM · Live Interactive Workbench Playground</title>
+<link rel="icon" type="image/svg+xml" href="./assets/logo.svg" />
 <style>
 :root {
   --bg: #f6f6f7;
@@ -194,10 +195,13 @@ html[data-theme="dark"] .tips code { background: #1f1f25; color: #fbbf24; }
 <body>
 <div class="wrap">
   <div class="topbar">
-    <span class="badge">
-      <span class="badge-dot"></span>
-      <span data-lang="en">OpenPM Live Playground · Zero-Install Single-File HTML</span>
-      <span data-lang="zh">OpenPM 在线交互门户 · 零安装单文件工作台</span>
+    <span style="display:inline-flex;align-items:center;gap:10px;">
+      <img src="./assets/logo.svg" alt="OpenPM" width="32" height="32" style="display:block;" />
+      <span class="badge">
+        <span class="badge-dot"></span>
+        <span data-lang="en">OpenPM Live Playground · Zero-Install Single-File HTML</span>
+        <span data-lang="zh">OpenPM 在线交互门户 · 零安装单文件工作台</span>
+      </span>
     </span>
     <div class="top-actions">
       <a class="ghost-link" href="./guide.html">
