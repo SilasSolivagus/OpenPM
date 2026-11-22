@@ -33,18 +33,18 @@
 
 ---
 
-## Why Prompting an LLM for a PRD Breaks in Real Teams
+## Why Traditional Docs & Raw AI Prompts Break in Spec Reviews
 
-Asking a chat model to "write a PRD" produces 3,000 words of plausible prose that nobody reads in a spec review. Engineers cannot tell what actually changed this sprint, reviewers argue over unnamed buttons in chat threads, and asking the model to revise one rule quietly rewrites three other screens.
+The biggest friction in product spec reviews isn't writing words — it's **tab-flipping and context loss**: scrolling through a 3,000-word doc on the left, hunting for a Figma frame in the middle, and checking a flowchart on the right. Nobody knows which rule governs which button, and asking an LLM to tweak one edge case quietly rewrites three other screens.
 
-OpenPM replaces freeform PRD generation with a deterministic `spec-v2` compiler and static preflight gate:
+OpenPM compiles rough ideas into **one standalone offline HTML file where Flowchart, Clickable Prototype, and Logic Specs stay linked on a single screen**:
 
-| Team Bottleneck | Raw LLM Chat Prompts | OpenPM Deterministic Workbench |
+| Real Team Friction | Separate Docs + Raw LLM Chat | OpenPM 3-in-1 Linked Workbench |
 | :--- | :--- | :--- |
-| **Scope blindness** | Walls of prose mix existing product behavior with new sprint scope. | **95% Monochrome + 5% `#D97706` Engineering Delta**: Grayscale `wt-*` wireframes push legacy UI into the background; amber highlights mark only new/modified flow nodes and anchored controls. |
-| **Ambiguous design crits** | Teammates type "change the button under the second card" in Slack; reviewers contradict each other. | **Multi-Reviewer `@[Component]` Pills + Conflict Detection**: Reviewers click any control in `walkthrough.html` to insert `@[Button]`, sign their name, export `.jsonl`, and flag conflicting feedback before edits happen. |
-| **Full-doc regressions** | Asking AI to tweak one validation rule rewrites unrelated sections and drops edge cases. | **Surgical Write-back + Version Snapshots**: Updates touch only the targeted `prd.md` section and `pages/*.html` fragment, backed by immutable `versions/vN` snapshots and `preflight_check.py`. |
-| **Manual wiki handoff & stagnant prompts** | Copy-pasting screenshots into docs; repeating the same formatting corrections every week. | **Native Wiki Push + Blind A/B Self-Evolution**: Publishes side-by-side UI + spec tables to a native WeCom online doc, Confluence (validated Storage XML), Feishu, or Obsidian, while a randomized double-blind A/B judge records your taste into `evals/taste-profile.md`. |
+| **Constant tab-flipping** | PRD prose, Figma frames, and flowcharts live in 3 separate tools; meetings stall over "the second button on the top right." | **Flow · Clickable UI · Logic Specs on One Screen**: Click any flow node to switch the live clickable screen and its rules; toggle condition variables to walk live `Yes/No` branches, switch `Web / App 375px` views, and draw live curves from spec cards straight to buttons. |
+| **Messy async reviews & conflicting edits** | Hosting preview servers is tedious; Slack feedback gets lost or frontend and backend contradict each other on the same control. | **1-File HTML Chat Review + Conflict Interception**: Drop `walkthrough.html` into Slack/WeCom; teammates click any UI button to pin `@[Component]` notes. Conflicting notes on the same control pause automatically for PM sign-off. |
+| **AI rewrites break other screens & hide sprint scope** | Asking AI to tweak one rule regenerates the whole doc; engineers can't tell new sprint scope apart from legacy screens. | **Surgical Local Write-back + 1-Click Sprint Delta**: Edits touch only the targeted control and PRD section (with `v1/v2` rollback snapshots). Pulls legacy Wiki docs to diff baselines and highlights only current-sprint changes on demand. |
+| **Hours wasted pasting screenshots into Wiki** | Copy-pasting dozens of screenshots into Word or Confluence tables after sign-off; repeating the same prompt fixes next week. | **1-Click Side-by-Side Word/Wiki Export + Self-Evolving Taste**: Auto-captures clean Web + App screenshots into structured side-by-side `.docx`, Confluence XML, or WeCom docs, while a blind A/B judge locks your recurring preferences into `evals/taste-profile.md`. |
 
 ---
 
@@ -79,24 +79,24 @@ Safely upgrade OpenPM from https://github.com/SilasSolivagus/OpenPM using python
 
 ---
 
-## Product Mechanics Inside `walkthrough.html`
+## Core Capabilities Inside `walkthrough.html`
 
 Every compiled `walkthrough.html` is a zero-dependency single HTML file you can drop into Slack, WeCom, or email and open offline in any browser.
 
-### 1. Three-Pane Sync: Orthogonal TD Flow + 95% Monochrome Wireframe + 5% `#D97706` Delta
-Click any flow node or decision diamond on the left to switch the live wireframe state in the center and inspect branch rules on the right. Toggle **Delta Highlight** in the top bar to isolate every changed node and UI control in `#D97706` amber:
+### 1. Flowchart · Clickable Prototype · Logic Specs — Linked on One Screen
+Click any flow node on the left to switch the interactive UI prototype in the center (including instant `Web / App 375px` and empty/error state toggles) and view its exact rules on the right. Flip condition switches to test live `Yes/No` branches on the spot, or toggle **Delta Highlight** to isolate current-sprint changes from legacy screens:
 
-![Three-pane sync and 5% Amber engineering delta](./assets/shot-flow-delta.png)
+![Flowchart, clickable prototype, and logic specs linked on one screen](./assets/shot-flow-delta.png)
 
-### 2. Spec Tether Mode: Cubic Bezier Links from Rules to Controls
-Switch to **Spec Delta** view and click any requirement card on the right. OpenPM jumps to the target screen and draws a `#D97706` dashed cubic Bezier curve directly to the anchored input, modal, or button:
+### 2. Visual Spec Tethers: Point Every Rule Straight to Its Button
+Switch to **Spec Delta** mode and click any requirement card on the right. OpenPM jumps to the target screen and draws a live curve directly to the exact input, modal, or button it governs — zero "second button on the top right" guesswork:
 
-![Cubic Bezier tether from spec card to UI control](./assets/shot-spec-tether.png)
+![Visual tether connecting a spec rule straight to its UI control](./assets/shot-spec-tether.png)
 
-### 3. Inline `@[Component]` Click-to-Comment & Multi-Reviewer Merge
-Click **+ Add Note**, enter your name and role (for example `Maya - Frontend`), and click any UI element on the wireframe to insert an atomic `@[Component Name]` pill (`Backspace` deletes the whole pill). Export `.jsonl` or `.md` for surgical AI write-back:
+### 3. Click-to-Pin `@[Component]` Reviews & Multi-Reviewer Conflict Guard
+Click **+ Add Note**, enter your name (e.g. `Maya · Frontend`), and click any button or input on the prototype to insert an `@[Component Name]` chip with full state context. Export `.jsonl` to merge team feedback, automatically catch conflicting edits on the same control, and apply surgical write-backs without breaking other screens:
 
-![Inline @component mention composer](./assets/shot-inline-mention.png)
+![Click any UI button to insert an @component review chip](./assets/shot-inline-mention.png)
 
 ---
 
