@@ -11,7 +11,8 @@ Document Architecture (Three-Zone Golden Layout):
     - Pairs all `variant_of` platform variants (`Web / PC` + `App 375px`) in 100% pure grayscale.
     - Aggregates ALL page-level `F-xx` / `4.x` field & interaction subsections into the matching
       screen's right column (via explicit `page_id` tags + DOM/component vocabulary matching),
-      with zero recursive `原型 | 说明` sub-table nesting and zero duplicate rules.
+      and supports same-page multi-state `原型 | 说明` subtables (via `spec.json -> state_groups`
+      auto-folding or explicit Markdown image tables) with zero duplicate rules.
   Zone 3 — Post-Table Global Engineering & Acceptance Appendix (100% Full-Width):
     - Cross-page rules (default memory, historical compatibility, non-prototype layout tweaks),
       telemetry/metrics, non-functional SLAs, acceptance cases (AC), and open items (`待确认`).
@@ -110,6 +111,32 @@ def _infer_platform(pid: str, pdef: Dict[str, Any]) -> str:
     return ""
 
 
+def resolve_markdown_image(raw_target: str, screenshots_dir: Optional[Path]) -> Optional[Path]:
+    """Resolve Markdown image target (`screenshots/foo.png`, `foo.png`, or `page_id`) inside `screenshots_dir`."""
+    if not screenshots_dir or not screenshots_dir.is_dir():
+        return None
+    t = str(raw_target or "").strip().strip("'\"")
+    if not t:
+        return None
+    if " " in t and not (screenshots_dir / Path(t).name).is_file():
+        t = t.split()[0].strip("'\"")
+    base_name = Path(t).name
+    stem_name = Path(t).stem
+    exts = (".png", ".jpg", ".jpeg", ".webp", ".svg")
+    if Path(base_name).suffix.lower() in exts:
+        cand = screenshots_dir / base_name
+        if cand.is_file():
+            return cand
+    for stem in (t, base_name, stem_name):
+        if not stem or "/" in stem or "\\" in stem:
+            continue
+        for ext in exts:
+            cand = screenshots_dir / f"{stem}{ext}"
+            if cand.is_file():
+                return cand
+    return None
+
+
 def _collect_expected_pages(spec_data: Optional[Dict[str, Any]]) -> Tuple[List[str], Dict[str, List[str]], Dict[str, str]]:
     """Return (ordered_all_pages_to_capture, variants_by_base_page, node_for_base_page)."""
     if not isinstance(spec_data, dict):
@@ -118,6 +145,7 @@ def _collect_expected_pages(spec_data: Optional[Dict[str, Any]]) -> Tuple[List[s
     pages_dict = spec_data.get("pages") or {}
     nodes_dict = spec_data.get("nodes") or {}
     spec_cards = spec_data.get("spec_cards") or []
+    state_groups = spec_data.get("state_groups") or {}
 
     base_pages: List[str] = []
     node_for_page: Dict[str, str] = {}
@@ -138,6 +166,31 @@ def _collect_expected_pages(spec_data: Optional[Dict[str, Any]]) -> Tuple[List[s
             if bp not in base_pages and bp in pages_dict:
                 base_pages.append(bp)
 
+    extra_state_pages: List[str] = []
+    if isinstance(state_groups, dict):
+        for gdef in state_groups.values():
+            if not isinstance(gdef, dict):
+                continue
+            states = [st for st in (gdef.get("states") or []) if isinstance(st, dict) and st.get("page")]
+            if not states:
+                continue
+            parent_raw = str(gdef.get("parent_page") or states[0]["page"]).strip()
+            parent_obj = pages_dict.get(parent_raw) if isinstance(pages_dict.get(parent_raw), dict) else {}
+            parent_bp = str(parent_obj.get("variant_of") or parent_raw)
+            parent_nid = node_for_page.get(parent_bp, "")
+            for st in states:
+                raw_pid = str(st["page"]).strip()
+                if not raw_pid:
+                    continue
+                p_obj = pages_dict.get(raw_pid) if isinstance(pages_dict.get(raw_pid), dict) else {}
+                bp = str(p_obj.get("variant_of") or raw_pid)
+                if bp not in base_pages:
+                    base_pages.append(bp)
+                if parent_nid:
+                    node_for_page.setdefault(bp, parent_nid)
+                if raw_pid not in extra_state_pages:
+                    extra_state_pages.append(raw_pid)
+
     for cand_pid, pdef in pages_dict.items():
         if isinstance(pdef, dict) and not pdef.get("variant_of") and cand_pid not in base_pages:
             base_pages.append(cand_pid)
@@ -157,6 +210,9 @@ def _collect_expected_pages(spec_data: Optional[Dict[str, Any]]) -> Tuple[List[s
         for vp in variants_by_base.get(bp, []):
             if vp not in ordered_all:
                 ordered_all.append(vp)
+    for sp_id in extra_state_pages:
+        if sp_id not in ordered_all:
+            ordered_all.append(sp_id)
 
     return ordered_all, variants_by_base, node_for_page
 
@@ -172,12 +228,16 @@ def auto_capture_screenshots(
     screenshots_dir.mkdir(parents=True, exist_ok=True)
     ordered_pages, _, node_for_page = _collect_expected_pages(spec_data)
     flow_svg_path = project_dir / "flow.svg"
+    existing = {p.stem: p for p in screenshots_dir.glob("*.png")}
     if not ordered_pages and not flow_svg_path.is_file():
-        return {p.stem: p for p in screenshots_dir.glob("*.png")}
+        return existing
+
+    skip_chrome = os.environ.get("OPENPM_SKIP_CHROME", "").strip().lower() in ("1", "true", "yes")
+    if allow_missing or skip_chrome:
+        return existing
 
     chrome_bin = _find_chrome_binary()
     if not chrome_bin:
-        existing = {p.stem: p for p in screenshots_dir.glob("*.png")}
         missing = [pid for pid in ordered_pages if pid not in existing]
         if missing and not allow_missing:
             raise ScreenshotCaptureError(
@@ -471,7 +531,91 @@ def _normalize_dedup_key(txt: str) -> str:
     return s[:28]
 
 
-def _extract_prd_plain_blocks(sec_md: str) -> List[Dict[str, Any]]:
+def _split_md_table_cells(line: str) -> List[str]:
+    """Split a Markdown table row on unescaped pipes outside inline code spans."""
+    s = line.strip()
+    if s.startswith("|"):
+        s = s[1:]
+    if s.endswith("|") and not s.endswith("\\|"):
+        s = s[:-1]
+    cells: List[str] = []
+    cur: List[str] = []
+    in_code = False
+    i = 0
+    while i < len(s):
+        ch = s[i]
+        if ch == "\\" and i + 1 < len(s):
+            cur.append(s[i + 1])
+            i += 2
+            continue
+        if ch == "`":
+            in_code = not in_code
+            cur.append(ch)
+            i += 1
+            continue
+        if ch == "|" and not in_code:
+            cells.append("".join(cur).strip())
+            cur = []
+            i += 1
+            continue
+        cur.append(ch)
+        i += 1
+    cells.append("".join(cur).strip())
+    return cells
+
+
+def _parse_inline_bold_runs(text: str) -> List[Tuple[str, bool]]:
+    """Split inline text into `(segment, is_bold)` runs, stripping inline code backticks."""
+    runs: List[Tuple[str, bool]] = []
+    for tok in re.split(r"(\*\*[^*]+\*\*)", text):
+        if not tok:
+            continue
+        if len(tok) >= 4 and tok.startswith("**") and tok.endswith("**"):
+            clean_b = re.sub(r"`([^`]+)`", r"\1", tok[2:-2])
+            if clean_b:
+                runs.append((clean_b, True))
+        else:
+            clean_t = re.sub(r"`([^`]+)`", r"\1", tok)
+            if clean_t:
+                runs.append((clean_t, False))
+    return runs
+
+
+def _parse_docx_table_cell(raw_cell: str, screenshots_dir: Optional[Path]) -> Any:
+    """Parse a Markdown table cell for `.docx` rendering (supports `![alt](target)`, `<br>`, and `**bold**`)."""
+    img_pat = re.compile(r"`?!\[([^\]]*)\]\(([^)]+)\)`?")
+    images: List[Dict[str, Any]] = []
+    has_img_syntax = False
+
+    def _sub_img(m: re.Match) -> str:
+        nonlocal has_img_syntax
+        has_img_syntax = True
+        alt_txt = m.group(1).strip()
+        tgt_txt = m.group(2).strip()
+        sp = resolve_markdown_image(tgt_txt, screenshots_dir)
+        if sp is not None:
+            images.append({"path": sp, "caption": alt_txt or sp.stem})
+            return ""
+        return f"[{alt_txt or tgt_txt}]"
+
+    rem = img_pat.sub(_sub_img, raw_cell).strip()
+    raw_lines = [seg.strip() for seg in re.split(r"<br\s*/?>|\n", rem, flags=re.IGNORECASE) if seg.strip()]
+    lines_out: List[Dict[str, Any]] = []
+    has_bold_runs = False
+    for seg in raw_lines:
+        runs = _parse_inline_bold_runs(seg)
+        if any(is_b for _, is_b in runs):
+            has_bold_runs = True
+        plain_seg = "".join(t for t, _ in runs)
+        whole_bold = bool(runs) and all(is_b for _, is_b in runs)
+        lines_out.append({"text": plain_seg, "bold": whole_bold, "runs": runs})
+
+    if images or len(lines_out) > 1 or has_bold_runs or has_img_syntax:
+        return {"images": images, "lines": lines_out}
+    return lines_out[0]["text"] if lines_out else ""
+
+
+def _extract_prd_plain_blocks(sec_md: str, screenshots_dir: Optional[Path] = None) -> List[Dict[str, Any]]:
     """Parse a Markdown section into structured blocks (`heading`, `text`, `table`) for `.docx` rendering."""
     blocks: List[Dict[str, Any]] = []
     lines = sec_md.splitlines()
@@ -494,24 +638,41 @@ def _extract_prd_plain_blocks(sec_md: str) -> List[Dict[str, Any]]:
             if code_lns:
                 blocks.append({"kind": "text", "text": "\n".join(code_lns), "bold": False})
             continue
-        if s.startswith("|") and i + 1 < n and re.fullmatch(r"[\s|:-]+", lines[i + 1].strip()):
-            hdr = [c.strip() for c in s.strip("|").split("|")]
-            i += 2
-            t_rows = []
-            while i < n and lines[i].strip().startswith("|"):
-                rc = [
-                    re.sub(r"`([^`]+)`", r"\1", re.sub(r"\*\*([^*]+)\*\*", r"\1", c.strip()))
-                    for c in lines[i].strip().strip("|").split("|")
-                ]
-                if not all(re.fullmatch(r":?-{2,}:?", x) for x in rc if x):
-                    if len(rc) < len(hdr):
-                        rc.extend([""] * (len(hdr) - len(rc)))
-                    t_rows.append(rc[: len(hdr)])
-                i += 1
-            clean_hdr = [re.sub(r"`([^`]+)`", r"\1", re.sub(r"\*\*([^*]+)\*\*", r"\1", c)) for c in hdr]
-            if clean_hdr and t_rows:
-                blocks.append({"kind": "table", "headers": clean_hdr, "rows": t_rows})
-            continue
+        if s.startswith("|") and i + 1 < n:
+            hdr_raw = _split_md_table_cells(s)
+            div_raw = _split_md_table_cells(lines[i + 1].strip())
+            if hdr_raw and div_raw and all(bool(re.fullmatch(r":?-{2,}:?", c.strip())) for c in div_raw):
+                col_cnt = len(hdr_raw)
+                i += 2
+                t_rows: List[List[Any]] = []
+                raw_col0_has_img = False
+                while i < n and lines[i].strip().startswith("|"):
+                    row_raw = _split_md_table_cells(lines[i].strip())
+                    if not (row_raw and all(bool(re.fullmatch(r":?-{2,}:?", x.strip())) for x in row_raw)):
+                        if len(row_raw) < col_cnt:
+                            row_raw.extend([""] * (col_cnt - len(row_raw)))
+                        elif len(row_raw) > col_cnt:
+                            row_raw = row_raw[: col_cnt - 1] + [" | ".join(row_raw[col_cnt - 1 :])]
+                        if row_raw and re.search(r"`?!\[[^\]]*\]\([^)]+\)`?", row_raw[0]):
+                            raw_col0_has_img = True
+                        parsed_row = [_parse_docx_table_cell(c, screenshots_dir) for c in row_raw[:col_cnt]]
+                        t_rows.append(parsed_row)
+                    i += 1
+                clean_hdr = [re.sub(r"`([^`]+)`", r"\1", re.sub(r"\*\*([^*]+)\*\*", r"\1", c.strip())) for c in hdr_raw]
+                if clean_hdr and t_rows:
+                    is_proto_tbl = len(clean_hdr) == 2 and (
+                        raw_col0_has_img
+                        or clean_hdr[0].strip() in ("原型", "状态原型", "页面原型", "Prototype", "Screen")
+                    )
+                    blocks.append(
+                        {
+                            "kind": "table",
+                            "headers": clean_hdr,
+                            "rows": t_rows,
+                            "is_state_subtable": is_proto_tbl,
+                        }
+                    )
+                continue
 
         hm = re.match(r"^(#{2,6})\s+(.*)$", s)
         if hm:
@@ -690,6 +851,165 @@ def _platform_badge(pdef: Dict[str, Any], pid: str, is_en: bool) -> str:
     return str(pdef.get("title") or plat or "")
 
 
+def _prd_has_explicit_state_subtable(prd_md: str, group_stems: set) -> bool:
+    """Return True if `prd_md` already contains an explicit Markdown table referencing any screenshot in `group_stems`."""
+    if not prd_md or not group_stems:
+        return False
+    img_re = re.compile(r"`?!\[[^\]]*\]\(([^)]+)\)`?")
+    for ln in prd_md.splitlines():
+        s = ln.strip()
+        if not s.startswith("|"):
+            continue
+        for m in img_re.finditer(s):
+            tgt = m.group(1).strip().strip("'\"")
+            if " " in tgt:
+                tgt = tgt.split()[0].strip("'\"")
+            stem = Path(tgt).stem
+            if stem in group_stems or tgt in group_stems:
+                return True
+    return False
+
+
+def _extract_state_bullets(
+    gid: str,
+    st: Dict[str, Any],
+    parent_pid: str,
+    pages: Dict[str, Any],
+    nodes: Dict[str, Any],
+    spec_cards: List[Any],
+    project_dir: Path,
+) -> List[str]:
+    """Build formatted bullet strings for a `state_groups` item, falling back to nodes/spec_cards/DOM/label."""
+    sid = str(st.get("id") or "").strip()
+    spage_raw = str(st.get("page") or "").strip()
+    p_obj = pages.get(spage_raw) if isinstance(pages.get(spage_raw), dict) else {}
+    spage_base = str(p_obj.get("variant_of") or spage_raw)
+    slabel = str(st.get("label") or p_obj.get("title") or sid or spage_raw).strip()
+
+    raw_items: List[str] = []
+    spec_str = str(st.get("spec") or "").strip()
+    if spec_str:
+        raw_items.append(spec_str)
+    bullets_val = st.get("bullets")
+    if isinstance(bullets_val, list):
+        for b in bullets_val:
+            if isinstance(b, str) and b.strip():
+                raw_items.append(b.strip())
+
+    if not raw_items:
+        state_ref = f"{gid}/{sid}" if sid else ""
+        for _, ndef in nodes.items():
+            if not isinstance(ndef, dict):
+                continue
+            n_page = str(ndef.get("page") or "").strip()
+            n_pobj = pages.get(n_page) if isinstance(pages.get(n_page), dict) else {}
+            n_page_base = str(n_pobj.get("variant_of") or n_page)
+            n_state = str(ndef.get("state") or "").strip()
+            if (state_ref and n_state == state_ref) or (spage_base != parent_pid and n_page_base == spage_base):
+                for pair in ndef.get("anno") or []:
+                    if isinstance(pair, list) and len(pair) >= 2:
+                        k_t, v_t = str(pair[0]).strip(), str(pair[1]).strip()
+                        raw_items.append(f"{k_t}：{v_t}" if k_t else v_t)
+
+        if not raw_items:
+            for sc in spec_cards:
+                if not isinstance(sc, dict):
+                    continue
+                sc_p = str(sc.get("page") or "").strip()
+                sc_pobj = pages.get(sc_p) if isinstance(pages.get(sc_p), dict) else {}
+                sc_p_base = str(sc_pobj.get("variant_of") or sc_p)
+                if sc_p in (spage_raw, spage_base) or sc_p_base == spage_base:
+                    sc_t = str(sc.get("title") or "").strip()
+                    sc_b = str(sc.get("body") or "").strip()
+                    if sc_t and sc_b:
+                        raw_items.append(f"{sc_t}：{sc_b}")
+                    elif sc_b or sc_t:
+                        raw_items.append(sc_b or sc_t)
+
+        if not raw_items and spage_raw:
+            html_file = project_dir / "pages" / f"{spage_raw}.html"
+            if html_file.is_file():
+                raw_h = html_file.read_text(encoding="utf-8", errors="ignore")
+                for cls_pat in (
+                    r'class="[^"]*\bwt-toast\b[^"]*"[^>]*>(.*?)</div>',
+                    r'class="[^"]*\bwt-help\b[^"]*"[^>]*>(.*?)</(?:span|div|p)>',
+                ):
+                    for m_h in re.finditer(cls_pat, raw_h, flags=re.DOTALL | re.IGNORECASE):
+                        vis = " ".join(re.sub(r"<[^>]+>", " ", m_h.group(1)).split()).strip()
+                        if vis and vis not in raw_items:
+                            raw_items.append(vis)
+
+    cleaned_items = [re.sub(r"^[·•\-*+]\s*", "", x).strip() for x in raw_items if x.strip()]
+    if not cleaned_items:
+        return [f"· **{slabel}**"]
+
+    b0 = cleaned_items[0]
+    if b0 == slabel or b0 == f"**{slabel}**":
+        first_line = f"· **{slabel}**"
+    elif b0.startswith(f"**{slabel}**"):
+        first_line = f"· {b0}"
+    elif b0.startswith(slabel):
+        rest = b0[len(slabel) :].lstrip(" ：:·-—")
+        first_line = f"· **{slabel}**：{rest}" if rest else f"· **{slabel}**"
+    else:
+        first_line = f"· **{slabel}**：{b0}"
+
+    out_lines = [first_line]
+    for bk in cleaned_items[1:]:
+        out_lines.append(f"· {bk}")
+    return out_lines
+
+
+def _build_state_group_markdown(
+    gid: str,
+    gdef: Dict[str, Any],
+    states: List[Dict[str, Any]],
+    parent_pid: str,
+    pages: Dict[str, Any],
+    variants_by_base: Dict[str, List[str]],
+    nodes: Dict[str, Any],
+    spec_cards: List[Any],
+    project_dir: Path,
+    screenshots_dir: Path,
+    prd_combined_md: str,
+    is_en: bool,
+) -> str:
+    """Build a canonical Markdown `原型 | 说明` subtable for a `state_groups` entry."""
+    gtitle = str(gdef.get("title") or "").strip()
+    th_proto = "Prototype" if is_en else "原型"
+    th_spec = "Specification" if is_en else "说明"
+    md_lines: List[str] = []
+    if gtitle and _normalize_dedup_key(gtitle) not in _normalize_dedup_key(prd_combined_md):
+        md_lines.append(f"#### {gtitle}")
+    md_lines.append(f"| {th_proto} | {th_spec} |")
+    md_lines.append("| --- | --- |")
+
+    for st in states:
+        spage_raw = str(st.get("page") or "").strip()
+        p_obj = pages.get(spage_raw) if isinstance(pages.get(spage_raw), dict) else {}
+        spage_base = str(p_obj.get("variant_of") or spage_raw)
+        slabel = str(st.get("label") or p_obj.get("title") or st.get("id") or spage_raw).strip()
+
+        img_target = spage_raw
+        if resolve_markdown_image(img_target, screenshots_dir) is None:
+            for cand_id in [spage_base] + list(variants_by_base.get(spage_base, [])):
+                if cand_id and resolve_markdown_image(cand_id, screenshots_dir) is not None:
+                    img_target = cand_id
+                    break
+
+        safe_alt = slabel.replace("[", "（").replace("]", "）").replace("|", "｜")
+        bullets = _extract_state_bullets(gid, st, parent_pid, pages, nodes, spec_cards, project_dir)
+        escaped_bullets = [
+            re.sub(r"\r?\n+", "<br />", b.strip()).replace("|", "\\|")
+            for b in bullets
+            if b.strip()
+        ]
+        right_cell = "<br />".join(escaped_bullets) if escaped_bullets else f"· **{safe_alt}**"
+        md_lines.append(f"| ![{safe_alt}]({img_target}) | {right_cell} |")
+
+    return "\n".join(md_lines)
+
+
 def build_document_model(
     project_dir: Path,
     prd_sections: List[Tuple[str, str]],
@@ -705,6 +1025,17 @@ def build_document_model(
     )
     flow_shot = screenshots_dir / "flow-overview.png"
     has_flow_shot = flow_shot.is_file()
+
+    def _call_md_to_xhtml(md_text: str, mode: str) -> str:
+        try:
+            return md_block_to_xhtml_fn(
+                md_text,
+                screenshots_dir=screenshots_dir,
+                render_mode=mode,
+                is_en=is_en,
+            )
+        except TypeError:
+            return md_block_to_xhtml_fn(md_text)
 
     pre_sections: List[Dict[str, Any]] = []
     post_sections: List[Dict[str, Any]] = []
@@ -728,8 +1059,9 @@ def build_document_model(
                     0,
                     {
                         "title": "",
-                        "xhtml": md_block_to_xhtml_fn(clean_lead),
-                        "docx_blocks": _extract_prd_plain_blocks(clean_lead),
+                        "xhtml_html": _call_md_to_xhtml(clean_lead, "html"),
+                        "xhtml": _call_md_to_xhtml(clean_lead, "confluence"),
+                        "docx_blocks": _extract_prd_plain_blocks(clean_lead, screenshots_dir=screenshots_dir),
                         "flow_shot": None,
                     },
                 )
@@ -744,8 +1076,9 @@ def build_document_model(
             post_sections.append(
                 {
                     "title": _clean_display_heading(sec_title),
-                    "xhtml": md_block_to_xhtml_fn(sec_md),
-                    "docx_blocks": _extract_prd_plain_blocks(sec_md),
+                    "xhtml_html": _call_md_to_xhtml(sec_md, "html"),
+                    "xhtml": _call_md_to_xhtml(sec_md, "confluence"),
+                    "docx_blocks": _extract_prd_plain_blocks(sec_md, screenshots_dir=screenshots_dir),
                 }
             )
         elif PRE_CHAPTER_RE.search(sec_title):
@@ -758,8 +1091,9 @@ def build_document_model(
             pre_sections.append(
                 {
                     "title": _clean_display_heading(sec_title),
-                    "xhtml": md_block_to_xhtml_fn(sec_md),
-                    "docx_blocks": _extract_prd_plain_blocks(sec_md),
+                    "xhtml_html": _call_md_to_xhtml(sec_md, "html"),
+                    "xhtml": _call_md_to_xhtml(sec_md, "confluence"),
+                    "docx_blocks": _extract_prd_plain_blocks(sec_md, screenshots_dir=screenshots_dir),
                     "flow_shot": flow_shot if attach_flow_here else None,
                 }
             )
@@ -772,6 +1106,7 @@ def build_document_model(
         pre_sections.append(
             {
                 "title": flow_sec_title,
+                "xhtml_html": "",
                 "xhtml": "",
                 "docx_blocks": [],
                 "flow_shot": flow_shot,
@@ -785,9 +1120,45 @@ def build_document_model(
         pages: Dict[str, Any] = spec_data.get("pages") or {}
         vars_list: List[Any] = spec_data.get("vars") or []
         spec_cards: List[Any] = spec_data.get("spec_cards") or []
+        state_groups_raw: Dict[str, Any] = (
+            spec_data["state_groups"] if isinstance(spec_data.get("state_groups"), dict) else {}
+        )
 
         _, variants_by_base, _ = _collect_expected_pages(spec_data)
         vars_by_id = {v["id"]: v for v in vars_list if isinstance(v, dict) and v.get("id")}
+
+        def _to_base_pid(raw_p: str) -> str:
+            p_obj = pages.get(raw_p) if isinstance(pages.get(raw_p), dict) else {}
+            return str(p_obj.get("variant_of") or raw_p)
+
+        # Parse `state_groups`: map folded child state pages to their `parent_pid` so they render inside
+        # the parent's `原型 | 说明` subtable instead of generating separate outer table rows!
+        state_groups_by_parent: Dict[str, List[Tuple[str, Dict[str, Any], List[Dict[str, Any]]]]] = {}
+        folded_child_to_parent: Dict[str, str] = {}
+        folded_children_by_parent: Dict[str, List[str]] = {}
+
+        for gid, gdef in state_groups_raw.items():
+            if not isinstance(gdef, dict):
+                continue
+            valid_states = [
+                st for st in (gdef.get("states") or [])
+                if isinstance(st, dict) and str(st.get("page") or "").strip()
+            ]
+            if not valid_states:
+                continue
+            parent_raw = str(gdef.get("parent_page") or valid_states[0]["page"]).strip()
+            parent_pid = _to_base_pid(parent_raw)
+            fold_val = gdef.get("fold_into_parent")
+            fold = True if fold_val is None else bool(fold_val)
+            state_groups_by_parent.setdefault(parent_pid, []).append((str(gid), gdef, valid_states))
+            if fold:
+                for st in valid_states:
+                    st_bp = _to_base_pid(str(st["page"]).strip())
+                    if st_bp != parent_pid:
+                        folded_child_to_parent[st_bp] = parent_pid
+                        children_list = folded_children_by_parent.setdefault(parent_pid, [])
+                        if st_bp not in children_list:
+                            children_list.append(st_bp)
 
         page_groups: Dict[str, Dict[str, Any]] = {}
         page_order: List[str] = []
@@ -795,26 +1166,52 @@ def build_document_model(
             if not isinstance(ndef, dict):
                 continue
             raw_pid = str(ndef.get("page") or nid)
-            p_obj = pages.get(raw_pid) if isinstance(pages.get(raw_pid), dict) else {}
-            pid = str(p_obj.get("variant_of") or raw_pid)
+            orig_bp = _to_base_pid(raw_pid)
+            pid = folded_child_to_parent.get(orig_bp, orig_bp)
             if pid not in page_groups:
-                page_groups[pid] = {"nodes": [], "changes": set()}
+                page_groups[pid] = {"nodes": [], "direct_nodes": [], "folded_nodes": [], "changes": set()}
                 page_order.append(pid)
             page_groups[pid]["nodes"].append((nid, ndef))
+            if orig_bp == pid:
+                page_groups[pid]["direct_nodes"].append((nid, ndef))
+            else:
+                page_groups[pid]["folded_nodes"].append((nid, ndef))
             page_groups[pid]["changes"].add(str(ndef.get("change") or "unchanged"))
 
-        # Prepare per-page token sets & DOM vocabulary for 2.A subsection aggregation!
+        for parent_pid in state_groups_by_parent:
+            if parent_pid not in page_groups and parent_pid in pages:
+                page_groups[parent_pid] = {
+                    "nodes": [],
+                    "direct_nodes": [],
+                    "folded_nodes": [],
+                    "changes": {"unchanged"},
+                }
+                page_order.append(parent_pid)
+
+        # Prepare per-page token sets & DOM vocabulary for 2.A subsection aggregation (including folded child states)!
         page_tokens_map: Dict[str, set] = {}
         page_explicit_refs: Dict[str, set] = {}
         page_vocab_map: Dict[str, Tuple[List[str], str]] = {}
         for pid in page_order:
-            vpids = variants_by_base.get(pid, [])
+            vpids = list(variants_by_base.get(pid, []))
+            folded_bps = folded_children_by_parent.get(pid, [])
+            vocab_vpids = list(vpids)
+            for fbp in folded_bps:
+                if fbp not in vocab_vpids:
+                    vocab_vpids.append(fbp)
+                for fv in variants_by_base.get(fbp, []):
+                    if fv not in vocab_vpids:
+                        vocab_vpids.append(fv)
             gnodes = page_groups[pid]["nodes"]
-            page_tokens_map[pid] = {pid} | set(vpids) | {nid for nid, _ in gnodes}
-            pdef = pages.get(pid) if isinstance(pages.get(pid), dict) else {}
-            exp_refs = pdef.get("prd_sections") or []
-            page_explicit_refs[pid] = {str(r).strip().upper() for r in exp_refs if r}
-            page_vocab_map[pid] = _build_page_vocabulary(project_dir, pid, vpids, pages, gnodes, spec_cards)
+            page_tokens_map[pid] = {pid} | set(vocab_vpids) | {nid for nid, _ in gnodes}
+            exp_set: set = set()
+            for ref_pid in [pid] + list(folded_bps):
+                rpdef = pages.get(ref_pid) if isinstance(pages.get(ref_pid), dict) else {}
+                for r in rpdef.get("prd_sections") or []:
+                    if r:
+                        exp_set.add(str(r).strip().upper())
+            page_explicit_refs[pid] = exp_set
+            page_vocab_map[pid] = _build_page_vocabulary(project_dir, pid, vocab_vpids, pages, gnodes, spec_cards)
 
         # Split all middle functional chapters into H3/H4 subsections and route each to its best screen (or Zone 3 if non-UI)
         subs_by_page: Dict[str, List[Tuple[str, str]]] = {pid: [] for pid in page_order}
@@ -844,8 +1241,9 @@ def build_document_model(
                 0,
                 {
                     "title": sup_title,
-                    "xhtml": md_block_to_xhtml_fn(sup_md),
-                    "docx_blocks": _extract_prd_plain_blocks(sup_md),
+                    "xhtml_html": _call_md_to_xhtml(sup_md, "html"),
+                    "xhtml": _call_md_to_xhtml(sup_md, "confluence"),
+                    "docx_blocks": _extract_prd_plain_blocks(sup_md, screenshots_dir=screenshots_dir),
                 },
             )
 
@@ -854,7 +1252,8 @@ def build_document_model(
             seq_num += 1
             grp = page_groups[pid]
             grp_nodes: List[Tuple[str, Dict[str, Any]]] = grp["nodes"]
-            _, primary_ndef = grp_nodes[0]
+            direct_nodes: List[Tuple[str, Dict[str, Any]]] = grp["direct_nodes"]
+            primary_ndef = direct_nodes[0][1] if direct_nodes else (grp_nodes[0][1] if grp_nodes else {})
             pdef = pages.get(pid) if isinstance(pages.get(pid), dict) else {}
             raw_title = str(primary_ndef.get("title") or pdef.get("title") or pid)
 
@@ -898,14 +1297,46 @@ def build_document_model(
                     formatted_sub_mds.append(sub_md)
 
             prd_combined_md = "\n\n".join(formatted_sub_mds)
-            prd_norm_corpus = re.sub(r"[`*_#\s·•:：,，.。;；()（）\[\]【】/-]+", "", prd_combined_md.lower())
 
-            # Single Source of Truth Merging: only include `node.anno` items if NOT already covered by matched `F-xx` subsections!
+            # Channel A: Auto-generate `原型 | 说明` state subtables from `spec.json -> state_groups`
+            # unless `prd_combined_md` already contains an explicit Markdown image table for the same state group!
+            state_group_mds: List[str] = []
+            for gid, gdef, gstates in state_groups_by_parent.get(pid, []):
+                group_stems: set = set()
+                for st in gstates:
+                    sp_raw = str(st.get("page") or "").strip()
+                    sp_bp = _to_base_pid(sp_raw)
+                    group_stems.update({sp_raw, sp_bp})
+                    group_stems.update(variants_by_base.get(sp_bp, []))
+                if _prd_has_explicit_state_subtable(prd_combined_md, group_stems):
+                    continue
+                sg_md = _build_state_group_markdown(
+                    gid,
+                    gdef,
+                    gstates,
+                    pid,
+                    pages,
+                    variants_by_base,
+                    nodes,
+                    spec_cards,
+                    project_dir,
+                    screenshots_dir,
+                    prd_combined_md,
+                    is_en,
+                )
+                if sg_md:
+                    state_group_mds.append(sg_md)
+
+            dedup_md_source = prd_combined_md + ("\n\n" + "\n\n".join(state_group_mds) if state_group_mds else "")
+            prd_norm_corpus = re.sub(r"[`*_#\s·•:：,，.。;；()（）\[\]【】/-]+", "", dedup_md_source.lower())
+
+            # Single Source of Truth Merging: only include `node.anno` items if NOT already covered by matched `F-xx` subsections or state subtables!
             seen_keys: set = set()
             lead_xhtml: List[str] = []
             lead_docx_blocks: List[Dict[str, Any]] = []
+            nodes_for_lead = direct_nodes if (state_group_mds and direct_nodes) else grp_nodes
 
-            for _, ndef in grp_nodes:
+            for _, ndef in nodes_for_lead:
                 annos = ndef.get("anno")
                 if isinstance(annos, list):
                     for pair in annos:
@@ -928,7 +1359,7 @@ def build_document_model(
                 if ndef.get("isDecision") and isinstance(bvar_id, str) and bvar_id in vars_by_id:
                     bvar = vars_by_id[bvar_id]
                     bvar_label = str(bvar.get("label") or bvar_id)
-                    if _normalize_dedup_key(bvar_label) not in prd_norm_corpus and bvar_id.lower() not in prd_combined_md.lower():
+                    if _normalize_dedup_key(bvar_label) not in prd_norm_corpus and bvar_id.lower() not in dedup_md_source.lower():
                         opts = [o for o in (bvar.get("options") or []) if isinstance(o, dict)]
                         if opts:
                             parts_str = "；".join(
@@ -943,11 +1374,24 @@ def build_document_model(
             if len(formatted_sub_mds) >= 4:
                 mid = (len(formatted_sub_mds) + 1) // 2
                 part1_mds = formatted_sub_mds[:mid]
-                part2_mds = formatted_sub_mds[mid:]
+                part2_mds = formatted_sub_mds[mid:] + state_group_mds
 
-                p1_blocks = lead_docx_blocks + [b for ch in part1_mds for b in _extract_prd_plain_blocks(ch)]
-                p2_blocks = [b for ch in part2_mds for b in _extract_prd_plain_blocks(ch)]
-                p1_xhtml = "\n".join([f"<p><strong>{_xe(heading)}</strong></p>"] + lead_xhtml + [md_block_to_xhtml_fn(c) for c in part1_mds])
+                p1_blocks = lead_docx_blocks + [
+                    b for ch in part1_mds for b in _extract_prd_plain_blocks(ch, screenshots_dir=screenshots_dir)
+                ]
+                p2_blocks = [
+                    b for ch in part2_mds for b in _extract_prd_plain_blocks(ch, screenshots_dir=screenshots_dir)
+                ]
+                p1_xhtml_html = "\n".join(
+                    [f"<p><strong>{_xe(heading)}</strong></p>"]
+                    + lead_xhtml
+                    + [_call_md_to_xhtml(c, "html") for c in part1_mds]
+                )
+                p1_xhtml_conf = "\n".join(
+                    [f"<p><strong>{_xe(heading)}</strong></p>"]
+                    + lead_xhtml
+                    + [_call_md_to_xhtml(c, "confluence") for c in part1_mds]
+                )
 
                 primary_labeled = labeled_shots[:1] if len(labeled_shots) >= 2 else labeled_shots
                 cont_labeled = labeled_shots[1:] if len(labeled_shots) >= 2 else labeled_shots[:1]
@@ -963,14 +1407,21 @@ def build_document_model(
                         "labeled_shots": primary_labeled,
                         "heading": heading,
                         "docx_blocks": p1_blocks,
-                        "right_xhtml_html": p1_xhtml,
-                        "right_xhtml": p1_xhtml,
+                        "right_xhtml_html": p1_xhtml_html,
+                        "right_xhtml": p1_xhtml_conf,
                     }
                 )
 
                 cont_idx = f"{seq_num}-cont" if is_en else f"{seq_num}-续"
                 cont_heading = f"[Cont. #{seq_num}] {raw_title}" if is_en else f"【续 #{seq_num} · {raw_title}】"
-                p2_xhtml = "\n".join([f"<p><strong>{_xe(cont_heading)}</strong></p>"] + [md_block_to_xhtml_fn(c) for c in part2_mds])
+                p2_xhtml_html = "\n".join(
+                    [f"<p><strong>{_xe(cont_heading)}</strong></p>"]
+                    + [_call_md_to_xhtml(c, "html") for c in part2_mds]
+                )
+                p2_xhtml_conf = "\n".join(
+                    [f"<p><strong>{_xe(cont_heading)}</strong></p>"]
+                    + [_call_md_to_xhtml(c, "confluence") for c in part2_mds]
+                )
                 table_rows.append(
                     {
                         "display_idx": cont_idx,
@@ -982,14 +1433,23 @@ def build_document_model(
                         "labeled_shots": cont_labeled,
                         "heading": cont_heading,
                         "docx_blocks": p2_blocks,
-                        "right_xhtml_html": p2_xhtml,
-                        "right_xhtml": p2_xhtml,
+                        "right_xhtml_html": p2_xhtml_html,
+                        "right_xhtml": p2_xhtml_conf,
                     }
                 )
             else:
-                prd_xhtml_list = [md_block_to_xhtml_fn(ch) for ch in formatted_sub_mds if ch.strip()]
-                prd_docx_blocks = [b for ch in formatted_sub_mds for b in _extract_prd_plain_blocks(ch)]
-                full_xhtml = "\n".join([f"<p><strong>{_xe(heading)}</strong></p>"] + lead_xhtml + prd_xhtml_list)
+                all_page_mds = [ch for ch in (formatted_sub_mds + state_group_mds) if ch.strip()]
+                prd_xhtml_html_list = [_call_md_to_xhtml(ch, "html") for ch in all_page_mds]
+                prd_xhtml_conf_list = [_call_md_to_xhtml(ch, "confluence") for ch in all_page_mds]
+                prd_docx_blocks = [
+                    b for ch in all_page_mds for b in _extract_prd_plain_blocks(ch, screenshots_dir=screenshots_dir)
+                ]
+                full_xhtml_html = "\n".join(
+                    [f"<p><strong>{_xe(heading)}</strong></p>"] + lead_xhtml + prd_xhtml_html_list
+                )
+                full_xhtml_conf = "\n".join(
+                    [f"<p><strong>{_xe(heading)}</strong></p>"] + lead_xhtml + prd_xhtml_conf_list
+                )
                 table_rows.append(
                     {
                         "display_idx": str(seq_num),
@@ -1001,8 +1461,8 @@ def build_document_model(
                         "labeled_shots": labeled_shots,
                         "heading": heading,
                         "docx_blocks": lead_docx_blocks + prd_docx_blocks,
-                        "right_xhtml_html": full_xhtml,
-                        "right_xhtml": full_xhtml,
+                        "right_xhtml_html": full_xhtml_html,
+                        "right_xhtml": full_xhtml_conf,
                     }
                 )
     else:
@@ -1011,8 +1471,9 @@ def build_document_model(
             post_sections.append(
                 {
                     "title": _clean_display_heading(sec_t),
-                    "xhtml": md_block_to_xhtml_fn(sec_m),
-                    "docx_blocks": _extract_prd_plain_blocks(sec_m),
+                    "xhtml_html": _call_md_to_xhtml(sec_m, "html"),
+                    "xhtml": _call_md_to_xhtml(sec_m, "confluence"),
+                    "docx_blocks": _extract_prd_plain_blocks(sec_m, screenshots_dir=screenshots_dir),
                 }
             )
 
@@ -1039,7 +1500,7 @@ def render_fig2_html(
     pre_html_parts: List[str] = []
     for psec in pre_sections:
         stitle = str(psec.get("title") or "").strip()
-        sxhtml = str(psec.get("xhtml") or "").strip()
+        sxhtml = str(psec.get("xhtml_html") if psec.get("xhtml_html") is not None else (psec.get("xhtml") or "")).strip()
         fshot: Optional[Path] = psec.get("flow_shot")
         flow_img_html = ""
         if fshot and fshot.is_file():
@@ -1093,7 +1554,7 @@ def render_fig2_html(
     post_html_parts: List[str] = []
     for asec in post_sections:
         stitle = str(asec.get("title") or "").strip()
-        sxhtml = str(asec.get("xhtml") or "").strip()
+        sxhtml = str(asec.get("xhtml_html") if asec.get("xhtml_html") is not None else (asec.get("xhtml") or "")).strip()
         hd_tag = f'<h2 class="zone-sec-hd">{_xe(stitle)}</h2>' if stitle else ""
         post_html_parts.append(f'<section class="zone-block">{hd_tag}{sxhtml}</section>')
 
@@ -1227,6 +1688,16 @@ def render_fig2_html(
     border: 1px solid #d9d9d9; padding: 7px 10px; vertical-align: top; text-align: left;
   }}
   table.nested-table th {{ background: #f5f5f5; font-weight: 700; color: #1f1f1f; }}
+  table.state-subtable {{ table-layout: fixed; width: 100%; border-collapse: collapse; margin: 10px 0 10px; font-size: 13px; border: 1px solid #d9d9d9; }}
+  table.state-subtable th, table.state-subtable td {{ border: 1px solid #d9d9d9; padding: 10px 12px; vertical-align: top; text-align: left; }}
+  table.state-subtable th {{ background: #f2f2f2; font-weight: 700; color: #1f1f1f; }}
+  table.state-subtable th.sub-col-proto {{ width: 220px; background: #f2f2f2; text-align: left; }}
+  table.state-subtable td.sub-col-proto {{ width: 220px; background: #fafafa; text-align: center; }}
+  table.state-subtable th.sub-col-spec, table.state-subtable td.sub-col-spec {{ width: auto; background: #ffffff; line-height: 1.7; text-align: left; }}
+  .wf-sub-shot {{ display: inline-block; max-width: 196px; width: 100%; height: auto; border: 1px solid #d4d4d4; border-radius: 4px; background: #ffffff; filter: grayscale(100%); cursor: zoom-in; }}
+  .sub-shot-missing {{ display: inline-block; padding: 6px 10px; font-size: 12px; color: #595959; background: #f2f2f2; border: 1px dashed #cccccc; border-radius: 4px; }}
+  .sub-spec-item {{ margin: 0 0 5px; }}
+  .sub-spec-item:last-child {{ margin-bottom: 0; }}
   p {{ margin: 0 0 6px; }}
   ul {{ margin: 0 0 8px; padding-left: 18px; }}
   li {{ margin-bottom: 4px; }}
@@ -1529,6 +2000,24 @@ def write_fig2_docx(
             f"<w:t xml:space=\"preserve\">{_xe(txt)}</w:t></w:r></w:p>"
         )
 
+    def _w_p_runs(
+        runs: List[Tuple[str, bool]],
+        size_half_pt: int = 18,
+        color: str = "1F1F1F",
+        space_before: int = 36,
+    ) -> str:
+        if not runs:
+            return _w_p_text("", bold=False, size_half_pt=size_half_pt, color=color, space_before=space_before)
+        r_xmls: List[str] = []
+        for seg_txt, seg_bold in runs:
+            b_xml = "<w:b/><w:bCs/>" if seg_bold else ""
+            r_xmls.append(
+                f"<w:r><w:rPr>{b_xml}<w:color w:val=\"{color}\"/>"
+                f"<w:sz w:val=\"{size_half_pt}\"/><w:szCs w:val=\"{size_half_pt}\"/></w:rPr>"
+                f"<w:t xml:space=\"preserve\">{_xe(seg_txt)}</w:t></w:r>"
+            )
+        return f"<w:p><w:pPr><w:spacing w:before=\"{space_before}\" w:after=\"56\"/></w:pPr>{''.join(r_xmls)}</w:p>"
+
     def _w_p_img(p: Path, max_w_px: int, doc_pr_id: int) -> str:
         rid, cx, cy = _register_img(p, max_w_px=max_w_px)
         return (
@@ -1566,30 +2055,79 @@ def write_fig2_docx(
         "</w:tblCellMar>"
     )
 
+    doc_pr_seq = 1
+
     def _render_blocks_xml(blocks: List[Dict[str, Any]], total_tbl_w_dxa: int, inside_tc: bool = False) -> List[str]:
+        nonlocal doc_pr_seq
         parts: List[str] = []
         for blk in blocks:
             if blk.get("kind") == "table":
                 hdrs: List[str] = blk.get("headers") or []
-                d_rows: List[List[str]] = blk.get("rows") or []
+                d_rows: List[List[Any]] = blk.get("rows") or []
                 col_n = max(1, len(hdrs))
-                col_w = int(total_tbl_w_dxa // col_n)
-                grid_xml = "".join(f'<w:gridCol w:w="{col_w}"/>' for _ in range(col_n))
+                custom_widths = blk.get("col_widths_dxa")
+                has_col0_img = (
+                    col_n == 2
+                    and any(
+                        isinstance(dr[0], dict) and bool(dr[0].get("images"))
+                        for dr in d_rows
+                        if dr
+                    )
+                )
+                is_state_sub = bool(blk.get("is_state_subtable")) or has_col0_img
+                if isinstance(custom_widths, list) and len(custom_widths) == col_n:
+                    col_widths = [int(w) for w in custom_widths]
+                elif is_state_sub and col_n == 2:
+                    w0 = 3000 if total_tbl_w_dxa <= 10000 else 3600
+                    col_widths = [w0, max(1200, int(total_tbl_w_dxa) - w0)]
+                else:
+                    cw_even = int(total_tbl_w_dxa // col_n)
+                    col_widths = [cw_even] * col_n
+
+                grid_xml = "".join(f'<w:gridCol w:w="{cw}"/>' for cw in col_widths)
                 th_cells = "".join(
-                    f'<w:tc><w:tcPr><w:tcW w:w="{col_w}" w:type="dxa"/><w:shd w:val="clear" w:fill="F5F5F5"/></w:tcPr>{_w_p_text(h, bold=True, size_half_pt=18)}</w:tc>'
-                    for h in hdrs
+                    f'<w:tc><w:tcPr><w:tcW w:w="{cw}" w:type="dxa"/><w:shd w:val="clear" w:fill="F5F5F5"/></w:tcPr>{_w_p_text(h, bold=True, size_half_pt=18)}</w:tc>'
+                    for h, cw in zip(hdrs, col_widths)
                 )
                 d_trs = [f"<w:tr><w:trPr><w:tblHeader/><w:cantSplit/></w:trPr>{th_cells}</w:tr>"]
                 for dr in d_rows:
-                    td_cells = "".join(
-                        f'<w:tc><w:tcPr><w:tcW w:w="{col_w}" w:type="dxa"/></w:tcPr>{_w_p_text(c, bold=False, size_half_pt=18)}</w:tc>'
-                        for c in dr
-                    )
-                    d_trs.append(f"<w:tr><w:trPr><w:cantSplit/></w:trPr>{td_cells}</w:tr>")
+                    padded_dr = list(dr[:col_n]) + [""] * max(0, col_n - len(dr))
+                    td_cells_list: List[str] = []
+                    for c_idx, (c_val, cw) in enumerate(zip(padded_dr, col_widths)):
+                        shd_xml = '<w:shd w:val="clear" w:fill="FAFAFA"/>' if (c_idx == 0 and is_state_sub) else ""
+                        if isinstance(c_val, dict):
+                            c_ps: List[str] = []
+                            for img_info in c_val.get("images") or []:
+                                sp = img_info.get("path")
+                                if isinstance(sp, Path) and sp.is_file():
+                                    doc_pr_seq += 1
+                                    c_ps.append(_w_p_img(sp, max_w_px=185, doc_pr_id=doc_pr_seq))
+                            for ln_info in c_val.get("lines") or []:
+                                runs = ln_info.get("runs")
+                                if runs:
+                                    c_ps.append(_w_p_runs(runs, size_half_pt=18))
+                                else:
+                                    c_ps.append(
+                                        _w_p_text(
+                                            str(ln_info.get("text") or ""),
+                                            bold=bool(ln_info.get("bold")),
+                                            size_half_pt=18,
+                                        )
+                                    )
+                            if not c_ps:
+                                c_ps.append(_w_p_text("", bold=False, size_half_pt=18))
+                            td_cells_list.append(
+                                f'<w:tc><w:tcPr><w:tcW w:w="{cw}" w:type="dxa"/>{shd_xml}</w:tcPr>{"".join(c_ps)}</w:tc>'
+                            )
+                        else:
+                            td_cells_list.append(
+                                f'<w:tc><w:tcPr><w:tcW w:w="{cw}" w:type="dxa"/>{shd_xml}</w:tcPr>{_w_p_text(str(c_val), bold=False, size_half_pt=18)}</w:tc>'
+                            )
+                    d_trs.append(f"<w:tr><w:trPr><w:cantSplit/></w:trPr>{''.join(td_cells_list)}</w:tr>")
                 trail = "<w:p/>" if inside_tc else ""
                 parts.append(
                     "<w:tbl>"
-                    f"<w:tblPr><w:tblW w:w=\"{col_w * col_n}\" w:type=\"dxa\"/>{tbl_borders}{cell_mar}</w:tblPr>"
+                    f"<w:tblPr><w:tblW w:w=\"{sum(col_widths)}\" w:type=\"dxa\"/>{tbl_borders}{cell_mar}</w:tblPr>"
                     f"<w:tblGrid>{grid_xml}</w:tblGrid>"
                     f"{''.join(d_trs)}"
                     f"</w:tbl>{trail}"
@@ -1606,7 +2144,6 @@ def write_fig2_docx(
                 )
         return parts
 
-    doc_pr_seq = 1
     body_xml_parts: List[str] = [_w_p_text(title, bold=True, size_half_pt=30, space_before=0)]
 
     # Zone 1: Full-Width Pre-Table Global Intro + Global Flowchart

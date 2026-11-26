@@ -109,19 +109,40 @@
 2. 禁止自引用（`variant_of !== page_id`）及循环继承。
 3. 编译器展开变体页时，自动继承基页面的 `components`、默认 `title` 与基础 HTML 结构，仅将变体页声明的 `frame`、`title` 与 `overrides`（`layout`、`copy`、`components_patch`、`add_components`、`remove_components`）做确定性合并。
 
-### 2.5 `state_groups`（同页状态组）
+### 2.5 `state_groups`（同页状态组与导出折叠子表）
+
+用于声明同一业务页面的多状态/异常态切换组（如多账号态 vs 单账号态、已填写态 vs 空内容校验报错态）。在执行 `06-push-wiki` 导出 PRD 文档时，`state_groups` 会自动在父页面右栏底部生成带 100% 纯灰阶状态截图的 **`原型 | 说明`** 状态对比子表，并将子状态页折叠进父页面，避免外层三列表序号膨胀。
 
 ```json
-"editor": {
-  "title": "发布器同页校验态",
+"third_party_accounts": {
+  "title": "第三方登录管理页同页状态对比",
+  "parent_page": "p-account-bind-multi",
+  "fold_into_parent": true,
   "states": [
-    { "id": "filled", "label": "已填写内容（有效提交）", "page": "p-editor-base" },
-    { "id": "empty", "label": "空内容校验提示", "page": "p-editor-empty" }
+    {
+      "id": "multi",
+      "label": "多账号态（绑定数 ≥ 2）",
+      "page": "p-account-bind-multi",
+      "bullets": [
+        "多账号态（过滤后数量 ≥ 2）：每行右侧展示「解绑」按钮",
+        "列表底部固定提示：解绑后无法使用该第三方账号登录，但不影响已有业务数据"
+      ]
+    },
+    {
+      "id": "single",
+      "label": "单账号态（仅剩 1 个登录方式）",
+      "page": "p-account-bind-single",
+      "spec": "仅剩唯一登录凭证时隐藏或置灰「解绑」按钮，点击提示「至少保留一种可用登录方式」。"
+    }
   ]
 }
 ```
 
-每个 `states[].page` **必须存在于 `pages` 中**。
+**字段说明与约束规则**：
+1. 每个 `states[].page`（以及显式声明的 `parent_page`）**必须存在于 `pages` 中**。
+2. `parent_page`（可选，`string`）：指明该状态组归属的外层父页面 ID；缺省时默认取 `states[0].page`。
+3. `fold_into_parent`（可选，`boolean`，默认 `true`）：为 `true` 时，子状态页自动折叠进父页面右栏底部的 `原型 | 说明` 状态对比子表，不在外层三列表重复占独立序号行。
+4. `states[].spec`（可选，`string`）与 `states[].bullets`（可选，`string[]`）：用于编写单段或多条状态差异说明（公共规则写在外层父页面正文，各态差异规则写在 `spec` / `bullets` 中，严禁内外重复复述）。
 
 ### 2.6 `spec_cards`（本期改点卡）
 

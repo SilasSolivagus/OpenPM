@@ -27,12 +27,14 @@ from html.parser import HTMLParser
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
+from wiki_diff_report import generate_project_diff_report
 from wiki_doc_builder import (
     ScreenshotCaptureError,
     auto_capture_screenshots,
     build_document_model,
     render_fig2_confluence_xml,
     render_fig2_html,
+    resolve_markdown_image,
     write_fig2_docx,
 )
 
@@ -549,6 +551,8 @@ def cmd_pull(project_dir: Path, page_id_override: Optional[str] = None) -> int:
     history_dir = project_dir / "history"
     history_dir.mkdir(parents=True, exist_ok=True)
     remote_md_path = history_dir / "prd-remote.md"
+    prev_remote_md_path = history_dir / "prd-remote.prev.md"
+    prev_remote_text = remote_md_path.read_text(encoding="utf-8") if remote_md_path.is_file() else None
 
     try:
         if adapter == "confluence" and base_url and confluence_pat:
@@ -602,7 +606,10 @@ def cmd_pull(project_dir: Path, page_id_override: Optional[str] = None) -> int:
                 # Fallback to baseline/ or existing history/*.md or local prd.md
                 source_md = _pick_latest_md(project_dir / "baseline", exclude_names={"pull-diff.md"})
             if source_md is None:
-                source_md = _pick_latest_md(history_dir, exclude_names={"prd-remote.md", "pull-diff.md"})
+                source_md = _pick_latest_md(
+                    history_dir,
+                    exclude_names={"prd-remote.md", "prd-remote.prev.md", "pull-diff.md"},
+                )
             if source_md is None and (project_dir / "prd.md").is_file():
                 source_md = project_dir / "prd.md"
 
@@ -625,12 +632,21 @@ def cmd_pull(project_dir: Path, page_id_override: Optional[str] = None) -> int:
             save_manifest(project_dir, manifest)
             print(f"[wiki_sync] Pulled baseline from {source_md} (v{remote_ver}) -> {remote_md_path}")
 
+        latest_remote_text = remote_md_path.read_text(encoding="utf-8")
+        if prev_remote_text is not None and prev_remote_text != latest_remote_text:
+            prev_remote_md_path.write_text(prev_remote_text, encoding="utf-8")
+        elif prev_remote_md_path.is_file():
+            prev_remote_md_path.unlink()
+
         local_prd = project_dir / "prd.md"
         if local_prd.is_file():
             diff_path = history_dir / "pull-diff.md"
             has_changes = _write_pull_diff(remote_md_path, local_prd, diff_path)
             status_str = "differences recorded" if has_changes else "identical"
             print(f"[wiki_sync] Generated diff ({status_str}) -> {diff_path}")
+
+        pull_report_path = generate_project_diff_report(project_dir, stage="pull")
+        print(f"[wiki_sync] Visual Pull Diff Report -> {pull_report_path}")
         return 0
 
     except Exception as exc:
@@ -670,19 +686,48 @@ def _sanitize_inline_table_xhtml(raw_table: str) -> Optional[str]:
     return ET.tostring(elem, encoding="unicode", method="xml")
 
 
-def _format_inline_xhtml(text: str) -> str:
-    """Convert inline Markdown (`code`, **bold**, <br>, and well-formed single-line <table>) to strict XHTML."""
+def _format_inline_xhtml(
+    text: str,
+    screenshots_dir: Optional[Path] = None,
+    render_mode: str = "confluence",
+    is_en: bool = False,
+) -> str:
+    """Convert inline Markdown (`![alt](target)`, `code`, **bold**, <br>, and safe <table>) to strict XHTML."""
     tokens = re.split(
-        r"(<table\b[^>]*>.*?</table>|<br\s*/?>|`[^`]+`|\*\*[^*]+\*\*)",
+        r"(<table\b[^>]*>.*?</table>|<br\s*/?>|`?!\[[^\]]*\]\([^)]+\)`?|`[^`]+`|\*\*[^*]+\*\*)",
         text,
         flags=re.IGNORECASE,
     )
     parts: List[str] = []
+    img_re = re.compile(r"^`?!\[([^\]]*)\]\(([^)]+)\)`?$")
     for tok in tokens:
         if not tok:
             continue
         low = tok.lower()
-        if low.startswith("<table") and low.endswith("</table>"):
+        img_m = img_re.match(tok)
+        if img_m:
+            alt_txt = img_m.group(1).strip()
+            raw_tgt = img_m.group(2).strip()
+            sp = resolve_markdown_image(raw_tgt, screenshots_dir)
+            cap = alt_txt or (sp.stem if sp else raw_tgt)
+            if sp is not None:
+                if render_mode == "html":
+                    b64 = base64.b64encode(sp.read_bytes()).decode("ascii")
+                    zoom_tip = "Click to zoom high-res prototype" if is_en else "点击放大查看高清原型图"
+                    parts.append(
+                        f'<img class="wf-shot wf-sub-shot zoomable-shot" data-caption="{_xml_escape(cap)}" '
+                        f'title="{zoom_tip}" src="data:image/png;base64,{b64}" alt="{_xml_escape(cap)}" />'
+                    )
+                else:
+                    parts.append(
+                        f'<ac:image ac:width="200"><ri:attachment ri:filename="{_xml_escape(sp.name)}" /></ac:image>'
+                    )
+            else:
+                if render_mode == "html":
+                    parts.append(f'<span class="sub-shot-missing">[{_xml_escape(cap)}]</span>')
+                else:
+                    parts.append(f"[{_xml_escape(cap)}]")
+        elif low.startswith("<table") and low.endswith("</table>"):
             safe_tbl = _sanitize_inline_table_xhtml(tok)
             parts.append(safe_tbl if safe_tbl is not None else _xml_escape(tok))
         elif re.fullmatch(r"<br\s*/?>", tok, flags=re.IGNORECASE):
@@ -734,12 +779,20 @@ def _is_md_table_divider(cells: List[str]) -> bool:
     return bool(cells) and all(bool(re.fullmatch(r":?-{2,}:?", c.strip())) for c in cells)
 
 
-def _md_block_to_xhtml(md_text: str) -> str:
+def _md_block_to_xhtml(
+    md_text: str,
+    screenshots_dir: Optional[Path] = None,
+    render_mode: str = "confluence",
+    is_en: bool = False,
+) -> str:
     """Convert a Markdown section body (headings, lists, code blocks, nested tables) to valid XHTML."""
     lines = md_text.splitlines()
     out: List[str] = []
     i = 0
     n = len(lines)
+
+    def _fmt(txt: str) -> str:
+        return _format_inline_xhtml(txt, screenshots_dir=screenshots_dir, render_mode=render_mode, is_en=is_en)
 
     while i < n:
         raw = lines[i]
@@ -780,19 +833,68 @@ def _md_block_to_xhtml(md_text: str) -> str:
                         body_rows.append(row_cells)
                     i += 1
 
-                th_html = "".join(f"<th>{_format_inline_xhtml(c)}</th>" for c in header_cells)
-                trs_html = [f"<tr>{th_html}</tr>"]
-                for r in body_rows:
-                    td_html = "".join(f"<td>{_format_inline_xhtml(c)}</td>" for c in r)
-                    trs_html.append(f"<tr>{td_html}</tr>")
-                out.append(f'<table class="nested-table"><tbody>{"".join(trs_html)}</tbody></table>')
+                raw_col0_has_img = any(
+                    bool(r) and bool(re.search(r"`?!\[[^\]]*\]\([^)]+\)`?", r[0]))
+                    for r in body_rows
+                )
+                clean_h0 = re.sub(r"[`*_]", "", header_cells[0]).strip() if header_cells else ""
+                is_proto_subtable = col_count == 2 and (
+                    raw_col0_has_img or clean_h0 in ("原型", "状态原型", "页面原型", "Prototype", "Screen")
+                )
+
+                if is_proto_subtable:
+                    if render_mode == "html":
+                        th_html = (
+                            f'<th class="sub-col-proto">{_fmt(header_cells[0])}</th>'
+                            f'<th class="sub-col-spec">{_fmt(header_cells[1])}</th>'
+                        )
+                        trs_body: List[str] = []
+                        for r in body_rows:
+                            c0_html = _fmt(r[0]) if r[0].strip() else "-"
+                            segs1 = [s.strip() for s in re.split(r"<br\s*/?>", r[1], flags=re.IGNORECASE) if s.strip()]
+                            c1_html = (
+                                "".join(f'<p class="sub-spec-item">{_fmt(seg)}</p>' for seg in segs1)
+                                if segs1
+                                else '<p class="sub-spec-item">-</p>'
+                            )
+                            trs_body.append(
+                                f'<tr><td class="sub-col-proto">{c0_html}</td>'
+                                f'<td class="sub-col-spec">{c1_html}</td></tr>'
+                            )
+                        out.append(
+                            f'<table class="nested-table state-subtable">'
+                            f"<thead><tr>{th_html}</tr></thead>"
+                            f'<tbody>{"".join(trs_body)}</tbody></table>'
+                        )
+                    else:
+                        th_html = "".join(f"<th>{_fmt(c)}</th>" for c in header_cells)
+                        trs_body = []
+                        for r in body_rows:
+                            segs0 = [s.strip() for s in re.split(r"<br\s*/?>", r[0], flags=re.IGNORECASE) if s.strip()]
+                            c0_xml = "".join(f"<p>{_fmt(seg)}</p>" for seg in segs0) if segs0 else "<p>-</p>"
+                            segs1 = [s.strip() for s in re.split(r"<br\s*/?>", r[1], flags=re.IGNORECASE) if s.strip()]
+                            c1_xml = "".join(f"<p>{_fmt(seg)}</p>" for seg in segs1) if segs1 else "<p>-</p>"
+                            trs_body.append(f"<tr><td>{c0_xml}</td><td>{c1_xml}</td></tr>")
+                        out.append(
+                            "<table>"
+                            '<colgroup><col style="width: 230px;" /><col style="width: auto;" /></colgroup>'
+                            f"<thead><tr>{th_html}</tr></thead>"
+                            f'<tbody>{"".join(trs_body)}</tbody></table>'
+                        )
+                else:
+                    th_html = "".join(f"<th>{_fmt(c)}</th>" for c in header_cells)
+                    trs_html = [f"<tr>{th_html}</tr>"]
+                    for r in body_rows:
+                        td_html = "".join(f"<td>{_fmt(c)}</td>" for c in r)
+                        trs_html.append(f"<tr>{td_html}</tr>")
+                    out.append(f'<table class="nested-table"><tbody>{"".join(trs_html)}</tbody></table>')
                 continue
 
         # Sub-headings
         h_match = re.match(r"^(#{1,6})\s+(.*)$", stripped)
         if h_match:
             lvl = min(6, max(3, len(h_match.group(1)) + 1))
-            out.append(f"<h{lvl}>{_format_inline_xhtml(h_match.group(2).strip())}</h{lvl}>")
+            out.append(f"<h{lvl}>{_fmt(h_match.group(2).strip())}</h{lvl}>")
             i += 1
             continue
 
@@ -803,7 +905,7 @@ def _md_block_to_xhtml(md_text: str) -> str:
                 q_line = re.sub(r"^>\s?", "", lines[i].strip())
                 q_lines.append(q_line)
                 i += 1
-            out.append(f"<blockquote><p>{_format_inline_xhtml(' '.join(q_lines))}</p></blockquote>")
+            out.append(f"<blockquote><p>{_fmt(' '.join(q_lines))}</p></blockquote>")
             continue
 
         # Unordered or ordered list
@@ -811,7 +913,7 @@ def _md_block_to_xhtml(md_text: str) -> str:
             items: List[str] = []
             while i < n and re.match(r"^\s*([-*+]|\d+\.)\s+", lines[i]):
                 item_txt = re.sub(r"^\s*([-*+]|\d+\.)\s+", "", lines[i]).strip()
-                items.append(f"<li>{_format_inline_xhtml(item_txt)}</li>")
+                items.append(f"<li>{_fmt(item_txt)}</li>")
                 i += 1
             out.append(f"<ul>{''.join(items)}</ul>")
             continue
@@ -833,7 +935,7 @@ def _md_block_to_xhtml(md_text: str) -> str:
                 break
             para_lines.append(nxt)
             i += 1
-        out.append(f"<p>{_format_inline_xhtml(' '.join(para_lines))}</p>")
+        out.append(f"<p>{_fmt(' '.join(para_lines))}</p>")
 
     return "\n".join(out) if out else "<p>-</p>"
 
@@ -1308,12 +1410,15 @@ def cmd_export(project_dir: Path, allow_missing_screenshots: bool = False) -> in
     xml_out = export_dir / "confluence-storage.xml"
     xml_out.write_text(storage_xml, encoding="utf-8")
 
+    push_diff_out = generate_project_diff_report(project_dir, stage="push")
+
     print(
         f"[wiki_sync] Exported Left-Prototype/Right-Spec bundle to {export_dir}:\n"
         f"  - {docx_out.name} (WeCom / Feishu / Word native import with embedded prototype screenshots)\n"
         f"  - {html_out.name} (1-click copy rich table + Base64 self-contained preview)\n"
         f"  - {xml_out.name} (Confluence Storage XML, 0 broken tables)\n"
-        f"  - {zip_path.name} (Interactive prototype attachment)"
+        f"  - {zip_path.name} (Interactive prototype attachment)\n"
+        f"  - {push_diff_out.name} (Local visual sync diff report — not uploaded to remote)"
     )
     return 0
 

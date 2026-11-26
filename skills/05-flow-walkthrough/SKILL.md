@@ -23,7 +23,7 @@ description: 汇总补全 spec.json（pages、state_groups、spec_cards），依
 1. `version`: `"spec-v2"`；`meta`: `{ project, title, doc_version, platform_default, entry_node, prd_source }`。
 2. `vars` 与 `nodes`：核对与 `flow.svg` 节点、`data-branch` 出边及本期 `change: "new" | "modified"` 标记完全一致。
 3. `pages`：登记所有 `pages/<page_id>.html` 的 `frame`（`"phone" | "wide"`）、`title`、`components`（点分小写 `comp_id`、`comp_name`、`role`）及可选多端 `variant_of` / `overrides`。
-4. `state_groups`（可选）：登记同页局部状态切换组。
+4. `state_groups`（可选）：登记同页局部状态切换组。同页多状态/异常态可通过 `prd.md` 的 `| 原型 | 说明 |`（左列 `![状态名](page_id)`）或 `spec.json` 的 `state_groups`（支持可选 `parent_page`、`fold_into_parent` 及 `states[].bullets` / `spec`）表达，导出时自动折叠合并为父页面右栏图文状态子表。
 5. `spec_cards`：提炼本期核心需求改点卡（`{ id, title, page, anchor, body }`），`anchor` 指向对应页面内改点组件的 `data-comp-id`（用于在 `spec` 单页改点视图触发唯一工程标引色 **琥珀橙 `#D97706`** 锚定高亮）。
 6. `memos`（可选）：默认为空数组 `[]`（或保留符合 `memoDef` 的有效历史批注）。
 

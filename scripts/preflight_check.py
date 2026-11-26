@@ -1565,6 +1565,17 @@ def run_spec_preflight(spec_path: Path) -> List[str]:
                 if not isinstance(gdef, dict) or not isinstance(gdef.get("states"), list) or not gdef["states"]:
                     errors.append(f"[Spec - StateGroups] Group \"{gid}\" must contain a non-empty \"states\" array")
                     continue
+                if "parent_page" in gdef:
+                    parent_page = gdef.get("parent_page")
+                    if not isinstance(parent_page, str) or not parent_page.strip() or parent_page not in pages:
+                        errors.append(
+                            f"[Spec - StateGroups] Group \"{gid}\" references unknown parent_page=\"{parent_page}\""
+                        )
+                if "fold_into_parent" in gdef:
+                    if not isinstance(gdef.get("fold_into_parent"), bool):
+                        errors.append(
+                            f"[Spec - StateGroups] Group \"{gid}\" fold_into_parent must be a boolean"
+                        )
                 for st in gdef["states"]:
                     if not isinstance(st, dict):
                         errors.append(f"[Spec - StateGroups] Group \"{gid}\" state entry must be an object")
@@ -1577,6 +1588,16 @@ def run_spec_preflight(spec_path: Path) -> List[str]:
                         errors.append(
                             f"[Spec - StateGroups] State \"{gid}/{sid}\" references unknown page=\"{spage}\""
                         )
+                    if "spec" in st and not isinstance(st.get("spec"), str):
+                        errors.append(
+                            f"[Spec - StateGroups] State \"{gid}/{sid}\" spec must be a string"
+                        )
+                    if "bullets" in st:
+                        bullets = st.get("bullets")
+                        if not isinstance(bullets, list) or not all(isinstance(b, str) for b in bullets):
+                            errors.append(
+                                f"[Spec - StateGroups] State \"{gid}/{sid}\" bullets must be a list of strings"
+                            )
 
     # 3. Validate nodes[].page, decision branchVar, state, and nodes[].change enum
     for node_id, node_def in nodes.items():

@@ -63,7 +63,7 @@
    - 定稿执行 `06`（或本地确认定稿）时，静默调用 `python3 scripts/eval_tracker.py score <project_dir> --stage final` 自动记分；若输出含 `[ITERATION_TRIGGER]`（攒满 3 个需求或 3 条错题），收尾附带 1 句话提醒 PM 可说“复盘优化”触发 `07-iterate-skills`。
 4. **强制「左原型截图 + 右无重复说明」交付、全变体灰阶门禁 & 严禁假成功**：
    - 本地 `projects/<project>/` 下的 `spec.json`、`project-context.md`、`prd.md`、`pages/*.html` 仅供本机 Agent 复用，**严禁上传微盘或 Wiki**；
-   - 定稿执行 `06`（`python3 scripts/wiki_sync.py push/export`）时，自动截取基页面与全部 `variant_of` 多端变体（`Web/PC` + `App 375px`）的 **100% 强制纯灰阶图**，生成外层三列 **`序号 | 页面（含跨页吸顶与归属标签） | 需求说明（单一权威信息源，严禁再套嵌 `原型|说明` 循环子表或内外重复复述！）`** 的 `<项目名>-产品方案.docx`、`confluence-storage.xml` 与一键复制版 `wiki-page.html`；
+   - 定稿执行 `06`（`python3 scripts/wiki_sync.py push/export`）时，自动截取基页面与全部 `variant_of` 多端变体（`Web/PC` + `App 375px`）的 **100% 强制纯灰阶图**，生成外层三列 **`序号 | 页面（含跨页吸顶与归属标签） | 需求说明（单一权威信息源：同一页面存在多状态/异常态时允许通过 `state_groups` 或 `| 原型 | 说明 |` 内嵌多状态差异对比子表，但严禁把外层同一张主图与已写规则原样套娃复述，每条业务规则全篇只准出现一次！）`** 的 `<项目名>-产品方案.docx`、`confluence-storage.xml` 与一键复制版 `wiki-page.html`；
    - **严禁吞错与严禁假成功**：若 `wiki_sync.py` 返回退出码 `3`（沙箱拦截 Chrome 截图），必须提权脱离沙箱重跑以补齐截图；若返回退出码 `2`（如企微智能机器人 `Bot ID` 不支持 `wedoc` 接口报 `40013`），代表仅完成本地导出而**未上传远端**，必须用授权 MCP 只传单篇 `.docx` 或如实把 `.docx` / `wiki-page.html` 发给 PM，**严禁谎报“已推送到企微”**！
 5. **已有工作区无损升级**：当用户要求“升级/更新 OpenPM”时，优先运行 `python3 scripts/upgrade_openpm.py`（若本地尚无该脚本，先执行 `git fetch origin main && git checkout origin/main -- AGENTS.md CLAUDE.md WORKBUDDY.md .cursorrules scripts skills specs adapters templates && python3 scripts/upgrade_openpm.py`），100% 保留用户的 `.env.local` 与 `projects/*` 现有业务目录，并将检测出的旧项目门禁问题自动修复重编。
 
@@ -71,10 +71,10 @@
 
 ## 三、 6+1 标准流水线路由
 
-1. **拉取历史与对比**：`skills/01-pull-wiki/SKILL.md` → 调用 `scripts/wiki_sync.py pull` 输出 `history/prd-remote.md` 与 `history/pull-diff.md`
+1. **拉取历史与对比**：`skills/01-pull-wiki/SKILL.md` → 调用 `scripts/wiki_sync.py pull` 输出 `history/prd-remote.md`、`history/pull-diff.md` 与 `history/pull-diff-report.html`
 2. **编写 / 局部修改 PRD**：`skills/02-draft-prd/SKILL.md` → 输出 `prd.md`
 3. **绘制纯灰阶线框原型**：`skills/03-prd-to-wireframe-prototype/SKILL.md` → 输出 `pages/<page_id>.html`
 4. **绘制拓扑流程图**：`skills/04-flow-canvas/SKILL.md` → 输出 `flow.svg` 并同步 `spec.json` 的 `nodes` / `vars`
 5. **确定性编译交互工作台**：`skills/05-flow-walkthrough/SKILL.md` → 调用 `scripts/preflight_check.py` + `scripts/build_walkthrough.py` 输出 `walkthrough.html`
-6. **图文对照交付 Wiki**：`skills/06-push-wiki/SKILL.md` → 调用 `scripts/wiki_sync.py push` + `scripts/version_manager.py snapshot`
+6. **图文对照交付 Wiki**：`skills/06-push-wiki/SKILL.md` → 调用 `scripts/wiki_sync.py push` + `scripts/version_manager.py snapshot`（同步输出本地核验报告 `wiki-export/push-diff-report.html`）
 7. **双盲评分与自我迭代**：`skills/07-iterate-skills/SKILL.md`
